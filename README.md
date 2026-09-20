@@ -1,4 +1,4 @@
-# St. Kizito's Primary School — Result Management System (Next.js)
+# Raven Junior School — Result Management System (Next.js)
 
 Build version: **2026.06.26.1756**
 Exported: 2026-06-26T14:56:34.259Z
