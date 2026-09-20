@@ -1,12 +1,12 @@
 export const metadata = {
-  title: "St. Kizito's Primary School — Result Management System",
-  description: "Result Management System for St. Kizito's Primary School",
+  title: "Raven Junior School — Result MIS",
+  description: "Result Management System for Raven Junior School",
   manifest: "/manifest.json",
-  themeColor: "#1d4ed8",
+  themeColor: "#1e3a6e",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "St. Kizito MIS",
+    title: "Raven MIS",
   },
 };
 
