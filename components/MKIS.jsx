@@ -53,19 +53,6 @@ const LOWER_SUBJECT_MAX = {
 // READING and WRITING are no longer recognized/graded subjects anywhere in
 // the system (Mark Entry, Monthly Exams, Result Sheets, Report Cards,
 // Monthly Cards/Slips, PLE, etc.) -- removed from LOWER_SUBJECTS above.
-// The Exam Timetable is the one deliberate exception: it still needs to be
-// able to schedule a Reading or Writing exam session even though those
-// subjects no longer carry marks/grades, so it uses this separate, fuller
-// list instead of LOWER_SUBJECTS.
-const EXAM_TIMETABLE_LOWER_SUBJECTS = [
-    "MATHS",
-    "LIT I",
-    "LIT II",
-    "ENG",
-    "RE",
-    "READING",
-    "WRITING"
-];
 const lowerSubjectMax = (sub)=>LOWER_SUBJECT_MAX[sub] || 100;
 const UPPER_SUBJECTS = [
     "ENG",
@@ -79,90 +66,92 @@ const MONTHLY_SUBJECTS = [
     "SST",
     "SCI"
 ];
+// Subject display order shared by the End of Term / Mid Term report card
+// tables AND Mark Entry, so the order a teacher enters marks in matches
+// the order they print in. Lower Primary: ENG, MATHS, LIT I, LIT II, RE.
+// Upper Primary: ENG, SCI, SST, MATH (MATH is displayed as "MATHS" per the
+// paper template, though the stored subject code stays "MATH" everywhere).
+const LOWER_MIDTERM_ORDER = [
+    "ENG",
+    "MATHS",
+    "LIT I",
+    "LIT II",
+    "RE"
+];
+const UPPER_MIDTERM_ORDER = [
+    "ENG",
+    "SCI",
+    "SST",
+    "MATH"
+];
+const upperSubjectLabel = (sub)=>sub === "MATH" ? "MATHS" : sub;
+// ─── NURSERY ─────────────────────────────────────────────────────────────
+// Nursery (Baby, Middle, Top Class) is structurally different from Primary,
+// not just "another band": marks are entered alongside a free-text comment
+// per subject, and each subject's performance band (Excellent/Very
+// Good/Good/Fair/Below Average) is computed automatically from the mark
+// rather than typed in by hand. See NURSERY_COLOR_BANDS below.
+const NURSERY_CLASSES = [
+    "Baby",
+    "Middle",
+    "Top"
+];
+const NURSERY_SUBJECTS = [
+    "LANG DEV 1",
+    "LANG DEV 2",
+    "NUMBERS",
+    "SOCIAL DEV",
+    "HEALTH HABITS"
+];
+// Ordered highest-threshold-first: nurseryColorForMark walks down this list
+// and returns the first band whose `min` the mark clears. `below` is the
+// implicit last band and never needs a `min` check.
+const NURSERY_COLOR_BANDS = [
+    {
+        label: "Excellent",
+        color: "green",
+        min: 90
+    },
+    {
+        label: "Very Good",
+        color: "blue",
+        min: 80
+    },
+    {
+        label: "Good",
+        color: "purple",
+        min: 70
+    },
+    {
+        label: "Fair",
+        color: "brown",
+        min: 50
+    },
+    {
+        label: "Below Average",
+        color: "red",
+        min: -Infinity
+    }
+];
+// Returns { label, color } for a nursery mark, or null if mark isn't a
+// valid number yet (e.g. the cell is still empty) -- callers should treat
+// null as "no band to show" rather than defaulting to any particular color.
+function nurseryColorForMark(mark) {
+    const n = Number(mark);
+    if (mark === undefined || mark === null || mark === "" || Number.isNaN(n)) return null;
+    for (const band of NURSERY_COLOR_BANDS){
+        if (n >= band.min) return {
+            label: band.label,
+            color: band.color
+        };
+    }
+    return null; // unreachable -- the last band's min is -Infinity
+}
 const TERMS = [
     "Term I",
     "Term II",
     "Term III"
 ];
-const GROUP_TEST_OPTIONS = [
-    "Group Test 1",
-    "Group Test 2",
-    "Group Test 3",
-    "Group Test 4",
-    "Group Test 5"
-];
-// Group Work: { [cls]: { [tk]: { groups:[{id,name,members:[string]}], marks:{ [testNo]: { [groupId]: { [subject]: number } } } } } }
-// Groups/rosters are kept at the class+term+year level (a group's membership
-// doesn't usually change test to test within the same term), while marks are
-// recorded per individual Test No. (Group Test 1-5) within that period.
-const DEFAULT_GROUP_WORK = {};
-// Default nicknames used when a new group is created (Group N (Nickname)).
-// Beyond 10 groups it just falls back to a plain "Group N" -- teachers can
-// always rename any group afterwards anyway.
-const GROUP_WORK_NICKNAMES = [
-    "The Lions",
-    "The Antelopes",
-    "The Leopards",
-    "The Cheetahs",
-    "The Zebras",
-    "The Kobs",
-    "The Wolves",
-    "The Giraffes",
-    "The Foxes",
-    "The Tigers"
-];
-const MUNICIPAL_EXAM_TYPES = [
-    "Mock Exam",
-    "PLE"
-];
-// Municipal Performance: a district-wide, manually-entered ranking table
-// (independent of the school's own pupil records) modeled on the
-// municipality's own "Analysis and Overall Ranking of Schools Based on
-// Average Division" sheet. Keyed by exam type then year, since a fresh
-// table gets prepared each year for each exam type.
-// { [examType]: { [year]: { schools:[{id,name,funding,div1,div2,div3,div4,divU,absent,bestAgg}], inspector:"" } } }
-const DEFAULT_MUNICIPAL_PERF = {};
-const EXAM_TIMETABLE_TYPES = [
-    "BEGINNING OF TERM",
-    "MIDTERM",
-    "GROUP WORK",
-    "SPECIAL EXAM",
-    "MOCK",
-    "END OF TERM"
-];
-const EXAM_TIMETABLE_VENUES = [
-    "P.1 ROOM",
-    "P.2 ROOM",
-    "P.3 ROOM",
-    "P.4 ROOM",
-    "P.5 ROOM",
-    "P.6 ROOM",
-    "P.7 ROOM",
-    "HALL",
-    "P.1 B ROOM",
-    "P.5 B ROOM",
-    "P.7 B ROOM"
-];
-const EXAM_TIMETABLE_INVIGILATORS = [
-    "MR OMIITA GERALD",
-    "MR EMURON JOHN",
-    "MR ODOI JOSEPH",
-    "MR JAKISA KALIST",
-    "MS NYAWERE IMMACULATE",
-    "MS AKOTH TABISA",
-    "MS KEKO MARY GORRET",
-    "MS IJANG GRACE",
-    "MS NYACHWO ESTHER",
-    "MS IGARI KOLOSTIKA",
-    "MS ANYANGO CHRISTINE"
-];
-// Exam Timetable: separate Upper (P4-P7) and Lower (P1-P3) sheets, each
-// further split by term (each term gets its own timetable), plus its own
-// manually-typed "Prepared by" line -- matching the school's own paper
-// timetables (one per section per term).
-// { upper: { [term]: { rows:[{id,date,time,exam,cls,subject,venue,invigilators:[]}], preparedBy:"" } },
-//   lower: { [term]: { rows:[...], preparedBy:"" } } }
-const DEFAULT_EXAM_TIMETABLE = {};
 // Reports module: narrative drafts (Introduction/Activities/.../Conclusion +
 // optional Performance Summary) keyed by report identity, e.g.
 // "CT__P5__Term I__2026" for a Class Teacher Report, "DEPT__English__Term
@@ -255,7 +244,7 @@ const DEFAULT_BANDS = [
 // the same class/Year -- a school might, say, use one scale for End of Term
 // and a different one for Monthly Exams in the same year. examTypes is a
 // subset of SPECIAL_SCALE_EXAM_TYPES ("End of Term", "Monthly Exams",
-// "Municipal Mock", "TAEB Mock") -- only those exam types use that scale;
+// "District Mock", "Special Mock") -- only those exam types use that scale;
 // any exam type left out of every scale keeps using the standard scale.
 const DEFAULT_SPECIAL_BANDS = {};
 const DEFAULT_DIVISIONS = [
@@ -285,20 +274,45 @@ const DEFAULT_DIVISIONS = [
         max: 999
     }
 ];
+// The school badge (Raven Junior School, Winyo). One image, defined once and
+// reused everywhere a logo is drawn: it is the default Settings logo
+// (DEFAULT_SCHOOL.logo), the sidebar/login crest (SchoolCrest), and the badge
+// in every exam/result heading (RAVEN_BADGE below). Transparent outside the
+// rounded frame so it sits cleanly on white, coloured and certificate pages.
+const RAVEN_LOGO = "data:image/png;base64,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";
+// Bump this string to make every school record pick up a NEW DEFAULT_SCHOOL.logo
+// exactly once. A record saved with a different (or missing) logoVersion has its
+// stored logo replaced by the current default on the next load; after that the
+// version is stamped, so a logo uploaded later in Settings is kept as normal.
+// (Needed because the previous default logo was already saved into each
+// school's stored settings, and a saved logo otherwise always wins.)
+const SCHOOL_LOGO_VERSION = "raven-winyo-2";
 const DEFAULT_SCHOOL = {
-    name: "ST. KIZITO'S PRIMARY SCHOOL",
-    motto: "Knowledge is Power",
-    poBox: "P.O. Box 172, Tororo",
-    tel: "",
-    email: "stkizitosprimaryschool@gmail.com",
+    name: "RAVEN JUNIOR SCHOOL",
+    motto: "Have to Give",
+    poBox: "P.O. Box 731, Tororo",
+    tel: "+256776745781 / +256789113131",
+    email: "ravenjuniorschool@gmail.com",
     district: "Tororo",
     headTeacher: "",
     nextOpens: "",
     nextEnds: "",
     requirements: "",
     year: String(new Date().getFullYear()),
-    logo: "data:image/png;base64,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"
+    logo: RAVEN_LOGO,
+    logoVersion: SCHOOL_LOGO_VERSION
 };
+// Applies the logo migration described at SCHOOL_LOGO_VERSION to a saved school record.
+function resolveSchoolLogo(sc) {
+    const saved = sc && sc.logo;
+    const keepSaved = !!saved && sc.logoVersion === SCHOOL_LOGO_VERSION;
+    return {
+        ...DEFAULT_SCHOOL,
+        ...sc,
+        logo: keepSaved ? saved : DEFAULT_SCHOOL.logo,
+        logoVersion: SCHOOL_LOGO_VERSION
+    };
+}
 // ─── STORAGE (shared across all devices via window.storage) ───────────────────
 // All MKIS data is saved with shared:true, so every device/browser that opens
 // this app reads and writes the SAME records instead of separate, per-device
@@ -307,6 +321,7 @@ const STORAGE_KEYS = [
     "mkis_students",
     "mkis_termmarks",
     "mkis_monthlymarks",
+    "mkis_nurserymarks",
     "mkis_initials",
     "mkis_bands",
     "mkis_special_bands",
@@ -316,14 +331,11 @@ const STORAGE_KEYS = [
     "mkis_changerequests",
     "mkis_locked_term",
     "mkis_locked_monthly",
-    "mkis_groupwork",
-    "mkis_municipalperf",
-    "mkis_examtimetable",
     "mkis_reports"
 ];
 // Every shared-storage key this app writes to, including the ones added
 // later that never got folded into STORAGE_KEYS above (PLE data, mock
-// exams, term/monthly reset backups, the sweeping rota, the audit log).
+// exams, term/monthly reset backups, the audit log).
 // Used only by the Storage Size Breakdown tool in Settings -- it needs the
 // COMPLETE list to give an honest answer about where database size is
 // actually going, not just the keys the original poll loop knew about.
@@ -333,7 +345,6 @@ const ALL_MKIS_KEYS = [
     "mkis_mock_marks",
     "mkis_term_reset_backups",
     "mkis_monthly_reset_backups",
-    "mkis_sweeping_rota",
     "mkis_audit_log"
 ];
 // One-time migration: if a browser still has old localStorage data and the
@@ -354,7 +365,8 @@ async function migrateLocalStorageOnce() {
 async function loadShared(key, def) {
     try {
         const res = await window.storage.get(key, true);
-        return res && res.value != null ? JSON.parse(res.value) : def;
+        const val = res && res.value != null ? JSON.parse(res.value) : def;
+        return val;
     } catch (e) {
         return def;
     }
@@ -446,9 +458,6 @@ const KEY_LABEL = {
     mkis_initials: "Initials",
     mkis_locked_term: "Term Lock",
     mkis_locked_monthly: "Monthly Lock",
-    mkis_groupwork: "Group Work",
-    mkis_municipalperf: "Municipal Performance",
-    mkis_examtimetable: "Exam Timetable",
     mkis_mock_marks: "Mock Results",
     mkis_pledata: "PLE Results",
     mkis_reports: "Reports"
@@ -565,46 +574,6 @@ function deepMergeObjects(remote, local) {
     for (const k of Object.keys(local))out[k] = deepMergeObjects(remote[k], local[k]);
     return out;
 }
-// Municipal Performance's shape is { [examType]: { [year]: { schools:[...], inspector } } }.
-// Plain deepMergeObjects treats "schools" as a leaf (it's an array) and lets
-// whichever device saves LAST replace the whole array -- so if one device
-// adds School A while another device (or the periodic background poll)
-// concurrently adds School B to the same exam/year, only one of those two
-// additions survives the next save and the other silently vanishes. This
-// merges "schools" the same id-aware way mergeArrayById already does for
-// the pupil roster, so two people adding/editing different schools in the
-// same table at the same time never wipes out each other's entries.
-function mergeMunicipalPerf(remote, local) {
-    const remoteObj = remote && typeof remote === "object" ? remote : {};
-    const localObj = local && typeof local === "object" ? local : {};
-    const out = {
-        ...remoteObj
-    };
-    for (const examType of Object.keys(localObj)){
-        const remoteYears = remoteObj[examType] && typeof remoteObj[examType] === "object" ? remoteObj[examType] : {};
-        const localYears = localObj[examType] && typeof localObj[examType] === "object" ? localObj[examType] : {};
-        const yearsOut = {
-            ...remoteYears
-        };
-        for (const yr of Object.keys(localYears)){
-            const remoteRec = remoteYears[yr] || {
-                schools: [],
-                inspector: ""
-            };
-            const localRec = localYears[yr] || {
-                schools: [],
-                inspector: ""
-            };
-            yearsOut[yr] = {
-                schools: mergeArrayById(remoteRec.schools, localRec.schools, null),
-                // inspector is a single typed line for this exam/year -- local intent wins, like mkis_school.
-                inspector: localRec.inspector !== undefined ? localRec.inspector : remoteRec.inspector || ""
-            };
-        }
-        out[examType] = yearsOut;
-    }
-    return out;
-}
 // Merge strategy per storage key. "leaf" keys (school/bands/divisions/password)
 // are small, whole-object settings a person edits deliberately on one screen,
 // so local intent simply wins there -- but we still merge them via this same
@@ -612,6 +581,11 @@ function mergeMunicipalPerf(remote, local) {
 const MERGE_STRATEGIES = {
     mkis_students: (remote, local, ctx)=>mergeArrayById(remote, local, ctx === null || ctx === void 0 ? void 0 : ctx.deletedStudentIds),
     mkis_termmarks: (remote, local)=>deepMergeObjects(remote, local),
+    // Same shape and reasoning as mkis_termmarks: {studentId: {termKey:
+    // {subject: {mark, comment}}}}, deep-merged so one device saving one
+    // pupil's nursery marks never wipes out a concurrent edit to a
+    // different pupil, class, or term.
+    mkis_nurserymarks: (remote, local)=>deepMergeObjects(remote, local),
     mkis_monthlymarks: (remote, local)=>deepMergeObjects(remote, local),
     mkis_bands: (remote, local)=>local,
     mkis_special_bands: (remote, local)=>deepMergeObjects(remote, local),
@@ -620,9 +594,6 @@ const MERGE_STRATEGIES = {
     mkis_accounts: (remote, local)=>deepMergeObjects(remote, local),
     mkis_changerequests: (remote, local, ctx)=>mergeArrayById(remote, local, ctx === null || ctx === void 0 ? void 0 : ctx.deletedRequestIds),
     mkis_initials: (remote, local)=>local,
-    mkis_groupwork: (remote, local)=>deepMergeObjects(remote, local),
-    mkis_municipalperf: (remote, local)=>mergeMunicipalPerf(remote, local),
-    mkis_examtimetable: (remote, local)=>deepMergeObjects(remote, local),
     // Locked-entry maps are { "CLASS__TERM__YEAR" (or "...__MONTH" for monthly): true|false }.
     // Deep-merged key-by-key so a Save/Unlock on one device never clobbers a
     // different class/term/month another device locked or unlocked.
@@ -676,36 +647,18 @@ async function verifyPassword(plain, stored) {
 // account is a separate, more privileged login. Defaults match the school's
 // requested credentials and are only used the very first time the app runs
 // (i.e. when no accounts have been saved to shared storage yet).
-const TEACHER_USERNAMES = [
-    "OMIITA01",
-    "EMURON10",
-    "IJANG11",
-    "ODOI31",
-    "IMMACULATE71",
-    "AKOTH33",
-    "MARYG0001",
-    "ANYANGO45",
-    "IGARI89",
-    "JAKISA23",
-    "NYACHWO"
-];
-const DEFAULT_ACCOUNTS_PLAIN = (()=>{
-    const out = {
-        "gerald": {
-            username: "Gerald",
-            password: "GOODTOGO11",
-            role: "admin"
-        }
-    };
-    for (const u of TEACHER_USERNAMES){
-        out[u.toLowerCase()] = {
-            username: u,
-            password: "".concat(u, "172"),
-            role: "teacher"
-        };
+const DEFAULT_ACCOUNTS_PLAIN = {
+    "julius oketcho": {
+        username: "JULIUS OKETCHO",
+        password: "ADMIN26",
+        role: "admin"
+    },
+    "teacher": {
+        username: "TEACHER",
+        password: "RAVEN26",
+        role: "teacher"
     }
-    return out;
-})();
+};
 async function buildDefaultAccounts() {
     const out = {};
     for (const key of Object.keys(DEFAULT_ACCOUNTS_PLAIN)){
@@ -730,6 +683,124 @@ async function verifyAccountLogin(accounts, usernameInput, passwordInput) {
 }
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const toUpper = (s)=>(s || "").toUpperCase();
+// ─── RAVEN JUNIOR SCHOOL: exam names + exam/test heading brand ──────────────
+// Pre-Mock / Pre-PLE sittings. Each one is stored exactly like any other mock
+// (key "<name>__<year>" in mkis_mock_marks), so renaming an entry here changes
+// what is saved -- edit with care once marks exist.
+const PRE_MOCK_TYPES = [
+    "PREMOCK I",
+    "PREMOCK II",
+    "PREMOCK III"
+];
+const PRE_PLE_TYPES = [
+    "PRE PLE 1",
+    "PRE PLE 2",
+    "PRE PLE 3",
+    "PRE PLE 4",
+    "PRE PLE 5",
+    "PRE PLE 6",
+    "PRE PLE 7",
+    "PRE PLE 8"
+];
+// Exam picker for Mock Info: plain names, or { group, items } for a name that
+// opens a second dropdown (PRE-MOCK -> PREMOCK I / II / III).
+const MOCK_EXAM_OPTIONS = [
+    "District Mock",
+    "Special Mock",
+    {
+        group: "PRE-MOCK",
+        items: PRE_MOCK_TYPES
+    }
+];
+// Mock and PLE are sat by one class only.
+const MOCK_CLASSES = [
+    "P7"
+];
+// "Other Exam" marks share the mock store; the prefix keeps a typed exam name
+// from ever colliding with (or overwriting) a real Mock / Pre-PLE sitting.
+const OTHER_EXAM_KEY_PREFIX = "Other Exam: ";
+function flattenExamOptions(opts) {
+    const out = [];
+    (opts || []).forEach((o)=>{
+        if (typeof o === "string") out.push(o);
+        else if (o && Array.isArray(o.items)) o.items.forEach((i)=>out.push(i));
+    });
+    return out;
+}
+// Which Special Grading Scale checkbox governs an exam name: every Pre-Mock
+// follows "PRE-MOCK", every Pre-PLE follows "PRE-PLE", and every typed Other
+// Exams entry (stored with OTHER_EXAM_KEY_PREFIX) follows "Other Exams".
+const OTHER_EXAMS_SCALE_KEY = "Other Exams";
+function scaleKeyForExamType(t) {
+    if (PRE_MOCK_TYPES.includes(t)) return "PRE-MOCK";
+    if (PRE_PLE_TYPES.includes(t)) return "PRE-PLE";
+    if (typeof t === "string" && t.startsWith(OTHER_EXAM_KEY_PREFIX)) return OTHER_EXAMS_SCALE_KEY;
+    return t;
+}
+const RAVEN_SCHOOL_NAME = "RAVEN JUNIOR SCHOOL";
+const RAVEN_SCHOOL_MOTTO = "Have to Give";
+const RAVEN_BADGE = RAVEN_LOGO;
+// Traditional serif font stack ("old man" style) used for the school name/
+// header branding across headings, printed documents and the school-name
+// bar shown at the top of every page.
+const RAVEN_HEADING_FONT = "Georgia,'Times New Roman',serif";
+// Heading for Word/print exports of every exam or test sheet: badge, school
+// name, motto, then the sheet's own title line.
+function examHeadingHtml(subtitle) {
+    let html = '<div style="text-align:center;">';
+    html += '<img src="'.concat(RAVEN_BADGE, '" alt="Raven Junior School badge" style="width:70px;height:70px;object-fit:contain;display:block;margin:0 auto 6px;"/>');
+    html += '<div class="title" style="font-family:'.concat(RAVEN_HEADING_FONT, ';">').concat(escapeHtml(RAVEN_SCHOOL_NAME), "</div>");
+    html += '<div class="addr" style="font-family:'.concat(RAVEN_HEADING_FONT, ';">P.O. Box 731, Tororo &nbsp;|&nbsp; \u{1F4DE} +256776745781 / +256789113131</div>');
+    html += '<div class="motto">"'.concat(escapeHtml(RAVEN_SCHOOL_MOTTO), '"</div>');
+    if (subtitle) html += '<div class="subtitle">'.concat(escapeHtml(subtitle), "</div>");
+    html += "</div>";
+    return html;
+}
+// Same heading for on-screen sheets (also what the PDF export captures).
+function ExamHeading(param) {
+    let { subtitle, badgeSize = 80 } = param;
+    return <div style={{
+        textAlign: "center",
+        marginBottom: 12
+    }}>
+            <img src={RAVEN_BADGE} alt="Raven Junior School badge" style={{
+        width: badgeSize,
+        height: badgeSize,
+        objectFit: "contain",
+        display: "block",
+        margin: "0 auto 6px"
+    }} />
+            <div style={{
+        fontWeight: 900,
+        fontSize: 16,
+        color: "#1e3a6e",
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        fontFamily: RAVEN_HEADING_FONT
+    }}>{RAVEN_SCHOOL_NAME}</div>
+            <div style={{
+        fontSize: 11,
+        color: "#374151",
+        marginTop: 2,
+        fontFamily: RAVEN_HEADING_FONT
+    }}>P.O. Box 731, Tororo &nbsp;|&nbsp; 📞 +256776745781 / +256789113131</div>
+            <div style={{
+        fontSize: 12,
+        fontStyle: "italic",
+        color: "#374151",
+        marginTop: 2,
+        fontFamily: RAVEN_HEADING_FONT
+    }}>"{RAVEN_SCHOOL_MOTTO}"</div>
+            {subtitle ? <div style={{
+        fontWeight: 800,
+        fontSize: 14,
+        color: "#1e3a6e",
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        marginTop: 8
+    }}>{subtitle}</div> : null}
+        </div>;
+}
 // Exam types the Special Grading Scale can be scoped to. A class's special
 // scale only overrides the standard scale for the exam types checked for it
 // in Settings; any exam type left unchecked keeps using the standard scale
@@ -737,9 +808,36 @@ const toUpper = (s)=>(s || "").toUpperCase();
 const SPECIAL_SCALE_EXAM_TYPES = [
     "End of Term",
     "Monthly Exams",
-    "Municipal Mock",
-    "TAEB Mock"
+    "District Mock",
+    "Special Mock",
+    "PRE-MOCK",
+    "PRE-PLE",
+    "Other Exams"
 ];
+// What each exam-type checkbox is called on screen. The stored keys above stay
+// exactly as they were (saved scales keep working); only the wording differs:
+// "End of Term" is the Mark Entry page, "Special Mock" is the Special Exam.
+const SPECIAL_SCALE_EXAM_LABELS = {
+    "End of Term": "Mark Entry",
+    "Monthly Exams": "Monthly Exams",
+    "District Mock": "District Mock",
+    "Special Mock": "Special Exam (Special Mock)",
+    "PRE-MOCK": "Pre-Mock",
+    "PRE-PLE": "Pre-PLE",
+    "Other Exams": "Other Exams"
+};
+const specialScaleExamLabel = (et)=>SPECIAL_SCALE_EXAM_LABELS[et] || et;
+// Terms a Special Grading Scale is switched on for. A scale saved before term
+// scoping existed has no `terms` list and keeps applying to every term.
+function scaleTermsOf(scale) {
+    return Array.isArray(scale?.terms) ? scale.terms : [
+        ...TERMS
+    ];
+}
+function scaleAppliesToTerm(scale, term) {
+    if (!term) return true; // caller has no term (Mock Info / Other Exams sheets): don't filter
+    return scaleTermsOf(scale).includes(term);
+}
 // Reads the list of named Scales configured for a class in a given academic
 // Year. specialBands[cls] is keyed by Year, e.g.
 //   { [year]: { scales:[ {name:"Scale 1",bands:[...],examTypes:[...]}, ... ] } }
@@ -752,7 +850,7 @@ const SPECIAL_SCALE_EXAM_TYPES = [
 // applies regardless of which Year is selected, so old data keeps working
 // until it's next edited in Settings (at which point it's saved in the
 // current Year-keyed shape).
-function scalesForClassYear(specialBands, cls, year) {
+function rawScalesForClassYear(specialBands, cls, year) {
     const entry = specialBands === null || specialBands === void 0 ? void 0 : specialBands[cls];
     if (!entry) return [];
     // Check the current Year-keyed shape FIRST, even though it's an "if
@@ -797,22 +895,110 @@ function scalesForClassYear(specialBands, cls, year) {
     }
     return [];
 }
+function scalesForClassYear(specialBands, cls, year) {
+    return rawScalesForClassYear(specialBands, cls, year);
+}
 // Resolves which grading scale actually applies to a class for a given Year
 // and exam type: the first of that class/Year's Special Grading Scales (see
 // scalesForClassYear above) whose exam-type list includes the exam type in
 // question -- otherwise the normal default bands used everywhere else. When
 // examType is omitted the exam-type check is skipped entirely (used by
-// callers -- like Group Work -- that aren't one of the scoped exam types and
-// should just follow the class/Year's first configured special scale).
-function bandsForClass(cls, bands, specialBands, examType, year) {
+// callers that aren't one of the scoped exam types and should just follow
+// the class/Year's first configured special scale). `term` is optional: when
+// given, a scale only applies if it is also switched on for that term (see
+// scaleAppliesToTerm); callers with no term context simply omit it.
+function bandsForClass(cls, bands, specialBands, examType, year, term) {
     const scales = scalesForClassYear(specialBands, cls, year);
     for (const scale of scales){
         const arr = scale === null || scale === void 0 ? void 0 : scale.bands;
         if (!Array.isArray(arr) || !arr.length) continue;
+        if (!scaleAppliesToTerm(scale, term)) continue;
         const types = scale.examTypes || [];
-        if (!examType || types.includes(examType)) return arr;
+        if (!examType || types.includes(scaleKeyForExamType(examType))) return arr;
     }
     return bands;
+}
+// ─── END-OF-TERM EXAM CHOICE ─────────────────────────────────────────────────
+// Besides BOT and Mid Term, a class can sit several exams in one term: Mark
+// Entry ("End of Term"), District / Special Mock, Pre-Mock I-III, Pre-PLE 1-8
+// and typed Other Exams. When more than one of them has marks, Report Cards
+// let the school pick which one stands as the class's end-of-term result --
+// for P7 in Term II only (see hasExamChoice). The pick is stored per year
+// inside reportsData (key
+// EXAM_CHOICES_KEY, synced through mkis_reports like the report narratives)
+// and is also what the Dashboard's class analysis follows.
+// Mock-store exams are saved by name + year only (they carry no term), so any
+// of them can be chosen for any term.
+// The choice exists for ONE class and ONE term only: P7, Term II. Every other
+// class/term always uses Mark Entry (P7 Term III uses PLE on the Dashboard).
+const EXAM_CHOICE_CLASS = "P7";
+const EXAM_CHOICE_TERM = "Term II";
+const hasExamChoice = (cls, term)=>cls === EXAM_CHOICE_CLASS && term === EXAM_CHOICE_TERM;
+const END_EXAM_MARK_ENTRY = "End of Term";
+const END_EXAM_PLE = "PLE";
+const EXAM_CHOICES_KEY = "__examChoices";
+const examChoiceKey = (cls, term, year)=>cls + "__" + term + "__" + year;
+function getExamChoice(reportsData, cls, term, year) {
+    if (!hasExamChoice(cls, term)) return null;
+    const v = reportsData?.[EXAM_CHOICES_KEY]?.[examChoiceKey(cls, term, year)];
+    return typeof v === "string" && v ? v : null;
+}
+function examDisplayName(id) {
+    if (id === END_EXAM_MARK_ENTRY) return "Mark Entry";
+    if (typeof id === "string" && id.startsWith(OTHER_EXAM_KEY_PREFIX)) return id.slice(OTHER_EXAM_KEY_PREFIX.length) + " (Other Exam)";
+    return id;
+}
+const examHasMarks = (o)=>!!o && typeof o === "object" && Object.values(o).some((v)=>typeof v === "number");
+// Exams (never BOT / Mid Term) this class has at least one mark for, in this
+// year: Mark Entry for the term first, then mock-store exams in a fixed order.
+function examsDoneForClass(students, cls, term, year, termMarksData, mockMarksData) {
+    const pupils = students.filter((s)=>s.className === cls);
+    const out = [];
+    const tk = term + "__" + year;
+    if (pupils.some((s)=>examHasMarks(termMarksData?.[s.id]?.[tk]?.[END_EXAM_MARK_ENTRY]))) out.push(END_EXAM_MARK_ENTRY);
+    const suffix = "__" + year;
+    const found = new Set();
+    pupils.forEach((s)=>{
+        const rec = mockMarksData?.[s.id];
+        if (!rec) return;
+        Object.keys(rec).forEach((k)=>{
+            if (k.endsWith(suffix) && examHasMarks(rec[k])) found.add(k.slice(0, -suffix.length));
+        });
+    });
+    const known = [
+        ...flattenExamOptions(MOCK_EXAM_OPTIONS),
+        ...PRE_PLE_TYPES
+    ];
+    known.forEach((n)=>{
+        if (found.has(n)) out.push(n);
+    });
+    [
+        ...found
+    ].filter((n)=>!known.includes(n)).sort().forEach((n)=>out.push(n));
+    return out;
+}
+// One pupil's {subject: mark} for the chosen exam.
+function examMarksFor(sid, examId, term, year, termMarksData, mockMarksData) {
+    if (examId === END_EXAM_MARK_ENTRY) return termMarksData?.[sid]?.[term + "__" + year]?.[END_EXAM_MARK_ENTRY];
+    return mockMarksData?.[sid]?.[examId + "__" + year];
+}
+// 0-100 % for one pupil/subject from Mark Entry. Raven stores ONE mark per
+// subject under termMarks[id][term__year]["End of Term"][subject]; the older
+// {ca, exam}-per-subject shape is still read as a fallback.
+function markEntryPct(termMarksData, s, sub, isLower, term, year) {
+    const tkData = termMarksData?.[s.id]?.[term + "__" + year];
+    if (!tkData) return undefined;
+    const max = isLower ? lowerSubjectMax(sub) : 100;
+    const v = tkData[END_EXAM_MARK_ENTRY]?.[sub];
+    if (typeof v === "number") return v / max * 100;
+    const legacy = tkData[sub];
+    if (legacy && typeof legacy === "object") {
+        const ca = legacy.ca, exam = legacy.exam;
+        const hasBoth = typeof ca === "number" && typeof exam === "number";
+        const av = hasBoth ? (ca + exam) / 2 : typeof exam === "number" ? exam : typeof ca === "number" ? ca : undefined;
+        if (av !== undefined) return av / max * 100;
+    }
+    return undefined;
 }
 function gradeFor(score, bands) {
     if (score === undefined || score === null || isNaN(score)) return null;
@@ -1130,24 +1316,6 @@ function autoComments(param) {
         head: pickFrom(headBank, seed + ":h")
     };
 }
-// For Monthly Report Cards (which cover several months at once): bases the
-// comment on the most recent month that actually has marks entered, since
-// that reflects the pupil's current standing best.
-function monthlyCardAutoComments(monthData, isLower, seed) {
-    const entered = (monthData || []).filter((m)=>m.totMk > 0);
-    if (!entered.length) return {
-        teacher: "",
-        head: ""
-    };
-    const latest = entered[entered.length - 1];
-    return autoComments({
-        isLower,
-        totMk: latest.totMk,
-        div: latest.div,
-        hasX: latest.hasX,
-        seed
-    });
-}
 // Rank with ties. Position is based on total marks ONLY: any number of
 // pupils with the same total marks share the same position, regardless of
 // how many of them there are.
@@ -1261,7 +1429,7 @@ function downloadWordHtml(title, bodyHtml, filename) {
     // page size we're asking for.
     const [wStr, hStr] = pageSize.split(" ");
     const orientation = parseFloat(wStr) >= parseFloat(hStr) ? "landscape" : "portrait";
-    const html = '<!DOCTYPE html>\n<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n<head>\n<meta charset="utf-8">\n<title>'.concat(escapeHtml(title), "</title>\n<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->\n<style>\n  @page { size: ").concat(pageSize, "; margin: ").concat(pageMargin, "; mso-page-orientation: ").concat(orientation, "; }\n  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color:#111; }\n  table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }\n  th, td { border: 1px solid #999; padding: 4px 6px; font-size: 9.5pt; text-align: center; }\n  th { background:#1e3a6e; color:#fff; font-weight:bold; }\n  .title { text-align:center; font-size:16pt; font-weight:bold; }\n  .motto { text-align:center; font-style:italic; font-size:10pt; }\n  .addr { text-align:center; font-size:10pt; margin-bottom:4px; }\n  .subtitle { text-align:center; font-weight:bold; font-size:12pt; margin:6px 0 10px; }\n  .section-title { font-weight:bold; font-size:11pt; margin:14px 0 6px; }\n  .name-cell { text-align:left; font-weight:600; }\n  tr:nth-child(even) td { background:#eff6ff; }\n  /* Keep each pupil's full report card together as one block in the\n     downloaded file -- never split a table/section across two pages. */\n  .report-card-block, .report-card-block table, .report-card-block tr {\n    page-break-inside: avoid;\n    mso-pagination: none;\n  }\n</style>\n</head>\n<body>\n").concat(bodyHtml, "\n</body>\n</html>");
+    const html = '<!DOCTYPE html>\n<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n<head>\n<meta charset="utf-8">\n<title>'.concat(escapeHtml(title), "</title>\n<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->\n<style>\n  @page { size: ").concat(pageSize, "; margin: ").concat(pageMargin, "; mso-page-orientation: ").concat(orientation, "; }\n  body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; color:#111; }\n  table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }\n  th, td { border: 1px solid #999; padding: 4px 6px; font-size: 9.5pt; text-align: center; }\n  th { background:#1e3a6e; color:#fff; font-weight:bold; }\n  .title { text-align:center; font-size:16pt; font-weight:bold; }\n  .motto { text-align:center; font-style:italic; font-size:10pt; }\n  .addr { text-align:center; font-size:10pt; margin-bottom:4px; }\n  .subtitle { text-align:center; font-weight:bold; font-size:12pt; margin:6px 0 10px; }\n  .section-title { font-weight:bold; font-size:11pt; margin:14px 0 6px; }\n  .name-cell { text-align:left; font-weight:600; }\n  tr:nth-child(even) td { background:#eff6ff; }\n  /* Keep each pupil's full report card together as one block in the\n     downloaded file -- never split a table/section across two pages. */\n  .report-card-block, .report-card-block table, .report-card-block tr {\n    page-break-inside: avoid;\n    mso-pagination: none;\n  }\n</style>\n</head>\n<body>\n").concat(bodyHtml, "\n</body>\n</html>");
     // Word's HTML/RTF importer is unreliable with <img src="data:..."> --
     // the logo renders fine in a browser preview, but once the file is
     // actually opened in Word it's frequently shown as a broken "linked
@@ -1319,40 +1487,37 @@ function htmlTable(headerRow, dataRows) {
     return "<table>".concat(head).concat(body, "</table>");
 }
 // Builds the Word-export table for Result Sheets with the SAME two-row grouped
-// header (subject name spanning CA/EX/AV/AG) and the SAME cell colors used
-// on screen in ResultSheets, instead of the old flat "ENG CA | ENG EXAM | ..."
-// single-row header with no shading. POS is rendered with its ordinal suffix
-// (1st, 2nd, 3rd...) since the plain number alone was silently dropping it.
+// header (subject name spanning SCORE/AGG) and the SAME cell colors used on
+// screen in ResultSheets. Raven has no CA/Exam split (see updateTermMark) --
+// each subject is one mark out of 100, so the sheet shows SCORE + AGG per
+// subject for BOTH Lower and Upper Primary, matching the End of Term
+// Performance table on the report card (no separate CA/EXAM/AVG columns).
+// Also keeps a POS column alongside TOT AGG/DIV, for both Lower and Upper
+// Primary -- unlike the report card (which is per-pupil and has no rank),
+// the Result Sheet is the class ranking document, so position stays here.
+// POS is rendered with its ordinal suffix (1st, 2nd, 3rd...) since the plain
+// number alone was silently dropping it.
 function resultSheetHtmlTable(param) {
     let { subjects, isLower, sortedRows } = param;
     const thTop = "border:1px solid #999;padding:5px;font-size:9pt;";
-    // rowspan="2" is only valid when a second header <tr> actually exists to
-    // absorb it (upper classes: the CA/EX/AV/AG sub-row below). Lower classes
-    // have just ONE header row, so a rowspan="2" there has no second row to
-    // fill -- the header cell eats into the column slots of the very next
-    // <tr>, which is the FIRST DATA ROW, shoving that pupil's cells sideways
-    // into a phantom extra column (exactly the "first student detached"
-    // symptom). rs is empty (rowspan of 1, the default) for lower classes.
-    const rs = isLower ? "" : ' rowspan="2"';
+    // Both Lower and Upper now have a second header row (the SCORE/AGG
+    // sub-row below), so rowspan="2" always has a row to absorb it.
+    const rs = ' rowspan="2"';
     let head = '<tr style="background:#1e40af;color:white;">';
     head += '<th style="'.concat(thTop, '"').concat(rs, ">S/N</th>");
     head += '<th style="'.concat(thTop, 'text-align:left;min-width:150px;"').concat(rs, ">NAME OF PUPIL</th>");
     subjects.forEach((sub)=>{
-        head += isLower ? '<th style="'.concat(thTop, '"').concat(rs, ">").concat(escapeHtml(sub)).concat(lowerSubjectMax(sub) !== 100 ? " /".concat(lowerSubjectMax(sub)) : "", "</th>") : '<th style="'.concat(thTop, '" colspan="4">').concat(escapeHtml(sub), "</th>");
+        head += '<th style="'.concat(thTop, '" colspan="2">').concat(escapeHtml(sub)).concat(isLower && lowerSubjectMax(sub) !== 100 ? " /".concat(lowerSubjectMax(sub)) : "", "</th>");
     });
     head += '<th style="'.concat(thTop, '"').concat(rs, ">TOT MK</th>");
-    if (!isLower) head += '<th style="'.concat(thTop, '"').concat(rs, '>TOT AGG</th><th style="').concat(thTop, '"').concat(rs, ">DIV</th>");
+    head += '<th style="'.concat(thTop, '"').concat(rs, '>TOT AGG</th><th style="').concat(thTop, '"').concat(rs, ">DIV</th>");
     head += '<th style="'.concat(thTop, '"').concat(rs, ">POS</th></tr>");
-    if (!isLower) {
-        head += '<tr style="background:#2563eb;color:white;font-size:8pt;">';
-        subjects.forEach(()=>{
-            head += '<th style="'.concat(thTop, 'background:#fef9c3;color:#713f12;">CA</th>');
-            head += '<th style="'.concat(thTop, 'background:#dcfce7;color:#14532d;">EX</th>');
-            head += '<th style="'.concat(thTop, 'background:#dbeafe;color:#1e3a6e;">AV</th>');
-            head += '<th style="'.concat(thTop, 'background:#fed7aa;color:#7c2d12;">AG</th>');
-        });
-        head += "</tr>";
-    }
+    head += '<tr style="background:#2563eb;color:white;font-size:8pt;">';
+    subjects.forEach(()=>{
+        head += '<th style="'.concat(thTop, 'background:#dcfce7;color:#14532d;">SCORE</th>');
+        head += '<th style="'.concat(thTop, 'background:#fed7aa;color:#7c2d12;">AGG</th>');
+    });
+    head += "</tr>";
     const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9.5pt;";
     let body = "";
     sortedRows.forEach((r, i)=>{
@@ -1361,775 +1526,24 @@ function resultSheetHtmlTable(param) {
         body += '<tr style="background:'.concat(rowBg, ';">');
         body += '<td style="'.concat(td, '">').concat(i + 1, "</td>");
         body += '<td style="'.concat(td, 'text-align:left;font-weight:600;">').concat(escapeHtml(r.s.name), "</td>");
-        if (isLower) {
-            r.perSub.forEach((p)=>{
-                var _p_av;
-                body += '<td style="'.concat(td, '">').concat(p.isX ? "X" : (_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : "-", "</td>");
-            });
-        } else {
-            r.perSub.forEach((p)=>{
-                var _p_ca;
-                body += '<td style="'.concat(td, 'background:#fefce8;">').concat(p.isX ? "X" : (_p_ca = p.ca) !== null && _p_ca !== void 0 ? _p_ca : "-", "</td>");
-                var _p_exam;
-                body += '<td style="'.concat(td, 'background:#f0fdf4;">').concat(p.isX ? "X" : (_p_exam = p.exam) !== null && _p_exam !== void 0 ? _p_exam : "-", "</td>");
-                var _p_av;
-                body += '<td style="'.concat(td, 'background:#eff6ff;font-weight:600;">').concat(p.isX ? "X" : (_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : "-", "</td>");
-                body += '<td style="'.concat(td, 'background:#fff7ed;">').concat(p.isX ? "X" : p.av !== undefined ? p.agg : "-", "</td>");
-            });
-        }
-        body += '<td style="'.concat(td, 'font-weight:700;background:#ede9fe;">').concat(padTotMk(r.totMk) || "-", "</td>");
-        if (!isLower) {
-            body += '<td style="'.concat(td, "background:#ede9fe;").concat(r.hasX ? "color:#dc2626;font-weight:700;" : "", '">').concat(r.hasX ? "X" : r.totAgg || "-", "</td>");
-            body += '<td style="'.concat(td, "font-weight:700;color:").concat(r.hasX ? "#dc2626" : "#1e40af", ';">').concat(r.hasX ? "X" : r.totMk ? r.div : "-", "</td>");
-        }
-        body += '<td style="'.concat(td, '">').concat(r.pos && r.pos !== "-" ? ordinal(r.pos) : "-", "</td>");
-        body += "</tr>";
-    });
-    return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
-}
-// Same idea for Monthly Mark Sheets: grouped MK/AGG sub-header per subject
-// with the same yellow/orange colors as MonthBlock on screen, alternating
-// row banding, and ordinal-suffixed positions.
-function monthlySheetHtmlTable(param) {
-    let { subjects, isLower, sortedRows } = param;
-    const thTop = "border:1px solid #999;padding:5px;font-size:9pt;";
-    // See resultSheetHtmlTable above for why rowspan is conditional here --
-    // lower classes have no MK/AGG sub-header row, so rowspan="2" would have
-    // no second row to absorb it and instead displaces the first data row.
-    const rs = isLower ? "" : ' rowspan="2"';
-    let head = '<tr style="background:#1e40af;color:white;">';
-    head += '<th style="'.concat(thTop, '"').concat(rs, ">S/N</th>");
-    head += '<th style="'.concat(thTop, 'text-align:left;min-width:150px;"').concat(rs, ">NAME OF PUPIL</th>");
-    subjects.forEach((sub)=>{
-        head += isLower ? '<th style="'.concat(thTop, '"').concat(rs, ">").concat(escapeHtml(sub)).concat(lowerSubjectMax(sub) !== 100 ? " /".concat(lowerSubjectMax(sub)) : "", "</th>") : '<th style="'.concat(thTop, '" colspan="2">').concat(escapeHtml(sub), "</th>");
-    });
-    head += '<th style="'.concat(thTop, '"').concat(rs, ">TOT MK</th>");
-    if (!isLower) head += '<th style="'.concat(thTop, '"').concat(rs, '>TOT AGG</th><th style="').concat(thTop, '"').concat(rs, ">DIV</th>");
-    head += '<th style="'.concat(thTop, '"').concat(rs, ">POS</th></tr>");
-    if (!isLower) {
-        head += '<tr style="background:#2563eb;color:white;font-size:8pt;">';
-        subjects.forEach(()=>{
-            head += '<th style="'.concat(thTop, 'background:#fef9c3;color:#713f12;">MK</th>');
-            head += '<th style="'.concat(thTop, 'background:#fed7aa;color:#7c2d12;">AGG</th>');
-        });
-        head += "</tr>";
-    }
-    const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9.5pt;";
-    let body = "";
-    sortedRows.forEach((r, i)=>{
-        const rowBg = i % 2 === 0 ? "#ffffff" : "#eff6ff";
-        body += '<tr style="background:'.concat(rowBg, ';">');
-        body += '<td style="'.concat(td, '">').concat(i + 1, "</td>");
-        body += '<td style="'.concat(td, 'text-align:left;font-weight:600;">').concat(escapeHtml(r.s.name), "</td>");
         r.perSub.forEach((p)=>{
-            if (isLower) {
-                body += '<td style="'.concat(td, 'background:#fefce8;">').concat(p.mk !== undefined ? p.mk : "-", "</td>");
-            } else {
-                body += '<td style="'.concat(td, 'background:#fefce8;">').concat(p.mk !== undefined ? p.mk : "-", "</td>");
-                body += '<td style="'.concat(td, "background:#fff7ed;font-weight:600;").concat(p.isX ? "color:#dc2626;" : "", '">').concat(p.isX ? "X" : p.mk !== undefined ? p.agg : "-", "</td>");
-            }
+            var _p_mark, _p_agg;
+            body += '<td style="'.concat(td, 'background:#f0fdf4;">').concat(p.isX ? "X" : (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-", "</td>");
+            body += '<td style="'.concat(td, 'background:#fff7ed;">').concat(p.isX ? "X" : (_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : "-", "</td>");
         });
         body += '<td style="'.concat(td, 'font-weight:700;background:#ede9fe;">').concat(padTotMk(r.totMk) || "-", "</td>");
-        if (!isLower) {
-            body += '<td style="'.concat(td, "background:#ede9fe;").concat(r.hasX ? "color:#dc2626;font-weight:700;" : "", '">').concat(r.hasX ? "X" : r.totAgg || "-", "</td>");
-            body += '<td style="'.concat(td, "font-weight:700;color:").concat(r.hasX ? "#dc2626" : "#1e40af", ';">').concat(r.hasX ? "X" : r.totMk ? r.div : "-", "</td>");
-        }
+        body += '<td style="'.concat(td, "background:#ede9fe;").concat(r.hasX ? "color:#dc2626;font-weight:700;" : "", '">').concat(r.hasX ? "X" : r.totAgg || "-", "</td>");
+        body += '<td style="'.concat(td, "font-weight:700;color:").concat(r.hasX ? "#dc2626" : "#1e40af", ';">').concat(r.hasX ? "X" : r.totMk ? r.div : "-", "</td>");
         body += '<td style="'.concat(td, '">').concat(r.pos && r.pos !== "-" ? ordinal(r.pos) : "-", "</td>");
         body += "</tr>";
     });
     return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
 }
-// Group Work export table: same MK/AGG grouped-header idea as monthly mark
-// sheets, but rows are groups (GROUP name + MEMBERS list) instead of pupils --
-// matching the school's existing paper "Group Test Results" layout.
-function groupWorkHtmlTable(param) {
-    let { subjects, isLower, sortedRows } = param;
-    const thTop = "border:1px solid #999;padding:5px;font-size:9pt;";
-    // See resultSheetHtmlTable above for why rowspan is conditional here.
-    const rs = isLower ? "" : ' rowspan="2"';
-    let head = '<tr style="background:#1e40af;color:white;">';
-    head += '<th style="'.concat(thTop, '"').concat(rs, ">GROUP</th>");
-    head += '<th style="'.concat(thTop, 'text-align:left;min-width:170px;"').concat(rs, ">MEMBERS</th>");
-    subjects.forEach((sub)=>{
-        head += isLower ? '<th style="'.concat(thTop, '"').concat(rs, ">").concat(escapeHtml(sub)).concat(lowerSubjectMax(sub) !== 100 ? " /".concat(lowerSubjectMax(sub)) : "", "</th>") : '<th style="'.concat(thTop, '" colspan="2">').concat(escapeHtml(sub), "</th>");
-    });
-    head += '<th style="'.concat(thTop, '"').concat(rs, ">TOT MARK</th>");
-    if (!isLower) head += '<th style="'.concat(thTop, '"').concat(rs, '>TOT AGG</th><th style="').concat(thTop, '"').concat(rs, ">DIV</th>");
-    head += '<th style="'.concat(thTop, '"').concat(rs, ">POS</th></tr>");
-    if (!isLower) {
-        head += '<tr style="background:#2563eb;color:white;font-size:8pt;">';
-        subjects.forEach(()=>{
-            head += '<th style="'.concat(thTop, 'background:#fef9c3;color:#713f12;">MK</th>');
-            head += '<th style="'.concat(thTop, 'background:#fed7aa;color:#7c2d12;">AGG</th>');
-        });
-        head += "</tr>";
-    }
-    const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9.5pt;";
-    let body = "";
-    sortedRows.forEach((r, i)=>{
-        const rowBg = i % 2 === 0 ? "#ffffff" : "#eff6ff";
-        body += '<tr style="background:'.concat(rowBg, ';">');
-        body += '<td style="'.concat(td, 'font-weight:700;">').concat(escapeHtml(r.g.name), "</td>");
-        body += '<td style="'.concat(td, 'text-align:left;">').concat(r.memberNames.map((n, mi)=>"".concat(mi + 1, ". ").concat(escapeHtml(n))).join("<br/>") || "-", "</td>");
-        r.perSub.forEach((p)=>{
-            if (isLower) {
-                body += '<td style="'.concat(td, 'background:#fefce8;">').concat(p.mk !== undefined ? p.mk : "-", "</td>");
-            } else {
-                body += '<td style="'.concat(td, 'background:#fefce8;">').concat(p.mk !== undefined ? p.mk : "-", "</td>");
-                body += '<td style="'.concat(td, "background:#fff7ed;font-weight:600;").concat(p.isX ? "color:#dc2626;" : "", '">').concat(p.isX ? "X" : p.mk !== undefined ? p.agg : "-", "</td>");
-            }
-        });
-        body += '<td style="'.concat(td, 'font-weight:700;background:#ede9fe;">').concat(r.totMk || "-", "</td>");
-        if (!isLower) {
-            body += '<td style="'.concat(td, "background:#ede9fe;").concat(r.hasX ? "color:#dc2626;font-weight:700;" : "", '">').concat(r.hasX ? "X" : r.totAgg || "-", "</td>");
-            body += '<td style="'.concat(td, "font-weight:700;color:").concat(r.hasX ? "#dc2626" : "#1e40af", ';">').concat(r.hasX ? "X" : r.totMk ? r.div : "-", "</td>");
-        }
-        body += '<td style="'.concat(td, '">').concat(r.pos && r.pos !== "-" ? ordinal(r.pos) : "-", "</td>");
-        body += "</tr>";
-    });
-    return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
-}
-function exportGroupWorkWord(param) {
-    let { school, cls, term, year, testNo, isLower, subjects, sortedRows } = param;
-    let body = titleBlockHtml(school, "GROUP TEST RESULTS ".concat(term.toUpperCase(), ", ").concat(year, " - ").concat(cls, " - ").concat(toUpper(testNo)));
-    body += groupWorkHtmlTable({
-        subjects,
-        isLower,
-        sortedRows
-    });
-    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " ").concat(testNo), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_").concat(safeFileName(testNo), ".doc"));
-}
-function groupWorkAnalysisHtmlTable(param) {
-    let { isLower, sortedAnalysisRows } = param;
-    const th = "border:1px solid #999;padding:5px;font-size:8.5pt;background:#1e40af;color:white;";
-    const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9pt;";
-    let head = "<tr>";
-    head += '<th style="'.concat(th, '">GROUP</th><th style="').concat(th, 'text-align:left;">MEMBERS</th>');
-    GROUP_TEST_OPTIONS.forEach((tn)=>{
-        head += '<th style="'.concat(th, '">').concat(tn.replace("Group Test ", "GT"), "</th>");
-    });
-    head += '<th style="'.concat(th, '">TESTS DONE</th><th style="').concat(th, '">AVG TOT MK</th>');
-    if (!isLower) head += '<th style="'.concat(th, '">AVG TOT AGG</th><th style="').concat(th, '">OVERALL DIV</th>');
-    head += '<th style="'.concat(th, '">OVERALL POS</th></tr>');
-    let body = "";
-    sortedAnalysisRows.forEach((r, i)=>{
-        const rowBg = i % 2 === 0 ? "#ffffff" : "#eff6ff";
-        body += '<tr style="background:'.concat(rowBg, ';">');
-        body += '<td style="'.concat(td, 'font-weight:700;">').concat(escapeHtml(r.g.name), "</td>");
-        body += '<td style="'.concat(td, 'text-align:left;">').concat(escapeHtml(r.memberNames.join(", ") || "-"), "</td>");
-        r.perTest.forEach((t)=>{
-            body += '<td style="'.concat(td, '">').concat(t.hasData ? t.totMk : "-", "</td>");
-        });
-        body += '<td style="'.concat(td, 'font-weight:700;">').concat(r.testsCompleted, "/").concat(GROUP_TEST_OPTIONS.length, "</td>");
-        body += '<td style="'.concat(td, 'font-weight:700;background:#ede9fe;">').concat(r.avgTotMk > 0 ? r.avgTotMk.toFixed(1) : "-", "</td>");
-        if (!isLower) {
-            body += '<td style="'.concat(td, 'background:#ede9fe;">').concat(r.avgTotAgg !== null ? r.avgTotAgg.toFixed(1) : "-", "</td>");
-            body += '<td style="'.concat(td, 'font-weight:700;color:#1e40af;">').concat(r.overallDiv || "-", "</td>");
-        }
-        body += '<td style="'.concat(td, '">').concat(r.pos && r.pos !== "-" ? ordinal(r.pos) : "-", "</td>");
-        body += "</tr>";
-    });
-    return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
-}
-function exportGroupWorkAnalysisWord(param) {
-    let { school, cls, term, year, isLower, sortedAnalysisRows } = param;
-    let body = titleBlockHtml(school, "GENERAL GROUP PERFORMANCE ANALYSIS - ".concat(term.toUpperCase(), ", ").concat(year, " - ").concat(cls));
-    body += groupWorkAnalysisHtmlTable({
-        isLower,
-        sortedAnalysisRows
-    });
-    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " General Group Analysis"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_General_Group_Analysis.doc"), {
-        pageSize: "297mm 210mm"
-    });
-}
-// ─── MUNICIPAL PERFORMANCE (district-wide school ranking) ───────────────────
-// Turns one school's raw division counts into every derived figure the
-// municipality's own ranking sheet shows: each division's share of that
-// school's total, the weighted "cumulative division" score, and the
-// resulting average division (lower = better, to 4 decimal places since
-// that's the precision the municipality's own sheet is prepared to).
-// ─── RESULT ANALYSER ─────────────────────────────────────────────────────────
-// Scans OCR'd text of a printed/photographed Result Sheet and tallies how
-// many pupils fall in each division. This app's own Result Sheets (and most
-// Ugandan primary schools' sheets generally) print the division as a Roman
-// numeral (I/II/III/IV) or "U", trailing near the end of each pupil's row
-// (…TOT MK, TOT AGG, DIV, POS).
-//
-// Real-world scans are messy: columns drift, OCR sometimes runs adjacent
-// cells together with no space ("12I" instead of "12  I"), and the POS
-// column doesn't always come through legibly. Rather than betting on one
-// exact pattern, this tries three, from most to least strict, and keeps
-// whichever one actually recognized the most pupil rows on this particular
-// scan:
-//   Tier 1: TOT AGG number, then the division, then a POS-style ordinal
-//           (the full, most distinctive column sequence).
-//   Tier 2: just a number immediately followed by the division -- looser,
-//           for scans where the POS column didn't come through cleanly.
-//   Tier 3: a line that starts with a small row number (S/N), reading the
-//           division off whatever's near the end of that line.
-// Always shown back to the person as an editable tally before anything is
-// used, since Roman numerals are an easy thing for OCR to misread.
-function analyzeResultSheetText(text) {
-    const norm = text.replace(/\r/g, "");
-    const toCounts = (matches)=>{
-        const counts = {
-            I: 0,
-            II: 0,
-            III: 0,
-            IV: 0,
-            U: 0
-        };
-        matches.forEach((d)=>{
-            const key = d.toUpperCase();
-            if (counts[key] !== undefined) counts[key]++;
-        });
-        return counts;
-    };
-    // (?![A-Za-z]) after the division token stops it from matching inside a
-    // longer run of letters (a false positive), but -- unlike a plain \b or
-    // (?!\w) -- still allows a digit to follow immediately, since OCR very
-    // often squeezes DIV and POS together with no space at all ("I1ST").
-    const tier1 = [
-        ...norm.matchAll(/\b(\d{1,3})[.,]?\s*(IV|III|II|I|U)(?![A-Za-z])[.,:]?\s*\d{1,2}\s*(?:ST|ND|RD|TH)\b/gi)
-    ].map((m)=>m[2]);
-    const tier2 = [
-        ...norm.matchAll(/\b(\d{1,3})[.,]?\s*(IV|III|II|I|U)(?![A-Za-z])/gi)
-    ].map((m)=>m[2]);
-    const lines = norm.split(/\n/).map((l)=>l.trim()).filter(Boolean);
-    const tier3 = [];
-    lines.forEach((line)=>{
-        const tokens = line.split(/\s+/).filter(Boolean);
-        if (tokens.length < 3) return;
-        if (!/^\d{1,2}\.?$/.test(tokens[0])) return;
-        const tail = tokens.slice(-4);
-        for(let i = tail.length - 1; i >= 0; i--){
-            const clean = tail[i].toUpperCase().replace(/[^A-Z]/g, "");
-            if ([
-                "I",
-                "II",
-                "III",
-                "IV",
-                "U"
-            ].includes(clean)) {
-                tier3.push(clean);
-                break;
-            }
-        }
-    });
-    const best = [
-        tier1,
-        tier2,
-        tier3
-    ].reduce((a, b)=>b.length > a.length ? b : a, []);
-    const dataLineCount = lines.filter((l)=>/^\d{1,2}\b/.test(l.trim())).length || lines.length;
-    return {
-        counts: toCounts(best),
-        matchedRows: best.length,
-        skippedRows: Math.max(0, dataLineCount - best.length)
-    };
-}
-function computeMunicipalRow(s) {
-    const n = (v)=>{
-        const x = Number(v);
-        return isNaN(x) ? 0 : x;
-    };
-    const d1 = n(s.div1), d2 = n(s.div2), d3 = n(s.div3), d4 = n(s.div4), dU = n(s.divU), absent = n(s.absent);
-    const total = d1 + d2 + d3 + d4 + dU + absent;
-    const cumDiv = d1 * 1 + d2 * 2 + d3 * 3 + d4 * 4 + dU * 5;
-    const avgDiv = total > 0 ? cumDiv / total : null;
-    const pct = (v)=>total > 0 ? Math.round(v / total * 100) : 0;
-    return {
-        s,
-        total,
-        cumDiv,
-        avgDiv,
-        pct1: pct(d1),
-        pct2: pct(d2),
-        pct3: pct(d3),
-        pct4: pct(d4),
-        pctU: pct(dU)
-    };
-}
-// Column totals across every school row -- summed division counts, grand
-// total, and the district-wide weighted average division (sum of cumulative
-// division points / sum of pupils), matching how a single school's average
-// division is derived, just rolled up across all centres in the table.
-function computeMunicipalTotals(rows) {
-    const n = (v)=>{
-        const x = Number(v);
-        return isNaN(x) ? 0 : x;
-    };
-    let d1 = 0, d2 = 0, d3 = 0, d4 = 0, dU = 0, absent = 0, cumDiv = 0;
-    rows.forEach((r)=>{
-        d1 += n(r.s.div1);
-        d2 += n(r.s.div2);
-        d3 += n(r.s.div3);
-        d4 += n(r.s.div4);
-        dU += n(r.s.divU);
-        absent += n(r.s.absent);
-        cumDiv += r.cumDiv;
-    });
-    const total = d1 + d2 + d3 + d4 + dU + absent;
-    const avgDiv = total > 0 ? cumDiv / total : null;
-    const pct = (v)=>total > 0 ? Math.round(v / total * 100) : 0;
-    return {
-        div1: d1,
-        div2: d2,
-        div3: d3,
-        div4: d4,
-        divU: dU,
-        absent,
-        total,
-        cumDiv,
-        avgDiv,
-        pct1: pct(d1),
-        pct2: pct(d2),
-        pct3: pct(d3),
-        pct4: pct(d4),
-        pctU: pct(dU)
-    };
-}
-function municipalPerfHtmlTable(rows) {
-    const th = "border:1px solid #999;padding:5px;font-size:8.5pt;background:#1e40af;color:white;";
-    const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9pt;";
-    let head = "<tr>".concat([
-        "S/N",
-        "CENTRE NAME",
-        "FUNDING",
-        "DIV 1",
-        "DIV 1 %",
-        "DIV 2",
-        "DIV 2 %",
-        "DIV 3",
-        "DIV 3 %",
-        "DIV 4",
-        "DIV 4 %",
-        "DIV U",
-        "DIV U %",
-        "ABSENT",
-        "TOTAL",
-        "CUM. DIV.",
-        "BEST AGG.",
-        "AVERAGE DIVISION"
-    ].map((h)=>'<th style="'.concat(th, '">').concat(h, "</th>")).join(""), "</tr>");
-    let body = "";
-    rows.forEach((r, i)=>{
-        const rowBg = i % 2 === 0 ? "#ffffff" : "#eff6ff";
-        body += '<tr style="background:'.concat(rowBg, ';">');
-        body += '<td style="'.concat(td, '">').concat(i + 1, "</td>");
-        body += '<td style="'.concat(td, 'text-align:left;font-weight:600;">').concat(escapeHtml(r.s.name || "-"), "</td>");
-        body += '<td style="'.concat(td, '">').concat(escapeHtml(r.s.funding || "-"), "</td>");
-        body += '<td style="'.concat(td, '">').concat(r.s.div1 || 0, '</td><td style="').concat(td, '">').concat(r.pct1, "%</td>");
-        body += '<td style="'.concat(td, '">').concat(r.s.div2 || 0, '</td><td style="').concat(td, '">').concat(r.pct2, "%</td>");
-        body += '<td style="'.concat(td, '">').concat(r.s.div3 || 0, '</td><td style="').concat(td, '">').concat(r.pct3, "%</td>");
-        body += '<td style="'.concat(td, '">').concat(r.s.div4 || 0, '</td><td style="').concat(td, '">').concat(r.pct4, "%</td>");
-        body += '<td style="'.concat(td, '">').concat(r.s.divU || 0, '</td><td style="').concat(td, '">').concat(r.pctU, "%</td>");
-        body += '<td style="'.concat(td, '">').concat(r.s.absent || 0, "</td>");
-        body += '<td style="'.concat(td, 'font-weight:700;">').concat(r.total, "</td>");
-        body += '<td style="'.concat(td, '">').concat(r.cumDiv, "</td>");
-        body += '<td style="'.concat(td, '">').concat(r.s.bestAgg || "-", "</td>");
-        body += '<td style="'.concat(td, 'font-weight:700;">').concat(r.avgDiv !== null ? r.avgDiv.toFixed(4) : "-", "</td>");
-        body += "</tr>";
-    });
-    const t = computeMunicipalTotals(rows);
-    const totalTd = "border:1px solid #999;padding:4px;text-align:center;font-size:9pt;font-weight:800;background:#dbeafe;";
-    body += "<tr>";
-    body += '<td style="'.concat(totalTd, '" colspan="3">TOTAL</td>');
-    body += '<td style="'.concat(totalTd, '">').concat(t.div1, '</td><td style="').concat(totalTd, '">').concat(t.pct1, "%</td>");
-    body += '<td style="'.concat(totalTd, '">').concat(t.div2, '</td><td style="').concat(totalTd, '">').concat(t.pct2, "%</td>");
-    body += '<td style="'.concat(totalTd, '">').concat(t.div3, '</td><td style="').concat(totalTd, '">').concat(t.pct3, "%</td>");
-    body += '<td style="'.concat(totalTd, '">').concat(t.div4, '</td><td style="').concat(totalTd, '">').concat(t.pct4, "%</td>");
-    body += '<td style="'.concat(totalTd, '">').concat(t.divU, '</td><td style="').concat(totalTd, '">').concat(t.pctU, "%</td>");
-    body += '<td style="'.concat(totalTd, '">').concat(t.absent, "</td>");
-    body += '<td style="'.concat(totalTd, '">').concat(t.total, "</td>");
-    body += '<td style="'.concat(totalTd, '">').concat(t.cumDiv, "</td>");
-    body += '<td style="'.concat(totalTd, '">-</td>');
-    body += '<td style="'.concat(totalTd, '">').concat(t.avgDiv !== null ? t.avgDiv.toFixed(4) : "-", "</td>");
-    body += "</tr>";
-    return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
-}
-function exportMunicipalPerfWord(param) {
-    let { school, examType, year, fundingLabel, rows, inspector } = param;
-    let body = '<div style="text-align:center;">';
-    body += '<div class="title">TORORO MUNICIPAL COUNCIL</div>';
-    body += '<div class="subtitle" style="margin-top:2px;">EDUCATION DEPARTMENT</div>';
-    body += '<div class="subtitle">'.concat(escapeHtml(String(year)), " ").concat(escapeHtml(examType.toUpperCase()), " ANALYSIS AND OVERALL RANKING OF ").concat(escapeHtml(fundingLabel.toUpperCase()), " SCHOOLS BASED ON AVERAGE DIVISION</div>");
-    body += "</div>";
-    body += municipalPerfHtmlTable(rows);
-    body += '<div style="margin-top:30px;font-size:11pt;">PREPARED BY</div>';
-    body += '<div style="margin-top:26px;font-size:11pt;font-weight:700;">'.concat(escapeHtml(inspector || ""), "</div>");
-    downloadWordHtml("".concat(examType, " ").concat(year, " Municipal Performance"), body, "".concat(safeFileName(examType), "_").concat(year, "_Municipal_Performance_").concat(safeFileName(fundingLabel), ".doc"), {
-        pageSize: "297mm 210mm"
-    });
-}
-// ─── Colored .xlsx writer (no extra dependency) ─────────────────────────────
-// The "xlsx" package this app already uses (SheetJS community edition) can
-// only READ cell colors, never WRITE them -- that's a Pro-only feature of
-// that library, so XLSX.writeFile silently drops any fill color you set on
-// a cell. Rather than depend on an extra package (which isn't installed in
-// every build of this project and breaks the build when it's missing),
-// this builds a real, valid .xlsx file by hand -- a .xlsx is just a zip of
-// a few small XML parts -- using JSZip, which this app already depends on
-// for other features. That gives genuine colored rows with zero new
-// dependencies.
-function xlsxColLetter(n) {
-    let s = "", i = n + 1;
-    while(i > 0){
-        const rem = (i - 1) % 26;
-        s = String.fromCharCode(65 + rem) + s;
-        i = Math.floor((i - 1) / 26);
-    }
-    return s;
-}
-function xlsxXmlEscape(s) {
-    return String(s !== null && s !== void 0 ? s : "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
-}
-// Style ids referenced by cells below (see styles.xml built in buildColoredXlsxBlob):
-// 0 default | 1 title (bold, center) | 2 header (bold white on blue) |
-// 3 even row, center | 4 odd row, center | 5 bold label (Prepared By) |
-// 6 even row, left-aligned (names) | 7 odd row, left-aligned (names)
-async function buildColoredXlsxBlob(param) {
-    let { sheetName, rows, merges = [], colWidths = [] } = param;
-    // rows: array of arrays of { v, s, num? }. num:true => numeric <v>, else inline string.
-    const numCols = Math.max(...rows.map((r)=>r.length), 1);
-    const rowsXml = rows.map((row, ri)=>{
-        const cellsXml = row.map((cell, ci)=>{
-            if (cell == null || cell.v === undefined || cell.v === "") {
-                return cell && cell.s ? '<c r="'.concat(xlsxColLetter(ci)).concat(ri + 1, '" s="').concat(cell.s, '"/>') : "";
-            }
-            const ref = "".concat(xlsxColLetter(ci)).concat(ri + 1);
-            const s = cell.s || 0;
-            if (cell.num) return '<c r="'.concat(ref, '" s="').concat(s, '"><v>').concat(Number(cell.v), "</v></c>");
-            return '<c r="'.concat(ref, '" s="').concat(s, '" t="inlineStr"><is><t xml:space="preserve">').concat(xlsxXmlEscape(cell.v), "</t></is></c>");
-        }).join("");
-        return '<row r="'.concat(ri + 1, '">').concat(cellsXml, "</row>");
-    }).join("");
-    const mergeXml = merges.length ? '<mergeCells count="'.concat(merges.length, '">').concat(merges.map((m)=>'<mergeCell ref="'.concat(m, '"/>')).join(""), "</mergeCells>") : "";
-    const colsXml = colWidths.length ? "<cols>".concat(colWidths.map((w, i)=>'<col min="'.concat(i + 1, '" max="').concat(i + 1, '" width="').concat(w, '" customWidth="1"/>')).join(""), "</cols>") : "";
-    const sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'.concat(colsXml, "<sheetData>").concat(rowsXml, "</sheetData>").concat(mergeXml, "</worksheet>");
-    const stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">\n<fonts count="3">\n<font><sz val="11"/><name val="Calibri"/></font>\n<font><b/><sz val="11"/><name val="Calibri"/></font>\n<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>\n</fonts>\n<fills count="5">\n<fill><patternFill patternType="none"/></fill>\n<fill><patternFill patternType="gray125"/></fill>\n<fill><patternFill patternType="solid"><fgColor rgb="FF1E40AF"/><bgColor indexed="64"/></patternFill></fill>\n<fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>\n<fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/><bgColor indexed="64"/></patternFill></fill>\n</fills>\n<borders count="2">\n<border><left/><right/><top/><bottom/><diagonal/></border>\n<border><left style="thin"><color rgb="FF999999"/></left><right style="thin"><color rgb="FF999999"/></right><top style="thin"><color rgb="FF999999"/></top><bottom style="thin"><color rgb="FF999999"/></bottom><diagonal/></border>\n</borders>\n<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>\n<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>\n<cellXfs count="8">\n<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>\n<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>\n<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>\n<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>\n<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>\n<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>\n<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left"/></xf>\n<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left"/></xf>\n</cellXfs>\n</styleSheet>';
-    const workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">\n<sheets><sheet name="'.concat(xlsxXmlEscape(sheetName.slice(0, 31)), '" sheetId="1" r:id="rId1"/></sheets>\n</workbook>');
-    const workbookRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>\n<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>\n</Relationships>';
-    const rootRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>\n</Relationships>';
-    const contentTypesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n<Default Extension="xml" ContentType="application/xml"/>\n<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>\n<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>\n<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>\n</Types>';
-    const zip = new JSZip();
-    zip.file("[Content_Types].xml", contentTypesXml);
-    zip.file("_rels/.rels", rootRelsXml);
-    zip.file("xl/workbook.xml", workbookXml);
-    zip.file("xl/_rels/workbook.xml.rels", workbookRelsXml);
-    zip.file("xl/styles.xml", stylesXml);
-    zip.file("xl/worksheets/sheet1.xml", sheetXml);
-    return zip.generateAsync({
-        type: "blob",
-        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    });
-}
-async function exportMunicipalPerfExcel(param) {
-    let { school, examType, year, fundingLabel, rows, inspector } = param;
-    const headers = [
-        "S/N",
-        "CENTRE NAME",
-        "FUNDING",
-        "DIV 1",
-        "DIV 1 %",
-        "DIV 2",
-        "DIV 2 %",
-        "DIV 3",
-        "DIV 3 %",
-        "DIV 4",
-        "DIV 4 %",
-        "DIV U",
-        "DIV U %",
-        "ABSENT",
-        "TOTAL",
-        "CUM. DIV.",
-        "BEST AGG.",
-        "AVERAGE DIVISION"
-    ];
-    const numCols = headers.length;
-    const excelRows = [];
-    excelRows.push([
-        {
-            v: "TORORO MUNICIPAL COUNCIL",
-            s: 1
-        }
-    ]);
-    excelRows.push([
-        {
-            v: "EDUCATION DEPARTMENT",
-            s: 1
-        }
-    ]);
-    excelRows.push([
-        {
-            v: "".concat(year, " ").concat(examType.toUpperCase(), " ANALYSIS AND OVERALL RANKING OF ").concat(fundingLabel.toUpperCase(), " SCHOOLS BASED ON AVERAGE DIVISION"),
-            s: 1
-        }
-    ]);
-    excelRows.push([]); // blank row
-    excelRows.push(headers.map((h)=>({
-            v: h,
-            s: 2
-        })));
-    rows.forEach((r, i)=>{
-        const bandCenter = i % 2 === 0 ? 3 : 4;
-        const bandLeft = i % 2 === 0 ? 6 : 7;
-        excelRows.push([
-            {
-                v: i + 1,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: r.s.name || "-",
-                s: bandLeft
-            },
-            {
-                v: r.s.funding || "-",
-                s: bandCenter
-            },
-            {
-                v: r.s.div1 || 0,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: "".concat(r.pct1, "%"),
-                s: bandCenter
-            },
-            {
-                v: r.s.div2 || 0,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: "".concat(r.pct2, "%"),
-                s: bandCenter
-            },
-            {
-                v: r.s.div3 || 0,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: "".concat(r.pct3, "%"),
-                s: bandCenter
-            },
-            {
-                v: r.s.div4 || 0,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: "".concat(r.pct4, "%"),
-                s: bandCenter
-            },
-            {
-                v: r.s.divU || 0,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: "".concat(r.pctU, "%"),
-                s: bandCenter
-            },
-            {
-                v: r.s.absent || 0,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: r.total,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: r.cumDiv,
-                s: bandCenter,
-                num: true
-            },
-            {
-                v: r.s.bestAgg || "-",
-                s: bandCenter
-            },
-            {
-                v: r.avgDiv !== null ? Number(r.avgDiv.toFixed(4)) : "-",
-                s: bandCenter,
-                num: r.avgDiv !== null
-            }
-        ]);
-    });
-    const t = computeMunicipalTotals(rows);
-    excelRows.push([
-        {
-            v: "TOTAL",
-            s: 2
-        },
-        {
-            v: "",
-            s: 2
-        },
-        {
-            v: "",
-            s: 2
-        },
-        {
-            v: t.div1,
-            s: 2,
-            num: true
-        },
-        {
-            v: "".concat(t.pct1, "%"),
-            s: 2
-        },
-        {
-            v: t.div2,
-            s: 2,
-            num: true
-        },
-        {
-            v: "".concat(t.pct2, "%"),
-            s: 2
-        },
-        {
-            v: t.div3,
-            s: 2,
-            num: true
-        },
-        {
-            v: "".concat(t.pct3, "%"),
-            s: 2
-        },
-        {
-            v: t.div4,
-            s: 2,
-            num: true
-        },
-        {
-            v: "".concat(t.pct4, "%"),
-            s: 2
-        },
-        {
-            v: t.divU,
-            s: 2,
-            num: true
-        },
-        {
-            v: "".concat(t.pctU, "%"),
-            s: 2
-        },
-        {
-            v: t.absent,
-            s: 2,
-            num: true
-        },
-        {
-            v: t.total,
-            s: 2,
-            num: true
-        },
-        {
-            v: t.cumDiv,
-            s: 2,
-            num: true
-        },
-        {
-            v: "-",
-            s: 2
-        },
-        {
-            v: t.avgDiv !== null ? Number(t.avgDiv.toFixed(4)) : "-",
-            s: 2,
-            num: t.avgDiv !== null
-        }
-    ]);
-    excelRows.push([]); // blank row
-    excelRows.push([
-        {
-            v: "PREPARED BY",
-            s: 5
-        }
-    ]);
-    excelRows.push([
-        {
-            v: inspector || "",
-            s: 5
-        }
-    ]);
-    const merges = [
-        "A1:".concat(xlsxColLetter(numCols - 1), "1"),
-        "A2:".concat(xlsxColLetter(numCols - 1), "2"),
-        "A3:".concat(xlsxColLetter(numCols - 1), "3")
-    ];
-    const colWidths = headers.map((h, i)=>i === 1 ? 26 : 11);
-    const blob = await buildColoredXlsxBlob({
-        sheetName: "Municipal Performance",
-        rows: excelRows,
-        merges,
-        colWidths
-    });
-    triggerBlobDownload(blob, "".concat(safeFileName(examType), "_").concat(year, "_Municipal_Performance_").concat(safeFileName(fundingLabel), ".xlsx"));
-}
-// ─── EXAM TIMETABLE ──────────────────────────────────────────────────────────
-function examTimetableHtmlTable(rows) {
-    const th = "border:1px solid #999;padding:6px;font-size:9pt;background:#1e40af;color:white;";
-    const td = "border:1px solid #999;padding:5px;text-align:center;font-size:9.5pt;";
-    let head = "<tr>".concat([
-        "DATE",
-        "TIME",
-        "EXAM",
-        "CLASS",
-        "SUBJECT",
-        "VENUE",
-        "INVIGILATOR(S)"
-    ].map((h)=>'<th style="'.concat(th, '">').concat(h, "</th>")).join(""), "</tr>");
-    let body = "";
-    rows.forEach((r, i)=>{
-        const rowBg = i % 2 === 0 ? "#ffffff" : "#eff6ff";
-        body += '<tr style="background:'.concat(rowBg, ';">');
-        body += '<td style="'.concat(td, '">').concat(escapeHtml(r.date || "-"), "</td>");
-        body += '<td style="'.concat(td, '">').concat(escapeHtml(r.time || "-"), "</td>");
-        body += '<td style="'.concat(td, 'font-weight:700;">').concat(escapeHtml(r.exam || "-"), "</td>");
-        body += '<td style="'.concat(td, '">').concat(escapeHtml(r.cls || "-"), "</td>");
-        body += '<td style="'.concat(td, '">').concat(escapeHtml(r.subject || "-"), "</td>");
-        body += '<td style="'.concat(td, '">').concat(escapeHtml(r.venue || "-"), "</td>");
-        body += '<td style="'.concat(td, 'text-align:left;">').concat(escapeHtml((r.invigilators || []).join(", ") || "-"), "</td>");
-        body += "</tr>";
-    });
-    return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
-}
-function exportExamTimetableWord(param) {
-    let { school, section, term, rows, preparedBy, notes } = param;
-    let body = '<div style="text-align:center;">';
-    if (school.logo) body += '<img src="'.concat(school.logo, '" alt="logo" style="width:50px;height:50px;object-fit:contain;display:block;margin:0 auto 6px;"/>');
-    body += '<div class="title">'.concat(escapeHtml(school.name || ""), "</div>");
-    body += '<div class="subtitle">'.concat(section === "upper" ? "UPPER" : "LOWER", " PRIMARY EXAM TIMETABLE — ").concat(escapeHtml(toUpper(term)), "</div>");
-    body += "</div>";
-    body += examTimetableHtmlTable(rows);
-    if (notes && notes.trim()) {
-        body += '<div style="margin-top:16px;font-size:10.5pt;">';
-        body += notes.split(/\r?\n/).map((line)=>"<div>".concat(escapeHtml(line), "</div>")).join("");
-        body += "</div>";
-    }
-    body += '<div style="margin-top:30px;font-size:11pt;">PREPARED BY</div>';
-    body += '<div style="margin-top:26px;font-size:11pt;font-weight:700;">'.concat(escapeHtml(preparedBy || ""), "</div>");
-    downloadWordHtml("".concat(section === "upper" ? "Upper" : "Lower", " Primary Exam Timetable - ").concat(term), body, "".concat(section === "upper" ? "Upper" : "Lower", "_Primary_Exam_Timetable_").concat(safeFileName(term), ".doc"), {
-        pageSize: "297mm 210mm"
-    });
-}
+// Heading for every exam/test document built through this helper (result
+// sheets, monthly/test sheets, group test sheets): Raven Junior School badge,
+// name and motto. The school argument is kept for the existing call sites.
 function titleBlockHtml(school, subtitle) {
-    let html = '<div style="text-align:center;">';
-    if (school.logo) html += '<img src="'.concat(school.logo, '" alt="logo" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 6px;"/>');
-    html += '<div class="title">'.concat(escapeHtml(school.name || ""), "</div>");
-    if (school.motto) html += '<div class="motto">"'.concat(escapeHtml(school.motto), '"</div>');
-    const addr = [
-        school.poBox,
-        school.email
-    ].filter(Boolean).map(escapeHtml).join(" &bull; ");
-    if (addr) html += '<div class="addr">'.concat(addr, "</div>");
-    html += '<div class="subtitle">'.concat(escapeHtml(subtitle), "</div>");
-    html += "</div>";
-    return html;
+    return examHeadingHtml(subtitle);
 }
 // ── End-of-term Result Sheet: row builders shared by Excel + Word ──
 function resultSheetHeaderRow(isLower, subjects) {
@@ -2137,11 +1551,8 @@ function resultSheetHeaderRow(isLower, subjects) {
         "S/N",
         "NAME OF PUPIL"
     ];
-    if (isLower) subjects.forEach((s)=>head.push(s));
-    else subjects.forEach((s)=>head.push("".concat(s, " CA"), "".concat(s, " EXAM"), "".concat(s, " AVG"), "".concat(s, " AGG")));
-    head.push("TOT MK");
-    if (!isLower) head.push("TOT AGG", "DIV");
-    head.push("POS");
+    subjects.forEach((s)=>head.push("".concat(s, " SCORE"), "".concat(s, " AGG")));
+    head.push("TOT MK", "TOT AGG", "DIV", "POS");
     return head;
 }
 function resultSheetDataRow(r, i, isLower) {
@@ -2150,24 +1561,13 @@ function resultSheetDataRow(r, i, isLower) {
         r.s.name
     ];
     r.perSub.forEach((p)=>{
-        if (isLower) {
-            var _p_av;
-            row.push(p.isX ? "X" : (_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : "-");
-        } else {
-            var _p_ca;
-            row.push(p.isX ? "X" : (_p_ca = p.ca) !== null && _p_ca !== void 0 ? _p_ca : "-");
-            var _p_exam;
-            row.push(p.isX ? "X" : (_p_exam = p.exam) !== null && _p_exam !== void 0 ? _p_exam : "-");
-            var _p_av1;
-            row.push(p.isX ? "X" : (_p_av1 = p.av) !== null && _p_av1 !== void 0 ? _p_av1 : "-");
-            row.push(p.isX ? "X" : p.av !== undefined ? p.agg : "-");
-        }
+        var _p_mark, _p_agg;
+        row.push(p.isX ? "X" : (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-");
+        row.push(p.isX ? "X" : (_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : "-");
     });
     row.push(padTotMk(r.totMk) || "-");
-    if (!isLower) {
-        row.push(r.hasX ? "X" : r.totAgg || "-");
-        row.push(r.hasX ? "X" : r.totMk ? r.div : "-");
-    }
+    row.push(r.hasX ? "X" : r.totAgg || "-");
+    row.push(r.hasX ? "X" : r.totMk ? r.div : "-");
     row.push(r.pos !== "-" ? r.pos : "-");
     return row;
 }
@@ -2179,10 +1579,10 @@ function exportResultSheetExcel(param) {
     const dataRows = sortedRows.map((r, i)=>resultSheetDataRow(r, i, isLower));
     const aoa = [
         [
-            school.name
+            RAVEN_SCHOOL_NAME
         ],
         [
-            school.poBox || ""
+            RAVEN_SCHOOL_MOTTO
         ],
         [
             "END OF ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls, " RESULT SHEET")
@@ -2334,239 +1734,6 @@ function exportResultSheetWord(param) {
     body += "<p>Head Teacher's Comment: .............................................................................. Sign: ......................</p>";
     downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"));
 }
-// ── Monthly Mark Sheet: row builders + recomputation for export ──
-function monthlySheetHeaderRow(isLower, subjects) {
-    const head = [
-        "S/N",
-        "NAME OF PUPIL"
-    ];
-    if (isLower) subjects.forEach((s)=>head.push(s));
-    else subjects.forEach((s)=>head.push("".concat(s, " MK"), "".concat(s, " AGG")));
-    head.push("TOT MK");
-    if (!isLower) head.push("TOT AGG", "DIV");
-    head.push("POS");
-    return head;
-}
-function monthlySheetDataRow(r, i, isLower) {
-    const row = [
-        padSN(i + 1),
-        r.s.name
-    ];
-    r.perSub.forEach((p)=>{
-        var _p_mk;
-        if (isLower) row.push((_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : "-");
-        else {
-            var _p_mk1;
-            row.push((_p_mk1 = p.mk) !== null && _p_mk1 !== void 0 ? _p_mk1 : "-");
-            row.push(p.isX ? "X" : p.mk !== undefined ? p.agg : "-");
-        }
-    });
-    // Total marks are unaffected by X — only sum subjects actually attempted.
-    row.push(padTotMk(r.totMk) || "-");
-    if (!isLower) {
-        row.push(r.hasX ? "X" : r.totAgg || "-");
-        row.push(r.hasX ? "X" : r.totMk ? r.div : "-");
-    }
-    row.push(r.pos !== "-" ? r.pos : "-");
-    return row;
-}
-// Mirrors MonthBlock's internal calculation so exported figures match what's on screen.
-// X (Missing / Did not complete) rule: any required paper that is blank ("-")
-// marks that subject as X and forces the overall aggregate + division to X,
-// but never affects the total marks or the position ranking.
-function computeMonthRows(param) {
-    let { month, classStudents, monthlyMarks, tk, subjects, isLower, bands, divisions } = param;
-    const rows = classStudents.map((s)=>{
-        var _monthlyMarks_s_id_tk, _monthlyMarks_s_id;
-        const m = ((_monthlyMarks_s_id = monthlyMarks[s.id]) === null || _monthlyMarks_s_id === void 0 ? void 0 : (_monthlyMarks_s_id_tk = _monthlyMarks_s_id[tk]) === null || _monthlyMarks_s_id_tk === void 0 ? void 0 : _monthlyMarks_s_id_tk[month]) || {};
-        const perSub = subjects.map((sub)=>{
-            var _m_sub;
-            const mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk;
-            const isX = mk === undefined || mk === null;
-            const agg = !isLower && !isX ? aggOf(mk, bands) : undefined;
-            return {
-                sub,
-                mk,
-                agg,
-                isX
-            };
-        });
-        const hasX = !isLower && perSub.some((p)=>p.isX);
-        const hasF9 = !isLower && perSub.some((p)=>p.agg === 9);
-        const totMk = perSub.reduce((a, p)=>{
-            var _p_mk;
-            return a + ((_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : 0);
-        }, 0);
-        const totAgg = isLower ? null : hasX ? "X" : perSub.reduce((a, p)=>{
-            var _p_agg;
-            return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-        }, 0);
-        const div = isLower ? null : hasX ? "X" : divisionOf(totAgg, 4, divisions, hasF9);
-        return {
-            s,
-            perSub,
-            totMk,
-            totAgg,
-            div,
-            hasX
-        };
-    });
-    const positions = rankWithTies(rows.map((r)=>r.totMk > 0 ? r.totMk : null), rows.map((r)=>typeof r.totAgg === "number" ? r.totAgg : null));
-    const indexed = rows.map((r, i)=>({
-            ...r,
-            pos: positions[i]
-        }));
-    const sorted = [
-        ...indexed
-    ].sort((a, b)=>{
-        if (a.pos === "-") return 1;
-        if (b.pos === "-") return -1;
-        return a.pos - b.pos;
-    });
-    // Exclude learners who sat no papers at all this month (blank on every
-    // subject) from the exported mark sheet -- they haven't done this exam.
-    return sorted.filter((r)=>r.perSub.some((p)=>!p.isX));
-}
-function exportMonthlyExcel(param) {
-    let { school, cls, term, year, isLower, subjects, monthsData } = param;
-    const wb = XLSX.utils.book_new();
-    monthsData.forEach((param)=>{
-        let { month, sortedRows, divCounts } = param;
-        const headerRow = monthlySheetHeaderRow(isLower, subjects);
-        const numCols = headerRow.length;
-        const dataRows = sortedRows.map((r, i)=>monthlySheetDataRow(r, i, isLower));
-        const aoa = [
-            [
-                school.name
-            ],
-            [
-                "".concat(month, " - ").concat(term, " ").concat(year, " - ").concat(cls, " MONTHLY MARK SHEET")
-            ],
-            [],
-            headerRow,
-            ...dataRows
-        ];
-        if (!isLower && divCounts) {
-            const gHead = [
-                "NO. OF PUPILS",
-                "DIV I",
-                "DIV II",
-                "DIV III",
-                "DIV IV",
-                "U",
-                "X"
-            ];
-            const gRow = [
-                sortedRows.length,
-                divCounts.I,
-                divCounts.II,
-                divCounts.III,
-                divCounts.IV,
-                divCounts.U,
-                divCounts.X
-            ];
-            aoa.push([], [
-                "GENERAL PERFORMANCE ANALYSIS"
-            ], gHead, gRow);
-        }
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        ws["!merges"] = [
-            {
-                s: {
-                    r: 0,
-                    c: 0
-                },
-                e: {
-                    r: 0,
-                    c: numCols - 1
-                }
-            },
-            {
-                s: {
-                    r: 1,
-                    c: 0
-                },
-                e: {
-                    r: 1,
-                    c: numCols - 1
-                }
-            }
-        ];
-        ws["!cols"] = headerRow.map((h, i)=>i === 1 ? {
-                wch: 26
-            } : {
-                wch: 11
-            });
-        XLSX.utils.book_append_sheet(wb, ws, month.slice(0, 31));
-    });
-    XLSX.writeFile(wb, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Monthly_Mark_Sheets.xlsx"));
-}
-function exportMonthlyWord(param) {
-    let { school, cls, term, year, isLower, subjects, monthsData } = param;
-    let body = titleBlockHtml(school, "MONTHLY MARK SHEETS - ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls));
-    monthsData.forEach((param)=>{
-        let { month, sortedRows, divCounts } = param;
-        body += '<div class="section-title">'.concat(escapeHtml(month), " - ").concat(escapeHtml(term), " ").concat(escapeHtml(year), "</div>");
-        body += monthlySheetHtmlTable({
-            subjects,
-            isLower,
-            sortedRows
-        });
-        if (!isLower && divCounts) {
-            const gHead = [
-                "NO. OF PUPILS",
-                "DIV I",
-                "DIV II",
-                "DIV III",
-                "DIV IV",
-                "U",
-                "X"
-            ];
-            const gRow = [
-                sortedRows.length,
-                divCounts.I,
-                divCounts.II,
-                divCounts.III,
-                divCounts.IV,
-                divCounts.U,
-                divCounts.X
-            ];
-            body += '<div class="section-title">General Performance Analysis</div>'.concat(htmlTable(gHead, [
-                gRow
-            ]));
-        }
-    });
-    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Monthly Mark Sheets"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Monthly_Mark_Sheets.doc"));
-}
-// ── Monthly Report Card Word export ──
-function exportMonthlyCardsWord(param) {
-    let { school, cls, term, year, isLower, subjects, cardData, totalInClass } = param;
-    let body = titleBlockHtml(school, "MONTHLY TESTS REPORT CARDS - ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls));
-    cardData.forEach((param)=>{
-        let { s, monthData } = param;
-        const comments = monthlyCardAutoComments(monthData, isLower, "".concat(s.id, "-").concat(term, "-").concat(year, "-monthly"));
-        // Student header
-        body += '<div style="page-break-before:always;margin-top:20px;">';
-        body += '<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">\n      <tr>\n        <td style="padding:4px 8px;font-size:12pt;"><b>NAME:</b> <b><i>'.concat(escapeHtml(s.name), '</i></b></td>\n        <td style="padding:4px 8px;font-size:12pt;"><b>CLASS:</b> ').concat(escapeHtml(cls), '</td>\n        <td style="padding:4px 8px;font-size:12pt;"><b>YEAR:</b> ').concat(escapeHtml(year), "</td>\n      </tr>\n    </table>");
-        // Marks table header
-        const subHeaders = subjects.map((sub)=>isLower ? '<th style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">'.concat(escapeHtml(sub)).concat(lowerSubjectMax(sub) !== 100 ? " /".concat(lowerSubjectMax(sub)) : "", "</th>") : '<th colspan="2" style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">'.concat(escapeHtml(sub), "</th>")).join("");
-        const subSubHeaders = isLower ? "" : "<tr>".concat(subjects.map(()=>'<th style="border:1px solid #999;padding:3px;background:#3b82f6;color:white;font-size:8pt;">MK</th><th style="border:1px solid #999;padding:3px;background:#60a5fa;color:white;font-size:8pt;">AGG</th>').join(""), "</tr>");
-        const totHeaders = isLower ? '<th style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">TOT MK</th><th style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">POS</th>' : '<th style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">TOT MK</th><th style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">TOT AGG</th><th style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">DIV</th><th style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;">POS</th>';
-        body += '<table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:6px;">\n      <thead>\n        <tr>\n          <th'.concat(isLower ? "" : ' rowspan="2"', ' style="border:1px solid #999;padding:4px;background:#1e3a6e;color:white;font-size:9pt;text-align:left;min-width:70px;">MONTH</th>\n          ').concat(subHeaders, "\n          ").concat(totHeaders, "\n        </tr>\n        ").concat(subSubHeaders ? "<tr>".concat(subSubHeaders.replace(/<tr>|<\/tr>/g, ""), "</tr>") : "", "\n      </thead>\n      <tbody>");
-        monthData.forEach((param, mIdx)=>{
-            let { month, perSub, totMk, totAgg, div, pos } = param;
-            const bg = mIdx % 2 === 0 ? "#ffffff" : "#f8fafc";
-            const subCells = perSub.map((p)=>isLower ? '<td style="border:1px solid #999;padding:4px;text-align:center;background:'.concat(bg, ';">').concat(p.mk !== undefined ? padMark(p.mk) : "-", "</td>") : '<td style="border:1px solid #999;padding:4px;text-align:center;background:'.concat(bg, ';">').concat(p.mk !== undefined ? padMark(p.mk) : "-", '</td><td style="border:1px solid #999;padding:4px;text-align:center;background:#fff7ed;">').concat(p.agg !== undefined ? p.agg : "-", "</td>")).join("");
-            const totCells = isLower ? '<td style="border:1px solid #999;padding:4px;text-align:center;font-weight:bold;background:#ede9fe;">'.concat(totMk > 0 ? padTotMk(totMk) : "-", '</td><td style="border:1px solid #999;padding:4px;text-align:center;">').concat(pos && pos !== "-" ? ordinal(pos) : "-", "</td>") : '<td style="border:1px solid #999;padding:4px;text-align:center;font-weight:bold;background:#ede9fe;">'.concat(totMk > 0 ? padTotMk(totMk) : "-", '</td><td style="border:1px solid #999;padding:4px;text-align:center;background:#ede9fe;">').concat(totAgg > 0 ? totAgg : "-", '</td><td style="border:1px solid #999;padding:4px;text-align:center;font-weight:bold;">').concat(totMk > 0 ? div : "-", '</td><td style="border:1px solid #999;padding:4px;text-align:center;">').concat(pos && pos !== "-" ? ordinal(pos) : "-", "</td>");
-            body += '<tr><td style="border:1px solid #999;padding:4px;font-weight:bold;background:#dbeafe;text-align:left;">'.concat(escapeHtml(month), "</td>").concat(subCells).concat(totCells, "</tr>");
-        });
-        body += '<tr><td colspan="100" style="border:1px solid #999;padding:4px;font-size:9pt;color:#6b7280;">Total pupils in class: <b>'.concat(totalInClass, "</b></td></tr>");
-        body += "</tbody></table>";
-        body += '<p style="font-size:11pt;line-height:2;">\n      <b>Class Teacher\'s Comment:</b> <span style="font-weight:bold;color:#1d4ed8;">'.concat(escapeHtml(comments.teacher) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:11pt;line-height:2;"><b>Head Teacher\'s Comment:</b> <span style="font-weight:bold;font-style:italic;color:#dc2626;">').concat(escapeHtml(comments.head) || "..............................................................................", "</span> <b>Sign:</b> ......................</p>");
-        body += "</div>";
-    });
-    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Monthly Report Cards"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Monthly_Report_Cards.doc"));
-}
 // ── Termly Report Card Word export ──
 function exportReportCardsWord(param) {
     let { school, cls, term, year, isLower, rows, allPositions, totalInClass, bands, divisions, initials } = param;
@@ -2588,7 +1755,7 @@ function exportReportCardsWord(param) {
         body += '<div class="report-card-block" style="page-break-inside:avoid;'.concat(idx > 0 ? "page-break-before:always;" : "", 'margin-top:20px;border:6px double #d97706;padding:5px;">');
         body += '<div style="border:3px double #1e3a6e;padding:10px;">';
         body += '<div style="text-align:center;background:#1e3a6e;color:white;padding:14px 10px 10px;border-bottom:4px solid #d97706;">';
-        if (school.logo) body += '<img src="'.concat(school.logo, '" alt="logo" style="width:50px;height:50px;object-fit:contain;display:block;margin:0 auto 6px;border-radius:50%;border:2px solid #fbbf24;"/>');
+        if (school.logo) body += '<img src="'.concat(school.logo, '" alt="logo" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 6px;"/>');
         body += '<div style="font-weight:bold;font-size:26pt;font-family:Georgia,serif;letter-spacing:1px;">'.concat(escapeHtml(school.name || ""), "</div>");
         if (school.motto) body += '<div style="font-size:10.5pt;font-style:italic;opacity:0.95;margin-top:1px;">&quot;'.concat(escapeHtml(school.motto), "&quot;</div>");
         const addr = [
@@ -2772,8 +1939,7 @@ async function nodeToPdfPageSlices(node) {
 // to roughly 20-80KB -- a 50-100x reduction -- with no visible quality loss
 // at the sizes these photos are actually displayed/printed.
 function compressImageFile(file) {
-    let maxDim = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : 480, quality = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : 0.72,
-        format = arguments.length > 3 && arguments[3] !== void 0 ? arguments[3] : "image/jpeg";
+    let maxDim = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : 480, quality = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : 0.72, format = arguments.length > 3 && arguments[3] !== void 0 ? arguments[3] : "image/jpeg";
     return new Promise((resolve, reject)=>{
         const reader = new FileReader();
         reader.onerror = ()=>reject(reader.error);
@@ -3194,7 +2360,7 @@ function ConfirmModal(param) {
     });
 }
 // ── Transfer Result modal ────────────────────────────────────────────────
-// Reusable "From ➜ To" picker used by Mark Entry, Monthly Exams, Group Work
+// Reusable "From ➜ To" picker used by Mark Entry, Monthly Exams,
 // and Mock Info to copy one class's saved results from one period into
 // another (e.g. Term I 2026 into Term II 2026, or FEB into JUL). `fields`
 // describes each period picker: [{ key, label, type:"select"|"text", options
@@ -3645,158 +2811,35 @@ function OcrScanButton(param) {
         ]
     });
 }
-// ── School crest: St. Kizito's P.S Tororo badge, reproduced as inline SVG ──
+// ── School crest: the school badge image (sidebar + login) ──
+// Shows `src` (the school's Settings logo) when given, otherwise the built-in badge.
 function SchoolCrest(param) {
-    let { size = 64, ink = "#0f1115", paper = "#ffffff" } = param;
-    return /*#__PURE__*/ _jsxs("svg", {
-        viewBox: "0 0 200 230",
-        width: size,
-        height: size * 1.15,
-        role: "img",
-        "aria-label": "St. Kizito's school crest",
-        children: [
-            /*#__PURE__*/ _jsx("path", {
-                d: "M100,4 L116,16 C130,16 145,14 158,10 C160,40 160,70 162,95 C164,130 150,165 124,182 C114,189 106,193 100,196 C94,193 86,189 76,182 C50,165 36,130 38,95 C40,70 40,40 42,10 C55,14 70,16 84,16 Z",
-                fill: paper,
-                stroke: ink,
-                strokeWidth: "7",
-                strokeLinejoin: "round"
-            }),
-            /*#__PURE__*/ _jsx("rect", {
-                x: "56",
-                y: "28",
-                width: "88",
-                height: "20",
-                fill: ink
-            }),
-            /*#__PURE__*/ _jsx("text", {
-                x: "100",
-                y: "43",
-                textAnchor: "middle",
-                fontFamily: "Arial Black, Arial, sans-serif",
-                fontSize: "13",
-                fontWeight: "900",
-                fill: paper,
-                letterSpacing: "0.5",
-                children: "ST. KIZITO'S"
-            }),
-            /*#__PURE__*/ _jsx("text", {
-                x: "100",
-                y: "62",
-                textAnchor: "middle",
-                fontFamily: "Arial Black, Arial, sans-serif",
-                fontSize: "11.5",
-                fontWeight: "900",
-                fill: ink,
-                letterSpacing: "0.5",
-                children: "P.S TORORO"
-            }),
-            /*#__PURE__*/ _jsx("circle", {
-                cx: "100",
-                cy: "112",
-                r: "38",
-                fill: "none",
-                stroke: ink,
-                strokeWidth: "5.5"
-            }),
-            /*#__PURE__*/ _jsxs("g", {
-                stroke: ink,
-                strokeWidth: "2.4",
-                fill: "none",
-                strokeLinecap: "round",
-                strokeLinejoin: "round",
-                children: [
-                    /*#__PURE__*/ _jsx("ellipse", {
-                        cx: "100",
-                        cy: "92",
-                        rx: "10",
-                        ry: "11",
-                        fill: ink,
-                        stroke: "none"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M91,101 C91,98 95,96 100,96 C105,96 109,98 109,101",
-                        fill: "none"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M89,102 C82,106 78,112 76,119 L120,108",
-                        fill: "none"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M111,102 C118,106 122,112 124,119 L80,108",
-                        fill: "none"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M72,122 L100,114 L128,122",
-                        fill: "none"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M72,126 L100,118 L128,126",
-                        fill: "none"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M66,125 C82,119 118,119 134,125 L134,130 C118,124 82,124 66,130 Z",
-                        fill: paper
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M100,118 L100,130"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M58,140 L142,140"
-                    }),
-                    /*#__PURE__*/ _jsx("path", {
-                        d: "M58,140 C70,150 88,150 100,142 C112,150 130,150 142,140",
-                        fill: "none"
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsx("path", {
-                d: "M14,200 L40,196 C70,206 130,206 160,196 L186,200 L182,212 L160,209 C130,217 70,217 40,209 L18,212 Z",
-                fill: paper,
-                stroke: ink,
-                strokeWidth: "4",
-                strokeLinejoin: "round"
-            }),
-            /*#__PURE__*/ _jsx("path", {
-                d: "M14,200 L8,206 L18,212",
-                fill: "none",
-                stroke: ink,
-                strokeWidth: "4"
-            }),
-            /*#__PURE__*/ _jsx("path", {
-                d: "M186,200 L192,206 L182,212",
-                fill: "none",
-                stroke: ink,
-                strokeWidth: "4"
-            }),
-            /*#__PURE__*/ _jsx("text", {
-                x: "100",
-                y: "210",
-                textAnchor: "middle",
-                fontFamily: "Arial Black, Arial, sans-serif",
-                fontSize: "10.5",
-                fontWeight: "900",
-                fill: ink,
-                letterSpacing: "0.3",
-                children: "BUILD FOR THE FUTURE"
-            })
-        ]
+    let { size = 64, src } = param;
+    return /*#__PURE__*/ _jsx("img", {
+        src: src || RAVEN_LOGO,
+        alt: "School crest",
+        style: {
+            width: size,
+            height: size,
+            objectFit: "contain",
+            display: "block"
+        }
     });
 }
 const PAGES = [
     "DASHBOARD",
+    "ASSESSMENTS",
     "MARK ENTRY",
-    "MONTHLY EXAMS",
-    "GROUP WORK",
-    "EXAM TIMETABLE",
-    "MONTHLY CARDS",
-    "MONTHLY SLIPS",
+    "NURSERY MARK ENTRY",
+    "OTHER EXAMS",
+    "SLIPS",
     "RESULT SHEETS",
     "REPORT CARDS",
+    "NURSERY REPORT CARDS",
     "REPORTS",
     "LEARNERS",
     "PUPIL PROFILE",
-    "SWEEPING ROTA",
+    "ATTENDANCE TRACKER",
     "MOCK INFO",
     "PLE INFO",
     "MANAGE REQUESTS",
@@ -3806,9 +2849,11 @@ const PAGES = [
 ];
 // Pages only the admin account can see/use. Teachers never see these in the sidebar.
 const ADMIN_ONLY_PAGES = [
+    "ATTENDANCE TRACKER",
     "MANAGE REQUESTS",
     "SETTINGS",
-    "AUDIT LOG"
+    "AUDIT LOG",
+    "DOWNLOAD CENTRE"
 ];
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function App() {
@@ -3829,12 +2874,10 @@ export default function App() {
     const [dashboardPerfYear, setDashboardPerfYear] = useState(String(new Date().getFullYear()));
     const [students, setStudents] = useState([]);
     const [termMarks, setTermMarks] = useState({});
+    const [nurseryMarks, setNurseryMarks] = useState({});
     const [monthlyMarks, setMonthlyMarks] = useState({});
     const [monthlyResetBackups, setMonthlyResetBackups] = useState({});
     const [termResetBackups, setTermResetBackups] = useState({});
-    const [groupWork, setGroupWork] = useState(DEFAULT_GROUP_WORK);
-    const [municipalPerf, setMunicipalPerf] = useState(DEFAULT_MUNICIPAL_PERF);
-    const [examTimetable, setExamTimetable] = useState(DEFAULT_EXAM_TIMETABLE);
     const [reportsData, setReportsData] = useState(DEFAULT_REPORTS);
     const [bands, setBands] = useState(DEFAULT_BANDS);
     const [specialBands, setSpecialBands] = useState(DEFAULT_SPECIAL_BANDS);
@@ -3855,6 +2898,7 @@ export default function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [loginUser, setLoginUser] = useState("");
     const [loginPw, setLoginPw] = useState("");
+    const [showLoginPw, setShowLoginPw] = useState(false);
     const [loginErr, setLoginErr] = useState("");
     const [sideOpen, setSideOpen] = useState(true);
     const [dataReady, setDataReady] = useState(false);
@@ -3865,6 +2909,7 @@ export default function App() {
     const setters = {
         mkis_students: setStudents,
         mkis_termmarks: setTermMarks,
+        mkis_nurserymarks: setNurseryMarks,
         mkis_monthlymarks: setMonthlyMarks,
         mkis_bands: setBands,
         mkis_special_bands: setSpecialBands,
@@ -3875,15 +2920,13 @@ export default function App() {
         mkis_initials: setInitials,
         mkis_locked_term: setLockedTerm,
         mkis_locked_monthly: setLockedMonthly,
-        mkis_groupwork: setGroupWork,
-        mkis_municipalperf: setMunicipalPerf,
-        mkis_examtimetable: setExamTimetable,
         mkis_reports: setReportsData
     };
     const stateRef = useRef({});
     stateRef.current = {
         mkis_students: students,
         mkis_termmarks: termMarks,
+        mkis_nurserymarks: nurseryMarks,
         mkis_monthlymarks: monthlyMarks,
         mkis_bands: bands,
         mkis_special_bands: specialBands,
@@ -3894,9 +2937,6 @@ export default function App() {
         mkis_initials: initials,
         mkis_locked_term: lockedTerm,
         mkis_locked_monthly: lockedMonthly,
-        mkis_groupwork: groupWork,
-        mkis_municipalperf: municipalPerf,
-        mkis_examtimetable: examTimetable,
         mkis_reports: reportsData
     };
     // last value WE wrote (or loaded) per key, serialized -- used to tell "a
@@ -4079,10 +3119,11 @@ export default function App() {
         let mounted = true;
         (async ()=>{
             await migrateLocalStorageOnce();
-            const [s, tm, mm, b, sb, d, sc, acc, reqs, ini, lt, lm, gw, mp, et, rp] = await Promise.all([
+            const [s, tm, mm, nm, b, sb, d, sc, acc, reqs, ini, lt, lm, rp] = await Promise.all([
                 loadShared("mkis_students", []),
                 loadShared("mkis_termmarks", {}),
                 loadShared("mkis_monthlymarks", {}),
+                loadShared("mkis_nurserymarks", {}),
                 loadShared("mkis_bands", DEFAULT_BANDS),
                 loadShared("mkis_special_bands", DEFAULT_SPECIAL_BANDS),
                 loadShared("mkis_divisions", DEFAULT_DIVISIONS),
@@ -4092,15 +3133,13 @@ export default function App() {
                 loadShared("mkis_initials", {}),
                 loadShared("mkis_locked_term", {}),
                 loadShared("mkis_locked_monthly", {}),
-                loadShared("mkis_groupwork", DEFAULT_GROUP_WORK),
-                loadShared("mkis_municipalperf", DEFAULT_MUNICIPAL_PERF),
-                loadShared("mkis_examtimetable", DEFAULT_EXAM_TIMETABLE),
                 loadShared("mkis_reports", DEFAULT_REPORTS)
             ]);
             if (!mounted) return;
             setStudents(s);
             setTermMarks(tm);
             setMonthlyMarks(mm);
+            setNurseryMarks(nm);
             // First run ever: no accounts saved yet, so seed the two default
             // logins (Teacher / admin) and persist them.
             let finalAccounts = acc;
@@ -4119,23 +3158,17 @@ export default function App() {
             // default logo. Only defer to the saved logo if it's actually set (the
             // school uploaded their own), so the built-in crest still shows up for
             // schools that never touched the logo field.
-            setSchool({
-                ...DEFAULT_SCHOOL,
-                ...sc,
-                logo: (sc === null || sc === void 0 ? void 0 : sc.logo) || DEFAULT_SCHOOL.logo
-            });
+            setSchool(resolveSchoolLogo(sc));
             setAccounts(finalAccounts);
             setChangeRequests(reqs || []);
             setInitials(ini);
             setLockedTerm(lt || {});
             setLockedMonthly(lm || {});
-            setGroupWork(gw || {});
-            setMunicipalPerf(mp || {});
-            setExamTimetable(et || DEFAULT_EXAM_TIMETABLE);
             setReportsData(rp || DEFAULT_REPORTS);
             lastSeenRef.current = {
                 mkis_students: JSON.stringify(s),
                 mkis_termmarks: JSON.stringify(tm),
+                mkis_nurserymarks: JSON.stringify(nm),
                 mkis_monthlymarks: JSON.stringify(mm),
                 mkis_bands: JSON.stringify(b),
                 mkis_special_bands: JSON.stringify(sb || {}),
@@ -4146,9 +3179,6 @@ export default function App() {
                 mkis_initials: JSON.stringify(ini),
                 mkis_locked_term: JSON.stringify(lt || {}),
                 mkis_locked_monthly: JSON.stringify(lm || {}),
-                mkis_groupwork: JSON.stringify(gw || {}),
-                mkis_municipalperf: JSON.stringify(mp || {}),
-                mkis_examtimetable: JSON.stringify(et || DEFAULT_EXAM_TIMETABLE),
                 mkis_reports: JSON.stringify(rp || DEFAULT_REPORTS)
             };
             // ── Offline-backup recovery ──────────────────────────────────
@@ -4213,6 +3243,13 @@ export default function App() {
         queueKeySave
     ]);
     useEffect(()=>{
+        if (dataReady) queueKeySave("mkis_nurserymarks");
+    }, [
+        nurseryMarks,
+        dataReady,
+        queueKeySave
+    ]);
+    useEffect(()=>{
         if (dataReady) queueKeySave("mkis_monthlymarks");
     }, [
         monthlyMarks,
@@ -4256,27 +3293,6 @@ export default function App() {
         return ()=>clearTimeout(t);
     }, [
         specialBands,
-        dataReady,
-        queueKeySave
-    ]);
-    useEffect(()=>{
-        if (dataReady) queueKeySave("mkis_groupwork");
-    }, [
-        groupWork,
-        dataReady,
-        queueKeySave
-    ]);
-    useEffect(()=>{
-        if (dataReady) queueKeySave("mkis_municipalperf");
-    }, [
-        municipalPerf,
-        dataReady,
-        queueKeySave
-    ]);
-    useEffect(()=>{
-        if (dataReady) queueKeySave("mkis_examtimetable");
-    }, [
-        examTimetable,
         dataReady,
         queueKeySave
     ]);
@@ -4464,22 +3480,64 @@ export default function App() {
         window.addEventListener("beforeunload", handleBeforeUnload);
         return ()=>window.removeEventListener("beforeunload", handleBeforeUnload);
     }, []);
-    const updateTermMark = useCallback((sid, tk, sub, field, val)=>{
+    // Raven doesn't use CA/Exam averaging -- one single mark per subject,
+    // out of 100, for both Lower and Upper Primary. termMarks shape:
+    // {studentId: {termKey: {period: {subject: mark}}}}. `period` is
+    // "Mid Term" or "End of Term", mirroring nurseryMarks below -- the
+    // report card shows both as separate tables on the same card (see the
+    // photos this was built from), so they're stored separately rather
+    // than one overwriting the other.
+    const updateTermMark = useCallback((sid, tk, period, sub, val)=>{
         markEditing();
         const [term, year] = tk.split("__");
         const s = students.find((x)=>x.id === sid);
-        stampAudit("mkis_termmarks", "Term Mark — ".concat((s === null || s === void 0 ? void 0 : s.className) || "?", " ").concat(term, " ").concat(year, " — ").concat((s === null || s === void 0 ? void 0 : s.name) || sid, " — ").concat(sub, " ").concat(field));
+        stampAudit("mkis_termmarks", "Term Mark — ".concat((s === null || s === void 0 ? void 0 : s.className) || "?", " ").concat(term, " ").concat(year, " ").concat(period, " — ").concat((s === null || s === void 0 ? void 0 : s.name) || sid, " — ").concat(sub));
         setTermMarks((prev)=>{
-            var _prev_sid, _prev_sid_tk, _prev_sid1;
+            var _prev_sid, _prev_sid_tk;
             return {
                 ...prev,
                 [sid]: {
                     ...prev[sid],
                     [tk]: {
                         ...(_prev_sid = prev[sid]) === null || _prev_sid === void 0 ? void 0 : _prev_sid[tk],
-                        [sub]: {
-                            ...(_prev_sid1 = prev[sid]) === null || _prev_sid1 === void 0 ? void 0 : (_prev_sid_tk = _prev_sid1[tk]) === null || _prev_sid_tk === void 0 ? void 0 : _prev_sid_tk[sub],
-                            [field]: val
+                        [period]: {
+                            ...(_prev_sid_tk = (_prev_sid = prev[sid]) === null || _prev_sid === void 0 ? void 0 : _prev_sid[tk]) === null || _prev_sid_tk === void 0 ? void 0 : _prev_sid_tk[period],
+                            [sub]: val
+                        }
+                    }
+                }
+            };
+        });
+    }, [
+        students
+    ]);
+    // Nursery marks: {studentId: {termKey: {period: {subject: {field:
+    // value}}}}}. `period` is "Mid Term" or "End of Term" -- the report
+    // card shows both as separate tables (see the photo this was built
+    // from), so they need to be stored separately rather than overwriting
+    // each other. Each subject has two fields: "mark" (the number a colour
+    // band gets computed from) and "comment" (free text, e.g. "V.Good") --
+    // Mid Term only ever uses "mark" in practice, End of Term uses both.
+    // Same update pattern as updateTermMark above either way.
+    const updateNurseryMark = useCallback((sid, tk, period, sub, field, val)=>{
+        markEditing();
+        const [term, year] = tk.split("__");
+        const s = students.find((x)=>x.id === sid);
+        stampAudit("mkis_nurserymarks", "Nursery Mark — ".concat((s === null || s === void 0 ? void 0 : s.className) || "?", " ").concat(term, " ").concat(year, " ").concat(period, " — ").concat((s === null || s === void 0 ? void 0 : s.name) || sid, " — ").concat(sub, " ").concat(field));
+        setNurseryMarks((prev)=>{
+            var _prev_sid, _prev_sid_tk, _prev_sid_tk_period, _prev_sid1, _prev_sid_tk1;
+            return {
+                ...prev,
+                [sid]: {
+                    ...prev[sid],
+                    [tk]: {
+                        ...(_prev_sid = prev[sid]) === null || _prev_sid === void 0 ? void 0 : _prev_sid[tk],
+                        [period]: {
+                            ...(_prev_sid1 = prev[sid]) === null || _prev_sid1 === void 0 ? void 0 : (_prev_sid_tk1 = _prev_sid1[tk]) === null || _prev_sid_tk1 === void 0 ? void 0 : _prev_sid_tk1[period],
+                            [sub]: {
+                                ...(_prev_sid_tk = prev[sid]) === null || _prev_sid_tk === void 0 ? void 0 : (_prev_sid_tk_period = _prev_sid_tk[tk]) === null || _prev_sid_tk_period === void 0 ? void 0 : (_prev_sid_tk_period = _prev_sid_tk_period[period]) === null || _prev_sid_tk_period === void 0 ? void 0 : _prev_sid_tk_period[sub],
+                                [field]: val
+                            }
                         }
                     }
                 }
@@ -5011,18 +4069,6 @@ export default function App() {
             forceWriteRef.current.add("mkis_monthlymarks");
             setMonthlyMarks(d.monthlyMarks);
         }
-        if (d.groupWork) {
-            forceWriteRef.current.add("mkis_groupwork");
-            setGroupWork(d.groupWork);
-        }
-        if (d.municipalPerf) {
-            forceWriteRef.current.add("mkis_municipalperf");
-            setMunicipalPerf(d.municipalPerf);
-        }
-        if (d.examTimetable) {
-            forceWriteRef.current.add("mkis_examtimetable");
-            setExamTimetable(d.examTimetable);
-        }
         if (d.reportsData) {
             forceWriteRef.current.add("mkis_reports");
             setReportsData(d.reportsData);
@@ -5030,7 +4076,7 @@ export default function App() {
         if (d.bands) setBands(d.bands);
         if (d.specialBands) setSpecialBands(d.specialBands);
         if (d.divisions) setDivisions(d.divisions);
-        if (d.school) setSchool(d.school);
+        if (d.school) setSchool(resolveSchoolLogo(d.school));
         if (d.accounts) {
             setAccounts(d.accounts);
         }
@@ -5196,7 +4242,8 @@ export default function App() {
                                     justifyContent: "center"
                                 },
                                 children: /*#__PURE__*/ _jsx(SchoolCrest, {
-                                    size: 64
+                                    size: 64,
+                                    src: school.logo
                                 })
                             }),
                             /*#__PURE__*/ _jsx("div", {
@@ -5255,22 +4302,48 @@ export default function App() {
                                 style: lbl,
                                 children: "PASSWORD"
                             }),
-                            /*#__PURE__*/ _jsx("input", {
-                                type: "password",
-                                value: loginPw,
-                                onChange: (e)=>setLoginPw(e.target.value),
-                                onKeyDown: (e)=>{
-                                    if (e.key === "Enter") doLogin();
-                                },
+                            /*#__PURE__*/ _jsxs("div", {
                                 style: {
-                                    width: "100%",
-                                    padding: "10px 12px",
-                                    border: "2px solid #e5e7eb",
-                                    borderRadius: 8,
-                                    fontSize: 14,
-                                    boxSizing: "border-box"
+                                    position: "relative"
                                 },
-                                placeholder: "Enter password"
+                                children: [
+                                    /*#__PURE__*/ _jsx("input", {
+                                        type: showLoginPw ? "text" : "password",
+                                        value: loginPw,
+                                        onChange: (e)=>setLoginPw(e.target.value),
+                                        onKeyDown: (e)=>{
+                                            if (e.key === "Enter") doLogin();
+                                        },
+                                        style: {
+                                            width: "100%",
+                                            padding: "10px 40px 10px 12px",
+                                            border: "2px solid #e5e7eb",
+                                            borderRadius: 8,
+                                            fontSize: 14,
+                                            boxSizing: "border-box"
+                                        },
+                                        placeholder: "Enter password"
+                                    }),
+                                    /*#__PURE__*/ _jsx("button", {
+                                        type: "button",
+                                        onClick: ()=>setShowLoginPw((v)=>!v),
+                                        "aria-label": showLoginPw ? "Hide password" : "Show password",
+                                        style: {
+                                            position: "absolute",
+                                            right: 10,
+                                            top: "50%",
+                                            transform: "translateY(-50%)",
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            fontSize: 16,
+                                            padding: 4,
+                                            lineHeight: 1,
+                                            color: "#6b7280"
+                                        },
+                                        children: showLoginPw ? "🙈" : "👁️"
+                                    })
+                                ]
                             })
                         ]
                     }),
@@ -5315,14 +4388,11 @@ export default function App() {
         setStudents,
         termMarks,
         setTermMarks,
+        nurseryMarks,
+        setNurseryMarks,
+        updateNurseryMark,
         monthlyMarks,
         setMonthlyMarks,
-        groupWork,
-        setGroupWork,
-        municipalPerf,
-        setMunicipalPerf,
-        examTimetable,
-        setExamTimetable,
         bands,
         setBands,
         specialBands,
@@ -5499,8 +4569,7 @@ export default function App() {
                                         },
                                         children: /*#__PURE__*/ _jsx(SchoolCrest, {
                                             size: 30,
-                                            ink: "#1e3a6e",
-                                            paper: "#ffffff"
+                                            src: school.logo
                                         })
                                     }),
                                     sideOpen && /*#__PURE__*/ _jsxs("div", {
@@ -5510,7 +4579,7 @@ export default function App() {
                                             lineHeight: 1.3
                                         },
                                         children: [
-                                            "ST. KIZITO'S",
+                                            school.name,
                                             /*#__PURE__*/ _jsx("br", {}),
                                             /*#__PURE__*/ _jsx("span", {
                                                 style: {
@@ -5531,18 +4600,18 @@ export default function App() {
                                 children: PAGES.filter((p)=>!ADMIN_ONLY_PAGES.includes(p) || role === "admin").map((p)=>{
                                     const icons = {
                                         "DASHBOARD": "📊",
+                                        "ASSESSMENTS": "📅",
                                         "MARK ENTRY": "📝",
-                                        "MONTHLY EXAMS": "📅",
-                                        "GROUP WORK": "👨‍👩‍👧‍👦",
-                                        "EXAM TIMETABLE": "🗓️",
-                                        "MONTHLY CARDS": "🗂️",
-                                        "MONTHLY SLIPS": "🎫",
+                                        "NURSERY MARK ENTRY": "🧸",
+                                        "OTHER EXAMS": "🗂️",
+                                        "SLIPS": "🎫",
                                         "RESULT SHEETS": "📋",
                                         "REPORT CARDS": "🎓",
+                                        "NURSERY REPORT CARDS": "🎨",
                                         "REPORTS": "📈",
                                         "LEARNERS": "👥",
                                         "PUPIL PROFILE": "📈",
-                                        "SWEEPING ROTA": "🧹",
+                                        "ATTENDANCE TRACKER": "🧑‍🏫",
                                         "MOCK INFO": "📄",
                                         "PLE INFO": "🏅",
                                         "MANAGE REQUESTS": "🛂",
@@ -5888,31 +4957,86 @@ export default function App() {
                                     padding: 20
                                 },
                                 children: [
+                                    page !== "DASHBOARD" && /*#__PURE__*/ _jsxs("div", {
+                                        style: {
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 12,
+                                            padding: "10px 14px",
+                                            marginBottom: 16,
+                                            background: "#f8fafc",
+                                            border: "1px solid #e2e8f0",
+                                            borderRadius: 8
+                                        },
+                                        children: [
+                                            /*#__PURE__*/ _jsx(SchoolCrest, {
+                                                size: 40,
+                                                src: school.logo
+                                            }),
+                                            /*#__PURE__*/ _jsxs("div", {
+                                                children: [
+                                                    /*#__PURE__*/ _jsx("div", {
+                                                        style: {
+                                                            fontWeight: 900,
+                                                            fontSize: 15,
+                                                            color: "#1e3a6e",
+                                                            textTransform: "uppercase",
+                                                            letterSpacing: 0.5,
+                                                            fontFamily: RAVEN_HEADING_FONT
+                                                        },
+                                                        children: school.name
+                                                    }),
+                                                    /*#__PURE__*/ _jsxs("div", {
+                                                        style: {
+                                                            fontSize: 11,
+                                                            color: "#374151",
+                                                            fontFamily: RAVEN_HEADING_FONT
+                                                        },
+                                                        children: [
+                                                            "P.O. Box 731, Tororo  |  📞 +256776745781 / +256789113131  |  \"",
+                                                            school.motto || RAVEN_SCHOOL_MOTTO,
+                                                            "\""
+                                                        ]
+                                                    })
+                                                ]
+                                            })
+                                        ]
+                                    }),
                                     page === "DASHBOARD" && /*#__PURE__*/ _jsx(Dashboard, {
                                         ...props
                                     }),
                                     page === "MARK ENTRY" && /*#__PURE__*/ _jsx(MarkEntry, {
                                         ...props
                                     }),
-                                    page === "MONTHLY EXAMS" && /*#__PURE__*/ _jsx(MonthlyExams, {
+                                    page === "NURSERY MARK ENTRY" && /*#__PURE__*/ _jsx(NurseryMarkEntry, {
                                         ...props
                                     }),
-                                    page === "GROUP WORK" && /*#__PURE__*/ _jsx(GroupWork, {
+                                    page === "ASSESSMENTS" && /*#__PURE__*/ _jsx(AssessmentEntry, {
                                         ...props
                                     }),
-                                    page === "EXAM TIMETABLE" && /*#__PURE__*/ _jsx(ExamTimetable, {
-                                        ...props
+                                    page === "OTHER EXAMS" && /*#__PURE__*/ _jsx(MockInfo, {
+                                        students: students,
+                                        school: school,
+                                        bands: bands,
+                                        specialBands: specialBands,
+                                        divisions: divisions,
+                                        markEditing: markEditing,
+                                        role: role,
+                                        classOptions: ALL_CLASSES,
+                                        customExamName: true,
+                                        examLabel: "Other Exam",
+                                        resultsLabel: "Other Exam"
                                     }),
-                                    page === "MONTHLY CARDS" && /*#__PURE__*/ _jsx(MonthlyCards, {
-                                        ...props
-                                    }),
-                                    page === "MONTHLY SLIPS" && /*#__PURE__*/ _jsx(MonthlySlips, {
+                                    page === "SLIPS" && /*#__PURE__*/ _jsx(Slips, {
                                         ...props
                                     }),
                                     page === "RESULT SHEETS" && /*#__PURE__*/ _jsx(ResultSheets, {
                                         ...props
                                     }),
                                     page === "REPORT CARDS" && /*#__PURE__*/ _jsx(ReportCards, {
+                                        ...props
+                                    }),
+                                    page === "NURSERY REPORT CARDS" && /*#__PURE__*/ _jsx(NurseryReportCard, {
                                         ...props
                                     }),
                                     page === "REPORTS" && /*#__PURE__*/ _jsx(Reports, {
@@ -5930,10 +5054,9 @@ export default function App() {
                                         initialStudentId: pupilProfileTargetId,
                                         onConsumeInitial: ()=>setPupilProfileTargetId(null)
                                     }),
-                                    page === "SWEEPING ROTA" && /*#__PURE__*/ _jsx(SweepingRota, {
-                                        students: students,
-                                        school: school,
-                                        markEditing: markEditing
+                                    page === "ATTENDANCE TRACKER" && role === "admin" && /*#__PURE__*/ _jsx(TeacherAttendance, {
+                                        role: role,
+                                        currentUser: currentUser
                                     }),
                                     page === "MOCK INFO" && /*#__PURE__*/ _jsx(MockInfo, {
                                         students: students,
@@ -5949,8 +5072,10 @@ export default function App() {
                                         setStudents: setStudents,
                                         school: school,
                                         markEditing: markEditing,
-                                        municipalPerf: municipalPerf,
-                                        setMunicipalPerf: setMunicipalPerf
+                                        bands: bands,
+                                        specialBands: specialBands,
+                                        divisions: divisions,
+                                        role: role
                                     }),
                                     page === "MANAGE REQUESTS" && role === "admin" && /*#__PURE__*/ _jsx(ManageRequests, {
                                         ...props
@@ -6194,19 +5319,30 @@ function PieChart(param) {
     });
 }
 function Dashboard(param) {
-    let { students, school, termMarks, bands, dashboardPerfTerm: perfTerm, setDashboardPerfTerm: setPerfTerm, dashboardPerfYear: perfYear, setDashboardPerfYear: setPerfYear } = param;
+    let { students, school, termMarks, bands, dashboardPerfTerm: perfTerm, setDashboardPerfTerm: setPerfTerm, dashboardPerfYear: perfYear, setDashboardPerfYear: setPerfYear, reportsData } = param;
     const [subjectClass, setSubjectClass] = useState("P4");
     const perfTk = "".concat(perfTerm, "__").concat(perfYear);
-    // Source label(s) shown under each chart title. The Mock/PLE swap only
-    // applies to P7, so the whole-school charts (which mix P7 with other
-    // classes) get a label that makes that split explicit, while the
-    // per-class breakdown chart can just say exactly what that one class uses.
-    const perfSourceLabel = perfTerm === "Term II" ? "Exam Entry (P7: Municipal Mock)" : perfTerm === "Term III" ? "Exam Entry (P7: PLE)" : "Exam Entry";
-    const classSourceLabel = (cls)=>{
-        if (cls === "P7" && perfTerm === "Term II") return "Municipal Mock";
-        if (cls === "P7" && perfTerm === "Term III") return "PLE";
-        return "Exam Entry";
+    // Which exam feeds a class's end-of-term analysis for the selected
+    // term/year: the choice made on Report Cards (see getExamChoice) if there
+    // is one (P7, Term II only); otherwise Mark Entry -- except P7, whose default
+    // is the District Mock in Term II and PLE in Term III.
+    const endExamFor = (cls)=>{
+        if (hasExamChoice(cls, perfTerm)) return getExamChoice(reportsData, cls, perfTerm, perfYear) || "District Mock";
+        if (cls === "P7" && perfTerm === "Term III") return END_EXAM_PLE;
+        return END_EXAM_MARK_ENTRY;
     };
+    const examSourceLabel = (id)=>id === END_EXAM_PLE ? "PLE" : examDisplayName(id);
+    // Source label(s) shown under each chart title. The whole-school charts mix
+    // classes that use different exams, so they list every class that is NOT on
+    // plain Mark Entry; the per-class chart just names that one class's source.
+    const perfSourceLabel = (()=>{
+        const other = ALL_CLASSES.map((c)=>({
+                cls: c,
+                ex: endExamFor(c)
+            })).filter((o)=>o.ex !== END_EXAM_MARK_ENTRY);
+        return other.length ? "Mark Entry (" + other.map((o)=>o.cls + ": " + examSourceLabel(o.ex)).join(", ") + ")" : "Mark Entry";
+    })();
+    const classSourceLabel = (cls)=>examSourceLabel(endExamFor(cls));
     // Term II's "End of Term" results analysis draws from Mock results, and
     // Term III's from PLE results, instead of Exam Entry -- these two pages
     // manage their own shared-storage records, so Dashboard reads them
@@ -6247,10 +5383,18 @@ function Dashboard(param) {
             cls: c,
             count: active.filter((s)=>s.className === c).length
         }));
-    // Term II — P7's Municipal Mock marks, in place of Exam Entry.
-    const mockPct = (s, sub, isLower)=>{
+    // Nursery gets its own enrolment tally, separate from classCounts above
+    // -- kept apart from ALL_CLASSES/classPerformance deliberately, since
+    // the performance analytics below (CA/Exam, Mock, PLE) are all
+    // Primary-specific and don't apply to Nursery's mark-and-comment model.
+    const nurseryClassCounts = NURSERY_CLASSES.map((c)=>({
+            cls: c,
+            count: active.filter((s)=>s.className === c).length
+        }));
+    // A mock-store exam's marks (District Mock by default), in place of Mark Entry.
+    const mockPct = (s, sub, isLower, examName = "District Mock")=>{
         var _mockMarksData_s_id_, _mockMarksData_s_id;
-        const val = (_mockMarksData_s_id = mockMarksData[s.id]) === null || _mockMarksData_s_id === void 0 ? void 0 : (_mockMarksData_s_id_ = _mockMarksData_s_id["Municipal Mock__".concat(perfYear)]) === null || _mockMarksData_s_id_ === void 0 ? void 0 : _mockMarksData_s_id_[sub];
+        const val = (_mockMarksData_s_id = mockMarksData[s.id]) === null || _mockMarksData_s_id === void 0 ? void 0 : (_mockMarksData_s_id_ = _mockMarksData_s_id["".concat(examName, "__").concat(perfYear)]) === null || _mockMarksData_s_id_ === void 0 ? void 0 : _mockMarksData_s_id_[sub];
         if (typeof val !== "number") return undefined;
         return val / (isLower ? lowerSubjectMax(sub) : 100) * 100;
     };
@@ -6267,20 +5411,11 @@ function Dashboard(param) {
         return (10 - n) / 9 * 100;
     };
     const subjectPct = (s, sub, isLower)=>{
-        var _termMarks_s_id, _m_sub, _m_sub1;
-        // The Mock/PLE substitution only applies to P7 — every other class
-        // keeps using Exam Entry in every term, since only P7 sits Mock exams
-        // and PLE.
-        if (s.className === "P7") {
-            if (perfTerm === "Term II") return mockPct(s, sub, isLower);
-            if (perfTerm === "Term III") return plePct(s, sub);
-        }
-        const m = ((_termMarks_s_id = termMarks[s.id]) === null || _termMarks_s_id === void 0 ? void 0 : _termMarks_s_id[perfTk]) || {};
-        const ca = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.ca, exam = (_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.exam;
-        const hasBoth = typeof ca === "number" && typeof exam === "number";
-        const av = hasBoth ? Math.round((ca + exam) / 2) : typeof exam === "number" ? exam : typeof ca === "number" ? ca : undefined;
-        if (av === undefined) return undefined;
-        return av / (isLower ? lowerSubjectMax(sub) : 100) * 100;
+        // Each class follows its own end-of-term exam (see endExamFor above).
+        const ex = endExamFor(s.className);
+        if (ex === END_EXAM_PLE) return plePct(s, sub);
+        if (ex !== END_EXAM_MARK_ENTRY) return mockPct(s, sub, isLower, ex);
+        return markEntryPct(termMarks, s, sub, isLower, perfTerm, perfYear);
     };
     const classPerformance = useMemo(()=>ALL_CLASSES.map((cls)=>{
             const isLower = LOWER_CLASSES.includes(cls);
@@ -6304,7 +5439,8 @@ function Dashboard(param) {
         perfTk,
         perfTerm,
         mockMarksData,
-        pleResultsData
+        pleResultsData,
+        reportsData
     ]);
     const subjectPerformance = useMemo(()=>{
         const allSubs = [
@@ -6336,7 +5472,8 @@ function Dashboard(param) {
         perfTk,
         perfTerm,
         mockMarksData,
-        pleResultsData
+        pleResultsData,
+        reportsData
     ]);
     // Per-class subject performance for the selected single class
     const classSubjectPerf = useMemo(()=>{
@@ -6365,6 +5502,7 @@ function Dashboard(param) {
         perfTerm,
         mockMarksData,
         pleResultsData,
+        reportsData,
         subjectClass
     ]);
     const barColorFn = (d)=>d.value >= 65 ? "#22c55e" : d.value >= 45 ? "#f59e0b" : "#ef4444";
@@ -6476,6 +5614,35 @@ function Dashboard(param) {
                                 valueLabel: (v)=>String(v),
                                 height: 150,
                                 emptyMsg: "No learners yet"
+                            })
+                        ]
+                    }),
+                    /*#__PURE__*/ _jsxs("div", {
+                        style: {
+                            background: "white",
+                            borderRadius: 16,
+                            padding: 20,
+                            boxShadow: "0 2px 12px rgba(0,0,0,0.07)"
+                        },
+                        children: [
+                            /*#__PURE__*/ _jsx("div", {
+                                style: {
+                                    fontWeight: 800,
+                                    color: "#1e3a6e",
+                                    fontSize: 14,
+                                    marginBottom: 12
+                                },
+                                children: "🧸 Nursery Enrolment"
+                            }),
+                            /*#__PURE__*/ _jsx(BarChart, {
+                                data: nurseryClassCounts.map((c, i)=>({
+                                        label: c.cls,
+                                        value: c.count
+                                    })),
+                                barColor: (d, i)=>BAR_COLORS[i % BAR_COLORS.length],
+                                valueLabel: (v)=>String(v),
+                                height: 150,
+                                emptyMsg: "No nursery learners yet"
                             })
                         ]
                     }),
@@ -7313,7 +6480,7 @@ function Students(param) {
                                         value: cls,
                                         onChange: (e)=>setCls(e.target.value),
                                         style: inp,
-                                        children: ALL_CLASSES.map((c)=>/*#__PURE__*/ _jsx("option", {
+                                        children: [...ALL_CLASSES, ...NURSERY_CLASSES].map((c)=>/*#__PURE__*/ _jsx("option", {
                                                 children: c
                                             }, c))
                                     })
@@ -7410,7 +6577,7 @@ function Students(param) {
                                         value: bulkCls,
                                         onChange: (e)=>setBulkCls(e.target.value),
                                         style: inp,
-                                        children: ALL_CLASSES.map((c)=>/*#__PURE__*/ _jsx("option", {
+                                        children: [...ALL_CLASSES, ...NURSERY_CLASSES].map((c)=>/*#__PURE__*/ _jsx("option", {
                                                 children: c
                                             }, c))
                                     })
@@ -7615,7 +6782,7 @@ function Students(param) {
                                                                     padding: "2px 6px",
                                                                     fontSize: 12
                                                                 },
-                                                                children: ALL_CLASSES.map((c)=>/*#__PURE__*/ _jsx("option", {
+                                                                children: [...ALL_CLASSES, ...NURSERY_CLASSES].map((c)=>/*#__PURE__*/ _jsx("option", {
                                                                         children: c
                                                                     }, c))
                                                             })
@@ -7704,7 +6871,7 @@ function Students(param) {
                                 value: "All",
                                 children: "All Classes"
                             }),
-                            ALL_CLASSES.map((c)=>/*#__PURE__*/ _jsx("option", {
+                            [...ALL_CLASSES, ...NURSERY_CLASSES].map((c)=>/*#__PURE__*/ _jsx("option", {
                                     children: c
                                 }, c))
                         ]
@@ -7799,7 +6966,7 @@ function Students(param) {
                                 value: promoteClass,
                                 onChange: (e)=>setPromoteClass(e.target.value),
                                 style: inp,
-                                children: ALL_CLASSES.map((c)=>/*#__PURE__*/ _jsx("option", {
+                                children: [...ALL_CLASSES, ...NURSERY_CLASSES].map((c)=>/*#__PURE__*/ _jsx("option", {
                                         children: c
                                     }, c))
                             }),
@@ -8214,7 +7381,7 @@ function Students(param) {
                                                                 padding: "4px 8px",
                                                                 fontSize: 12
                                                             },
-                                                            children: ALL_CLASSES.map((c)=>/*#__PURE__*/ _jsx("option", {
+                                                            children: [...ALL_CLASSES, ...NURSERY_CLASSES].map((c)=>/*#__PURE__*/ _jsx("option", {
                                                                     children: c
                                                                 }, c))
                                                         }) : /*#__PURE__*/ _jsx("span", {
@@ -9156,1829 +8323,1778 @@ function PupilProfile(param) {
         ]
     });
 }
-// ─── SWEEPING ROTA ───────────────────────────────────────────────────────────
-const SWEEP_WEEKDAYS = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday"
+// ─── TEACHER ATTENDANCE TRACKER ─────────────────────────────────────────────
+// Admin-only staff attendance register, backed directly by Supabase (the
+// `supabase` client imported at the top of this file) rather than the
+// window.storage shared-storage layer every other page uses -- it reads the
+// `teachers` table and reads/writes `teacher_attendance` (unique on
+// teacher_id + date). Deliberately separate from Mark Entry: it shares no
+// keys, no shared-storage slot, and no merge queue with the marks pages, so
+// nothing here can collide with a mark save.
+//
+// How entries are kept safe:
+//  1. LOCAL DRAFT FIRST. Every edit (status, times, remarks, Mark All
+//     Present) is written straight to this device's localStorage -- one
+//     draft per date -- and only reaches Supabase when the admin presses
+//     "Save Attendance". Drafts survive a reload, leaving the page, closing
+//     the tab, and switching to another date and back, so an unsaved entry
+//     can't vanish just because the screen changed.
+//  2. NOTHING OVERWRITES A DRAFT. The saved register for a date is only a
+//     read-only baseline; the screen shows draft-over-baseline. A slow or
+//     stale load (the admin already moved to another date) is discarded via
+//     requestIdRef, and can never replace what has been typed.
+//  3. VALIDATE BEFORE SAVING. A valid date (not in the future), a status for
+//     every teacher (see ATTENDANCE_REQUIRE_ALL_MARKED), and time out later
+//     than time in. Problem rows are highlighted after a save attempt.
+//  4. UPSERT ONLY, NEVER DELETE. Saves are upserts on (teacher_id, date), so
+//     a failed write can never wipe a day that was saved before.
+//  5. VERIFY, THEN CLEAR. After a successful upsert the date is re-read from
+//     Supabase and the local draft is only cleared for entries the server
+//     actually shows. Anything that didn't stick stays on screen as an
+//     unsaved draft with an error, instead of quietly reverting.
+//  6. FAILED SAVES ARE KEPT. If a save can't reach the server the draft stays
+//     exactly as typed, flagged "waiting to sync", and is retried when the
+//     browser comes back online or the next time this page opens.
+//  7. NO BLIND OVERWRITES. If a date's saved register can't be loaded, saving
+//     is paused (with a Retry button) so records the admin can't see are
+//     never overwritten by a screen that looks empty.
+const ATTENDANCE_STATUSES = [
+    "Present",
+    "Absent",
+    "Late",
+    "Half-day"
 ];
-const SWEEP_DUTIES = [
-    [
-        "brk",
-        "Break Time"
-    ],
-    [
-        "lunch",
-        "Lunch Time"
-    ],
-    [
-        "games",
-        "Games Time"
-    ]
-];
-function SweepingRota(param) {
-    let { students, school, markEditing } = param;
-    const [rotas, setRotas] = useState({});
-    const [loaded, setLoaded] = useState(false);
-    const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
-    const [term, setTerm] = useState(TERMS[0]);
-    const [cls, setCls] = useState(ALL_CLASSES[0]);
-    const [weeks, setWeeks] = useState(13);
-    const [pdfBusy, setPdfBusy] = useState(false);
-    const sheetRef = useRef(null);
-    useEffect(()=>{
-        let alive = true;
-        loadShared("mkis_sweeping_rota", {}).then((r)=>{
-            if (alive) {
-                setRotas(r || {});
-                setLoaded(true);
-            }
+// Full literal class names (not built dynamically) so Tailwind keeps them.
+const ATTENDANCE_STATUS_TEXT = {
+    Present: "text-green-700",
+    Absent: "text-red-700",
+    Late: "text-amber-700",
+    "Half-day": "text-blue-700"
+};
+const ATTENDANCE_DRAFT_PREFIX = "mkis_attendance_draft::";
+// Queue written by the previous version of this page for saves that failed
+// offline. New saves no longer write here (the per-date draft replaced it);
+// it is only still read so anything already queued on a device is delivered
+// once, after which this key stays empty.
+const ATTENDANCE_PENDING_KEY = "mkis_attendance_pending_sync";
+// true  = every teacher must have a status before the register can be saved
+// false = only require at least one teacher to be marked
+const ATTENDANCE_REQUIRE_ALL_MARKED = true;
+const BLANK_ATTENDANCE_ROW = {
+    status: "",
+    time_in: "",
+    time_out: "",
+    remarks: ""
+};
+// { rows: { [teacherId]: row }, pending }  -- `rows` holds only the rows the
+// admin changed; `pending` means Save was pressed but the server didn't
+// accept it yet. Never mutate this shared empty value.
+const EMPTY_ATTENDANCE_DRAFT = {
+    rows: {},
+    pending: false
+};
+function pad2(n) {
+    return String(n).padStart(2, "0");
+}
+// Local calendar date (NOT toISOString, which is UTC and would return
+// yesterday's date for the first three hours of the day in East Africa).
+function todayIso() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function thisMonthIso() {
+    return todayIso().slice(0, 7);
+}
+function prettyAttendanceDate(iso) {
+    if (!iso) return "";
+    const d = new Date(`${iso}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+    });
+}
+function sameAttendanceRow(a, b) {
+    const x = a || BLANK_ATTENDANCE_ROW;
+    const y = b || BLANK_ATTENDANCE_ROW;
+    return (x.status || "") === (y.status || "") && (x.time_in || "") === (y.time_in || "") && (x.time_out || "") === (y.time_out || "") && (x.remarks || "").trim() === (y.remarks || "").trim();
+}
+// Accepts "2026-09-20T08:30:00+00:00", "2026-09-20 08:30:00" or "08:30:00"
+// and returns "08:30" (what <input type="time"> expects).
+function parseAttendanceTime(v) {
+    if (!v) return "";
+    const m = String(v).match(/(\d{2}):(\d{2})/);
+    return m ? `${m[1]}:${m[2]}` : "";
+}
+function rowFromAttendanceRecord(r) {
+    return {
+        status: r.status || "",
+        time_in: parseAttendanceTime(r.time_in),
+        time_out: parseAttendanceTime(r.time_out),
+        remarks: r.remarks || ""
+    };
+}
+function attendanceRecord(date, teacherId, r) {
+    return {
+        teacher_id: teacherId,
+        date,
+        status: r.status,
+        time_in: r.time_in ? `${date}T${r.time_in}:00` : null,
+        time_out: r.time_out ? `${date}T${r.time_out}:00` : null,
+        remarks: (r.remarks || "").trim() || null
+    };
+}
+// Never throws. Resolves { rows: { [teacherId]: row }, error: "" | message }.
+async function fetchAttendanceForDate(date) {
+    try {
+        const { data, error } = await supabase.from("teacher_attendance").select("teacher_id, status, time_in, time_out, remarks").eq("date", date);
+        if (error) return {
+            rows: {},
+            error: error.message || "Could not load the saved attendance."
+        };
+        const rows = {};
+        (data || []).forEach((r)=>{
+            rows[r.teacher_id] = rowFromAttendanceRecord(r);
         });
+        return {
+            rows,
+            error: ""
+        };
+    } catch (e) {
+        return {
+            rows: {},
+            error: e && e.message || "Could not load the saved attendance."
+        };
+    }
+}
+// ── Local drafts (localStorage, one per date) ──
+function readAttendanceDraft(date) {
+    try {
+        const raw = window.localStorage.getItem(ATTENDANCE_DRAFT_PREFIX + date);
+        if (!raw) return EMPTY_ATTENDANCE_DRAFT;
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.rows && typeof parsed.rows === "object") {
+            return {
+                rows: parsed.rows,
+                pending: !!parsed.pending
+            };
+        }
+    } catch {
+    // Unreadable draft -- treated as "no draft" rather than crashing the page.
+    }
+    return EMPTY_ATTENDANCE_DRAFT;
+}
+// Returns false if the browser refused the write (storage full/blocked) so
+// the caller can warn the admin instead of failing silently.
+function writeAttendanceDraft(date, draft) {
+    try {
+        if (!draft.rows || Object.keys(draft.rows).length === 0) {
+            window.localStorage.removeItem(ATTENDANCE_DRAFT_PREFIX + date);
+        } else {
+            window.localStorage.setItem(ATTENDANCE_DRAFT_PREFIX + date, JSON.stringify({
+                rows: draft.rows,
+                pending: !!draft.pending
+            }));
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+// Every date that currently has a draft on this device, newest first.
+function buildAttendanceDraftIndex() {
+    const out = [];
+    try {
+        for(let i = 0; i < window.localStorage.length; i++){
+            const k = window.localStorage.key(i);
+            if (!k || !k.startsWith(ATTENDANCE_DRAFT_PREFIX)) continue;
+            const d = k.slice(ATTENDANCE_DRAFT_PREFIX.length);
+            const dr = readAttendanceDraft(d);
+            const count = Object.keys(dr.rows).length;
+            if (count > 0) out.push({
+                date: d,
+                count,
+                pending: dr.pending
+            });
+        }
+    } catch {
+    // localStorage unavailable -- no drafts to list.
+    }
+    return out.sort((a, b)=>a.date < b.date ? 1 : -1);
+}
+// ── Legacy offline queue (see ATTENDANCE_PENDING_KEY above) ──
+function readAttendanceQueue() {
+    try {
+        const raw = window.localStorage.getItem(ATTENDANCE_PENDING_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};
+    }
+}
+function writeAttendanceQueue(queue) {
+    try {
+        if (Object.keys(queue).length === 0) {
+            window.localStorage.removeItem(ATTENDANCE_PENDING_KEY);
+        } else {
+            window.localStorage.setItem(ATTENDANCE_PENDING_KEY, JSON.stringify(queue));
+        }
+    } catch {
+    // nothing more we can do locally
+    }
+}
+function TeacherAttendance(param) {
+    let { role, currentUser } = param;
+    const [teachers, setTeachers] = useState([]);
+    const [loadingTeachers, setLoadingTeachers] = useState(true);
+    const [teacherLoadError, setTeacherLoadError] = useState("");
+    const [teachersTick, setTeachersTick] = useState(0);
+    const [initialDate] = useState(todayIso);
+    const [date, setDate] = useState(initialDate);
+    // saved = what Supabase holds for `date` (read-only baseline);
+    // draft = this device's unsaved edits for `date`, mirrored to localStorage.
+    const [saved, setSaved] = useState({});
+    const [draft, setDraft] = useState(()=>readAttendanceDraft(initialDate));
+    const [draftIndex, setDraftIndex] = useState(buildAttendanceDraftIndex);
+    const [draftStorageOk, setDraftStorageOk] = useState(true);
+    const [legacyPending, setLegacyPending] = useState(()=>Object.keys(readAttendanceQueue()).length);
+    const [loadingRows, setLoadingRows] = useState(false);
+    const [loadError, setLoadError] = useState("");
+    const [reloadTick, setReloadTick] = useState(0);
+    const [saving, setSaving] = useState(false);
+    const [submitAttempted, setSubmitAttempted] = useState(false);
+    const [message, setMessage] = useState(null); // { type: "success" | "error" | "info", text }
+    const [confirmAllPresent, setConfirmAllPresent] = useState(0); // # of rows that would be overwritten
+    const [confirmDiscard, setConfirmDiscard] = useState(false);
+    const [monthFilter, setMonthFilter] = useState(thisMonthIso());
+    const [monthSummary, setMonthSummary] = useState(null);
+    const [monthSummaryLoading, setMonthSummaryLoading] = useState(false);
+    // Guards against a stale async response (an older date's fetch resolving
+    // after the admin has already moved on to a newer one) clobbering what's
+    // currently on screen.
+    const requestIdRef = useRef(0);
+    const dateRef = useRef(date);
+    dateRef.current = date;
+    const draftRef = useRef(draft);
+    draftRef.current = draft;
+    const syncingRef = useRef(false);
+    // Writes a date's draft to localStorage, refreshes the "unsaved dates"
+    // list, and -- only if that date is the one on screen -- updates state.
+    const persistDraft = (dateKey, next)=>{
+        const ok = writeAttendanceDraft(dateKey, next);
+        setDraftStorageOk(ok);
+        setDraftIndex(buildAttendanceDraftIndex());
+        if (dateKey === dateRef.current) setDraft(next);
+    };
+    // ── Load teacher roster ──
+    useEffect(()=>{
+        if (role !== "admin") return;
+        let alive = true;
+        setLoadingTeachers(true);
+        (async ()=>{
+            let list = null;
+            let errMsg = "";
+            try {
+                const res = await supabase.from("teachers").select("id, name").order("name", {
+                    ascending: true
+                });
+                if (res.error) errMsg = res.error.message || "Could not load the teacher list.";
+                else list = res.data || [];
+            } catch (e) {
+                errMsg = e && e.message || "Could not load the teacher list.";
+            }
+            if (!alive) return;
+            if (errMsg) {
+                setTeacherLoadError(errMsg);
+            } else {
+                setTeachers(list);
+                setTeacherLoadError("");
+            }
+            setLoadingTeachers(false);
+        })();
         return ()=>{
             alive = false;
         };
-    }, []);
-    const rotaId = "".concat(year, "__").concat(term, "__").concat(cls).replace(/\s+/g, "_");
-    const current = rotas[rotaId];
-    const persist = (next)=>{
-        setRotas(next);
-        saveShared("mkis_sweeping_rota", next);
-    };
-    const classStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
-        students,
-        cls
+    }, [
+        role,
+        teachersTick
     ]);
-    // Chunk learners into duty groups of at least 4. If there's a small
-    // remainder, spread it across existing groups rather than leaving a
-    // group smaller than 4.
-    const buildGroups = ()=>{
-        const names = classStudents.map((s)=>s.name);
-        if (names.length === 0) return [];
-        const numGroups = Math.max(1, Math.floor(names.length / 4));
-        const groups = Array.from({
-            length: numGroups
-        }, ()=>[]);
-        names.forEach((n, i)=>groups[i % numGroups].push(n));
-        return groups;
+    // ── Deliver anything that was saved on this device but never reached the
+    // server: the old offline queue, plus drafts flagged "waiting to sync".
+    // Runs when the page opens and whenever the browser regains connectivity.
+    // Reads state only through refs, so the copy bound on first render stays
+    // correct. ──
+    async function syncOfflineAttendance() {
+        if (syncingRef.current) return;
+        syncingRef.current = true;
+        try {
+            let delivered = 0;
+            // { [date]: { [teacherId]: row } } -- what was just delivered, so the
+            // screen can show it as saved before its local draft is cleared.
+            const syncedRows = {};
+            const legacyRecords = Object.values(readAttendanceQueue());
+            if (legacyRecords.length > 0) {
+                try {
+                    const { error } = await supabase.from("teacher_attendance").upsert(legacyRecords, {
+                        onConflict: "teacher_id,date"
+                    });
+                    if (!error) {
+                        writeAttendanceQueue({});
+                        setLegacyPending(0);
+                        delivered += legacyRecords.length;
+                        legacyRecords.forEach((r)=>{
+                            syncedRows[r.date] = {
+                                ...syncedRows[r.date] || {},
+                                [r.teacher_id]: rowFromAttendanceRecord(r)
+                            };
+                        });
+                    }
+                } catch {
+                // Leave it queued; retried on the next online event / page open.
+                }
+            }
+            for (const d of buildAttendanceDraftIndex().map((x)=>x.date)){
+                const dr = readAttendanceDraft(d);
+                const ids = Object.keys(dr.rows);
+                if (!dr.pending || ids.length === 0) continue;
+                try {
+                    const { error } = await supabase.from("teacher_attendance").upsert(ids.map((id)=>attendanceRecord(d, id, dr.rows[id])), {
+                        onConflict: "teacher_id,date"
+                    });
+                    if (error) continue;
+                } catch {
+                    continue;
+                }
+                // Only clear the draft if it is still exactly what was sent --
+                // the admin may have kept editing while this was in flight.
+                const now = readAttendanceDraft(d);
+                if (now.pending && JSON.stringify(now.rows) === JSON.stringify(dr.rows)) {
+                    writeAttendanceDraft(d, EMPTY_ATTENDANCE_DRAFT);
+                }
+                delivered += ids.length;
+                syncedRows[d] = {
+                    ...syncedRows[d] || {},
+                    ...dr.rows
+                };
+            }
+            if (delivered > 0) {
+                setDraftIndex(buildAttendanceDraftIndex());
+                const shown = syncedRows[dateRef.current];
+                if (shown) {
+                    // Order matters: show the delivered rows as saved FIRST, then
+                    // drop the draft, so the rows never flash blank in between.
+                    // Bumping requestIdRef discards any older, pre-upsert fetch
+                    // still in flight.
+                    requestIdRef.current++;
+                    setSaved((prev)=>({
+                            ...prev,
+                            ...shown
+                        }));
+                    setDraft(readAttendanceDraft(dateRef.current));
+                    setReloadTick((t)=>t + 1);
+                }
+                setMessage({
+                    type: "success",
+                    text: `${delivered} attendance entr${delivered === 1 ? "y" : "ies"} that ${delivered === 1 ? "was" : "were"} waiting on this device ${delivered === 1 ? "has" : "have"} now been saved.`
+                });
+            }
+        } finally{
+            syncingRef.current = false;
+        }
+    }
+    useEffect(()=>{
+        if (role !== "admin") return;
+        syncOfflineAttendance();
+        window.addEventListener("online", syncOfflineAttendance);
+        return ()=>window.removeEventListener("online", syncOfflineAttendance);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        role
+    ]);
+    // ── Load the saved register for the selected date (baseline only) ──
+    useEffect(()=>{
+        if (role !== "admin" || !date || teachers.length === 0) return;
+        const myRequestId = ++requestIdRef.current;
+        setLoadingRows(true);
+        fetchAttendanceForDate(date).then((param)=>{
+            let { rows, error } = param;
+            // A newer fetch has started since this one was issued -- discard
+            // this result rather than overwrite the newer screen.
+            if (myRequestId !== requestIdRef.current) return;
+            if (error) {
+                // Keep whatever baseline is already on screen; Save is paused
+                // until a load succeeds (see saveBlocked below).
+                setLoadError(error);
+            } else {
+                setSaved(rows);
+                setLoadError("");
+                // Drop draft rows that turn out to match the server already.
+                const cur = draftRef.current;
+                const keep = {};
+                Object.keys(cur.rows).forEach((id)=>{
+                    if (!sameAttendanceRow(cur.rows[id], rows[id])) keep[id] = cur.rows[id];
+                });
+                if (Object.keys(keep).length !== Object.keys(cur.rows).length) {
+                    persistDraft(date, {
+                        rows: keep,
+                        pending: cur.pending && Object.keys(keep).length > 0
+                    });
+                }
+            }
+            setLoadingRows(false);
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        role,
+        date,
+        teachers,
+        reloadTick
+    ]);
+    const changeDate = (next)=>{
+        setDate(next);
+        setDraft(next ? readAttendanceDraft(next) : EMPTY_ATTENDANCE_DRAFT);
+        setSaved({});
+        setLoadError("");
+        setLoadingRows(!!next && teachers.length > 0);
+        setSubmitAttempted(false);
+        setMessage(null);
     };
-    const generate = ()=>{
-        const groups = buildGroups();
-        if (groups.length === 0) {
-            alert("No learners found in ".concat(cls, ". Add them in the LEARNERS page first."));
+    const dirtyIds = useMemo(()=>teachers.filter((t)=>draft.rows[t.id] && !sameAttendanceRow(draft.rows[t.id], saved[t.id])).map((t)=>t.id), [
+        teachers,
+        draft,
+        saved
+    ]);
+    const dirtySet = useMemo(()=>new Set(dirtyIds), [
+        dirtyIds
+    ]);
+    const validation = useMemo(()=>{
+        const problems = [];
+        const rowErrors = {};
+        if (!date) problems.push("Pick a date first.");
+        else if (date > todayIso()) problems.push("Attendance can't be recorded for a future date.");
+        const unmarked = [];
+        let timeErrors = 0;
+        teachers.forEach((t)=>{
+            const r = draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW;
+            if (!r.status) unmarked.push(t);
+            if (r.time_in && r.time_out && r.time_out <= r.time_in) {
+                rowErrors[t.id] = "Time out must be later than time in.";
+                timeErrors++;
+            }
+        });
+        if (ATTENDANCE_REQUIRE_ALL_MARKED) {
+            unmarked.forEach((t)=>{
+                rowErrors[t.id] = "Select a status.";
+            });
+            if (unmarked.length > 0) {
+                const names = unmarked.slice(0, 3).map((t)=>t.name).join(", ");
+                problems.push(`${unmarked.length} teacher(s) still have no status (${names}${unmarked.length > 3 ? ", …" : ""}). Choose one for each, or use Mark All Present.`);
+            }
+        } else if (teachers.length > 0 && unmarked.length === teachers.length) {
+            problems.push("Mark at least one teacher before saving.");
+        }
+        if (timeErrors > 0) problems.push(`${timeErrors} row(s) have a time out that isn't later than the time in.`);
+        return {
+            problems,
+            rowErrors
+        };
+    }, [
+        date,
+        teachers,
+        draft,
+        saved
+    ]);
+    const dailySummary = useMemo(()=>{
+        const counts = {
+            Present: 0,
+            Absent: 0,
+            Late: 0,
+            "Half-day": 0,
+            "Not marked": 0
+        };
+        teachers.forEach((t)=>{
+            const r = draft.rows[t.id] || saved[t.id];
+            const status = r && r.status;
+            if (status && counts[status] !== undefined) counts[status]++;
+            else counts["Not marked"]++;
+        });
+        return counts;
+    }, [
+        teachers,
+        draft,
+        saved
+    ]);
+    const setRowField = (teacherId, field, value)=>{
+        const base = draft.rows[teacherId] || saved[teacherId] || BLANK_ATTENDANCE_ROW;
+        const nextRow = {
+            ...BLANK_ATTENDANCE_ROW,
+            ...base,
+            [field]: value
+        };
+        const rows = {
+            ...draft.rows
+        };
+        if (sameAttendanceRow(nextRow, saved[teacherId])) delete rows[teacherId];
+        else rows[teacherId] = nextRow;
+        persistDraft(date, {
+            rows,
+            pending: false
+        });
+    };
+    const applyMarkAllPresent = ()=>{
+        const rows = {
+            ...draft.rows
+        };
+        teachers.forEach((t)=>{
+            const cur = draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW;
+            if (cur.status === "Present") return;
+            const nextRow = {
+                ...BLANK_ATTENDANCE_ROW,
+                ...cur,
+                status: "Present"
+            };
+            if (sameAttendanceRow(nextRow, saved[t.id])) delete rows[t.id];
+            else rows[t.id] = nextRow;
+        });
+        persistDraft(date, {
+            rows,
+            pending: false
+        });
+        setConfirmAllPresent(0);
+    };
+    // Mark All Present never silently flips a teacher already marked Absent /
+    // Late / Half-day -- it asks first.
+    const handleMarkAllPresent = ()=>{
+        const wouldOverwrite = teachers.filter((t)=>{
+            const s = (draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW).status;
+            return s && s !== "Present";
+        }).length;
+        if (wouldOverwrite > 0) setConfirmAllPresent(wouldOverwrite);
+        else applyMarkAllPresent();
+    };
+    const discardChanges = ()=>{
+        persistDraft(date, EMPTY_ATTENDANCE_DRAFT);
+        setConfirmDiscard(false);
+        setSubmitAttempted(false);
+        setMessage({
+            type: "info",
+            text: `Changes discarded -- showing what was last saved for ${prettyAttendanceDate(date)}.`
+        });
+    };
+    const handleSave = async ()=>{
+        setSubmitAttempted(true);
+        if (validation.problems.length > 0) {
+            setMessage({
+                type: "error",
+                text: validation.problems.join(" ")
+            });
             return;
         }
-        const numWeeks = Math.max(1, Math.min(13, Number(weeks) || 1));
-        let slot = 0;
-        const schedule = [];
-        for(let w = 1; w <= numWeeks; w++){
-            const days = SWEEP_WEEKDAYS.map((day)=>{
-                const row = {
-                    day
-                };
-                SWEEP_DUTIES.forEach((param)=>{
-                    let [key] = param;
-                    row[key] = groups[slot % groups.length].join(", ");
-                    slot++;
-                });
-                return row;
+        if (dirtyIds.length === 0) {
+            setMessage({
+                type: "info",
+                text: `Nothing to save -- ${prettyAttendanceDate(date)} is already up to date.`
             });
-            schedule.push({
-                week: w,
-                days
-            });
+            return;
         }
-        markEditing && markEditing();
-        persist({
-            ...rotas,
-            [rotaId]: {
-                year,
-                term,
-                cls,
-                weeks: numWeeks,
-                schedule,
-                updatedAt: new Date().toISOString()
-            }
+        const saveDate = date;
+        const sentRows = {};
+        dirtyIds.forEach((id)=>{
+            sentRows[id] = draft.rows[id];
         });
-    };
-    const updateCell = (wIdx, dIdx, key, value)=>{
-        if (!current) return;
-        const schedule = current.schedule.map((wk, wi)=>wi !== wIdx ? wk : {
-                ...wk,
-                days: wk.days.map((d, di)=>di !== dIdx ? d : {
-                        ...d,
-                        [key]: value
-                    })
+        const records = dirtyIds.map((id)=>attendanceRecord(saveDate, id, sentRows[id]));
+        setSaving(true);
+        setMessage(null);
+        try {
+            let upsertError = null;
+            try {
+                const res = await supabase.from("teacher_attendance").upsert(records, {
+                    onConflict: "teacher_id,date"
+                });
+                upsertError = res.error || null;
+            } catch (e) {
+                upsertError = e || new Error("connection problem");
+            }
+            if (upsertError) {
+                // Keep the draft exactly as typed and flag it for auto-retry.
+                persistDraft(saveDate, {
+                    rows: draft.rows,
+                    pending: true
+                });
+                setMessage({
+                    type: "error",
+                    text: `NOT saved to the server yet (${upsertError.message || "connection problem"}). Your entries are kept on this device and will upload automatically once you're back online -- or press Save Attendance to try again.`
+                });
+                return;
+            }
+            // Re-read from the server rather than trusting local state. Only
+            // `status` is compared: it is what proves the row landed, and it is
+            // not affected by how the database formats time values.
+            const check = await fetchAttendanceForDate(saveDate);
+            const notStuck = check.error ? [] : dirtyIds.filter((id)=>!check.rows[id] || check.rows[id].status !== sentRows[id].status);
+            const remaining = {};
+            notStuck.forEach((id)=>{
+                remaining[id] = sentRows[id];
             });
-        markEditing && markEditing();
-        persist({
-            ...rotas,
-            [rotaId]: {
-                ...current,
-                schedule,
-                updatedAt: new Date().toISOString()
+            // Update what's shown as saved BEFORE clearing the draft, so a row
+            // is never blank between the two.
+            if (saveDate === dateRef.current) {
+                if (check.error) {
+                    setSaved((prev)=>({
+                            ...prev,
+                            ...sentRows
+                        }));
+                } else {
+                    setSaved(check.rows);
+                }
             }
-        });
+            persistDraft(saveDate, {
+                rows: remaining,
+                pending: false
+            });
+            if (notStuck.length > 0) {
+                const names = notStuck.map((id)=>(teachers.find((t)=>t.id === id) || {}).name || "a teacher").join(", ");
+                setMessage({
+                    type: "error",
+                    text: `${notStuck.length} of ${dirtyIds.length} entries were sent but the server doesn't show them (${names}). They are still on screen as unsaved -- press Save Attendance again, and if it keeps happening check the permissions on the teacher_attendance table.`
+                });
+                return;
+            }
+            const counts = {};
+            teachers.forEach((t)=>{
+                const r = check.rows[t.id] || sentRows[t.id] || saved[t.id];
+                if (r && r.status) counts[r.status] = (counts[r.status] || 0) + 1;
+            });
+            const breakdown = ATTENDANCE_STATUSES.filter((s)=>counts[s]).map((s)=>`${counts[s]} ${s}`).join(" · ");
+            setSubmitAttempted(false);
+            setMessage({
+                type: "success",
+                text: `✅ Attendance saved for ${prettyAttendanceDate(saveDate)} -- ${dirtyIds.length} entr${dirtyIds.length === 1 ? "y" : "ies"} written${breakdown ? ` (${breakdown})` : ""}.${check.error ? " (Saved, but the server couldn't be re-checked just now.)" : ""}`
+            });
+        } finally{
+            setSaving(false);
+        }
     };
-    const [confirmDeleteRotaId, setConfirmDeleteRotaId] = useState(null);
-    const deleteRota = (id)=>setConfirmDeleteRotaId(id);
-    const confirmDeleteRota = ()=>{
-        const id = confirmDeleteRotaId;
-        setConfirmDeleteRotaId(null);
-        const next = {
-            ...rotas
+    const loadMonthSummary = async ()=>{
+        if (!monthFilter) {
+            setMessage({
+                type: "error",
+                text: "Pick a month first."
+            });
+            return;
+        }
+        setMonthSummaryLoading(true);
+        // Built from plain numbers -- going through toISOString() shifts the
+        // last day of the month back a day for anyone ahead of UTC.
+        const [y, m] = monthFilter.split("-").map(Number);
+        const from = `${monthFilter}-01`;
+        const to = `${monthFilter}-${pad2(new Date(y, m, 0).getDate())}`;
+        let data = null;
+        let errMsg = "";
+        try {
+            const res = await supabase.from("teacher_attendance").select("status").gte("date", from).lte("date", to);
+            if (res.error) errMsg = res.error.message || "Could not load the monthly summary.";
+            else data = res.data || [];
+        } catch (e) {
+            errMsg = e && e.message || "Could not load the monthly summary.";
+        }
+        setMonthSummaryLoading(false);
+        if (errMsg) {
+            setMessage({
+                type: "error",
+                text: `Could not load the monthly summary (${errMsg}).`
+            });
+            return;
+        }
+        const counts = {
+            Present: 0,
+            Absent: 0,
+            Late: 0,
+            "Half-day": 0
         };
-        delete next[id];
-        persist(next);
-    };
-    const openRota = (r)=>{
-        setYear(r.year);
-        setTerm(r.term);
-        setCls(r.cls);
-        setWeeks(r.weeks);
-    };
-    const savedList = Object.entries(rotas).sort((a, b)=>(b[1].updatedAt || "").localeCompare(a[1].updatedAt || ""));
-    const exportWord = ()=>{
-        const rows = current.schedule.map((wk)=>wk.days.map((d, di)=>"\n      <tr>\n        ".concat(di === 0 ? '<td rowspan="5" style="font-weight:bold;">Week '.concat(wk.week, "</td>") : "", '\n        <td class="name-cell">').concat(escapeHtml(d.day), "</td>\n        <td>").concat(escapeHtml(d.brk), "</td>\n        <td>").concat(escapeHtml(d.lunch), "</td>\n        <td>").concat(escapeHtml(d.games), "</td>\n      </tr>")).join("")).join("");
-        const body = '\n      <div class="title">'.concat(escapeHtml(school.name), '</div>\n      <div class="addr">').concat(escapeHtml(school.poBox || ""), '</div>\n      <div class="subtitle">SWEEPING ROTA — ').concat(escapeHtml(cls), ", ").concat(escapeHtml(term), " ").concat(escapeHtml(String(year)), "</div>\n      <table>\n        <thead><tr><th>Week</th><th>Day</th><th>Break Time</th><th>Lunch Time</th><th>Games Time</th></tr></thead>\n        <tbody>").concat(rows, "</tbody>\n      </table>");
-        downloadWordHtml("Sweeping Rota - ".concat(cls), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Sweeping_Rota.doc"), {
-            pageSize: "210mm 297mm"
+        data.forEach((r)=>{
+            if (counts[r.status] !== undefined) counts[r.status]++;
         });
+        setMonthSummary(counts);
     };
-    if (!loaded) return /*#__PURE__*/ _jsx("div", {
-        style: {
-            padding: 20,
-            color: "#9ca3af"
-        },
-        children: "Loading…"
-    });
-    return /*#__PURE__*/ _jsxs("div", {
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Class",
-                                value: cls,
-                                onChange: setCls,
-                                opts: ALL_CLASSES
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: setTerm,
-                                opts: TERMS
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Year"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        value: year,
-                                        onChange: (e)=>setYear(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Number of Weeks"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        min: 1,
-                                        max: 13,
-                                        value: weeks,
-                                        onChange: (e)=>setWeeks(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: generate,
-                                style: btnPrimary,
-                                children: "🔄 Auto Generate Rota"
-                            }),
-                            current && /*#__PURE__*/ _jsxs(_Fragment, {
-                                children: [
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: exportWord,
-                                        style: btnWord,
-                                        children: "📄 Export Word"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        disabled: pdfBusy,
-                                        onClick: async ()=>{
-                                            setPdfBusy(true);
-                                            try {
-                                                await downloadNodesAsPdf([
-                                                    sheetRef.current
-                                                ], "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Sweeping_Rota.pdf"), "portrait");
-                                            } finally{
-                                                setPdfBusy(false);
-                                            }
-                                        },
-                                        style: pdfBusy ? btnPdfBusy : btnPdf,
-                                        children: pdfBusy ? "⏳ Generating..." : "📕 Export PDF"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: ()=>window.print(),
-                                        style: btnGhost,
-                                        children: "🖨️ Print Rota"
-                                    })
-                                ]
-                            })
-                        ]
-                    })
-                ]
-            }),
-            !current && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "#fffbeb",
-                    borderRadius: 12,
-                    padding: 24,
-                    textAlign: "center",
-                    color: "#92400e",
-                    border: "1px solid #fde68a",
-                    marginBottom: 20
-                },
-                children: [
-                    "No sweeping rota yet for ",
-                    cls,
-                    ", ",
-                    term,
-                    " ",
-                    year,
-                    '. Set the number of weeks above and click "Auto Generate Rota".'
-                ]
-            }),
-            current && /*#__PURE__*/ _jsxs("div", {
-                ref: sheetRef,
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    padding: 24,
-                    marginBottom: 24
-                },
-                children: [
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            textAlign: "center",
-                            marginBottom: 4,
-                            fontWeight: 900,
-                            fontSize: 18,
-                            color: "#1e3a6e"
-                        },
-                        children: school.name
-                    }),
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            textAlign: "center",
-                            fontSize: 12,
-                            color: "#6b7280",
-                            marginBottom: 10
-                        },
-                        children: school.poBox
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            textAlign: "center",
-                            fontWeight: 800,
-                            fontSize: 14,
-                            marginBottom: 16,
-                            textTransform: "uppercase",
-                            letterSpacing: 1
-                        },
-                        children: [
-                            "Sweeping Rota — ",
-                            cls,
-                            ", ",
-                            term,
-                            " ",
-                            year
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("table", {
-                        style: {
-                            width: "100%",
-                            fontSize: 12,
-                            borderCollapse: "collapse"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("thead", {
-                                children: /*#__PURE__*/ _jsx("tr", {
-                                    children: [
-                                        "Week",
-                                        "Day",
-                                        "Break Time",
-                                        "Lunch Time",
-                                        "Games Time"
-                                    ].map((h)=>/*#__PURE__*/ _jsx("th", {
-                                            style: {
-                                                background: "#1e3a6e",
-                                                color: "white",
-                                                padding: "8px 6px",
-                                                border: "1px solid #1e3a6e"
-                                            },
-                                            children: h
-                                        }, h))
-                                })
-                            }),
-                            /*#__PURE__*/ _jsx("tbody", {
-                                children: current.schedule.map((wk, wIdx)=>wk.days.map((d, dIdx)=>/*#__PURE__*/ _jsxs("tr", {
-                                            style: {
-                                                background: wIdx % 2 === 0 ? "white" : "#f8fafc"
-                                            },
-                                            children: [
-                                                dIdx === 0 && /*#__PURE__*/ _jsxs("td", {
-                                                    rowSpan: 5,
-                                                    style: {
-                                                        border: "1px solid #d1d5db",
-                                                        fontWeight: 800,
-                                                        textAlign: "center",
-                                                        background: "#eff6ff"
-                                                    },
-                                                    children: [
-                                                        "Week ",
-                                                        wk.week
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        border: "1px solid #d1d5db",
-                                                        padding: "6px 8px",
-                                                        fontWeight: 700,
-                                                        textAlign: "center"
-                                                    },
-                                                    children: d.day
-                                                }),
-                                                SWEEP_DUTIES.map((param)=>{
-                                                    let [key] = param;
-                                                    return /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            border: "1px solid #d1d5db",
-                                                            padding: 2
-                                                        },
-                                                        children: /*#__PURE__*/ _jsx("textarea", {
-                                                            className: "no-print-textarea",
-                                                            value: d[key],
-                                                            onChange: (e)=>updateCell(wIdx, dIdx, key, e.target.value),
-                                                            rows: 2,
-                                                            style: {
-                                                                width: "100%",
-                                                                border: "none",
-                                                                resize: "vertical",
-                                                                fontSize: 12,
-                                                                padding: "4px 6px",
-                                                                background: "transparent",
-                                                                fontFamily: "inherit"
-                                                            }
-                                                        })
-                                                    }, key);
-                                                })
-                                            ]
-                                        }, "".concat(wIdx, "-").concat(dIdx))))
-                            })
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    padding: 20
-                },
-                children: [
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            fontWeight: 800,
-                            fontSize: 14,
-                            marginBottom: 12,
-                            color: "#1e3a6e"
-                        },
-                        children: "📁 Saved Rotas"
-                    }),
-                    savedList.length === 0 && /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            color: "#9ca3af",
-                            fontSize: 13
-                        },
-                        children: "No rotas saved yet."
-                    }),
-                    savedList.map((param)=>{
-                        let [id, r] = param;
-                        return /*#__PURE__*/ _jsxs("div", {
-                            style: {
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "8px 10px",
-                                borderBottom: "1px solid #f1f5f9",
-                                fontSize: 13
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsxs("div", {
-                                    children: [
-                                        /*#__PURE__*/ _jsx("b", {
-                                            children: r.cls
-                                        }),
-                                        " — ",
-                                        r.term,
-                                        " ",
-                                        r.year,
-                                        " ",
-                                        /*#__PURE__*/ _jsxs("span", {
-                                            style: {
-                                                color: "#9ca3af"
-                                            },
-                                            children: [
-                                                "(",
-                                                r.weeks,
-                                                " weeks)"
-                                            ]
-                                        })
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        display: "flex",
-                                        gap: 8
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ _jsx("button", {
-                                            onClick: ()=>openRota(r),
-                                            style: {
-                                                ...btnGhost,
-                                                padding: "5px 12px",
-                                                fontSize: 12
-                                            },
-                                            children: "Open"
-                                        }),
-                                        /*#__PURE__*/ _jsx("button", {
-                                            onClick: ()=>deleteRota(id),
-                                            style: {
-                                                padding: "5px 12px",
-                                                fontSize: 12,
-                                                background: "#fee2e2",
-                                                color: "#991b1b",
-                                                border: "none",
-                                                borderRadius: 6,
-                                                cursor: "pointer"
-                                            },
-                                            children: "Delete"
-                                        })
-                                    ]
-                                })
-                            ]
-                        }, id);
-                    })
-                ]
-            }),
-            confirmDeleteRotaId && /*#__PURE__*/ _jsx(ConfirmModal, {
-                title: "Delete Sweeping Rota",
-                message: "Delete this sweeping rota? This cannot be undone.",
-                confirmLabel: "Delete",
-                onCancel: ()=>setConfirmDeleteRotaId(null),
-                onConfirm: confirmDeleteRota
-            })
-        ]
-    });
+    if (role !== "admin") {
+        return <div className="p-4 text-gray-500">Only an admin account can access the Attendance Tracker.</div>;
+    }
+    const unsavedCount = dirtyIds.length;
+    const otherDrafts = draftIndex.filter((d)=>d.date !== date);
+    const saveBlocked = saving || loadingTeachers || loadingRows || !!loadError || !date;
+    const messageStyle = {
+        success: "bg-green-100 text-green-800",
+        error: "bg-red-100 text-red-800",
+        info: "bg-blue-100 text-blue-800"
+    };
+    return <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Teacher Attendance Tracker</h2>
+            {legacyPending > 0 && <div className="mb-3 px-3 py-2 rounded bg-amber-100 text-amber-800 text-sm">
+                    ⚠️ {legacyPending} attendance record(s) saved on this device are waiting to sync -- they'll upload automatically once you're back online.
+                </div>}
+            {message && <div className={`mb-3 px-3 py-2 rounded text-sm ${messageStyle[message.type] || messageStyle.info}`}>
+                    {message.text}
+                </div>}
+            {!draftStorageOk && <div className="mb-3 px-3 py-2 rounded bg-amber-100 text-amber-800 text-sm">
+                    ⚠️ This browser wouldn't let the page keep a copy of your entries on this device, so they exist only on screen until you press Save Attendance. Save before leaving or refreshing.
+                </div>}
+            {teacherLoadError && <div className="mb-3 px-3 py-2 rounded bg-red-100 text-red-800 text-sm">
+                    Couldn't load the teacher list ({teacherLoadError}).{" "}
+                    <button className="underline font-medium" onClick={()=>setTeachersTick((t)=>t + 1)}>Retry</button>
+                </div>}
+            {loadError && <div className="mb-3 px-3 py-2 rounded bg-red-100 text-red-800 text-sm">
+                    Couldn't load the saved attendance for {prettyAttendanceDate(date)} ({loadError}). Saving is paused so nothing already recorded gets overwritten -- your entries are safe on this device.{" "}
+                    <button className="underline font-medium" onClick={()=>setReloadTick((t)=>t + 1)}>Retry</button>
+                </div>}
+            {unsavedCount > 0 && (draft.pending ? <div className="mb-3 px-3 py-2 rounded bg-amber-100 text-amber-800 text-sm">
+                        ⚠️ {unsavedCount} entr{unsavedCount === 1 ? "y" : "ies"} for {prettyAttendanceDate(date)} {unsavedCount === 1 ? "is" : "are"} stored on this device but NOT on the server yet. They'll upload automatically when you're back online, or press Save Attendance to try now.
+                    </div> : <div className="mb-3 px-3 py-2 rounded bg-amber-50 text-amber-800 text-sm border border-amber-200">
+                        ✏️ {unsavedCount} unsaved change{unsavedCount === 1 ? "" : "s"} for {prettyAttendanceDate(date)} -- kept on this device until you press Save Attendance.
+                    </div>)}
+            <div className="flex flex-wrap gap-3 mb-4 items-end">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Date</label>
+                    <input type="date" className="border rounded px-2 py-1" value={date} max={todayIso()} disabled={saving} onChange={(e)=>changeDate(e.target.value)} />
+                </div>
+                <button className="bg-gray-700 text-white rounded px-4 py-2 disabled:opacity-50" onClick={handleMarkAllPresent} disabled={loadingTeachers || loadingRows || saving || !date || teachers.length === 0}>
+                    Mark All Present
+                </button>
+                {unsavedCount > 0 && <button className="border border-gray-400 text-gray-700 rounded px-4 py-2 disabled:opacity-50" onClick={()=>setConfirmDiscard(true)} disabled={saving}>
+                        Discard Changes
+                    </button>}
+                <button className="bg-blue-600 text-white rounded px-4 py-2 disabled:opacity-50" onClick={handleSave} disabled={saveBlocked}>
+                    {saving ? "Saving…" : unsavedCount > 0 ? `Save Attendance (${unsavedCount})` : "Save Attendance"}
+                </button>
+            </div>
+            {otherDrafts.length > 0 && <div className="mb-4 text-sm flex flex-wrap items-center gap-2">
+                    <span className="text-gray-600">Also waiting on this device:</span>
+                    {otherDrafts.map((d)=><button key={d.date} className="border rounded px-2 py-0.5 bg-amber-50 border-amber-300 text-amber-800 disabled:opacity-50" disabled={saving} onClick={()=>changeDate(d.date)}>
+                            {d.pending ? "⚠️ " : ""}{prettyAttendanceDate(d.date)} ({d.count})
+                        </button>)}
+                </div>}
+            {loadingRows && !loadingTeachers && <div className="mb-2 text-xs text-gray-500">Loading saved attendance…</div>}
+            {loadingTeachers ? <div className="text-gray-500 p-6 text-center">Loading teachers…</div> : teachers.length === 0 ? <div className="text-gray-400 p-6 text-center">No teachers found. This list comes from the teachers table in Supabase -- add teachers there and they'll appear here.</div> : <div className="overflow-x-auto border rounded">
+                    <table className="min-w-full text-sm">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="p-2 text-left">Teacher</th>
+                                <th className="p-2 text-left">Status</th>
+                                <th className="p-2 text-left">Time In</th>
+                                <th className="p-2 text-left">Time Out</th>
+                                <th className="p-2 text-left">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {teachers.map((t)=>{
+                                const r = draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW;
+                                const err = submitAttempted && validation.rowErrors[t.id];
+                                const isDirty = dirtySet.has(t.id);
+                                return <tr key={t.id} className={`border-t align-top ${err ? "bg-red-50" : isDirty ? "bg-yellow-50" : ""}`}>
+                                        <td className="p-2 font-medium whitespace-nowrap">
+                                            {t.name}
+                                            {isDirty && <span className="ml-2 text-xs font-normal text-amber-700">unsaved</span>}
+                                            {err && <div className="text-xs font-normal text-red-600 mt-1">{err}</div>}
+                                        </td>
+                                        <td className="p-2">
+                                            <select aria-label={`Status for ${t.name}`} className={`border rounded px-2 py-1 ${ATTENDANCE_STATUS_TEXT[r.status] || ""} ${err ? "border-red-400" : ""}`} value={r.status} disabled={saving} onChange={(e)=>setRowField(t.id, "status", e.target.value)}>
+                                                <option value="">Select…</option>
+                                                {ATTENDANCE_STATUSES.map((s)=><option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </td>
+                                        <td className="p-2">
+                                            <input type="time" aria-label={`Time in for ${t.name}`} className="border rounded px-2 py-1" value={r.time_in} disabled={saving} onChange={(e)=>setRowField(t.id, "time_in", e.target.value)} />
+                                        </td>
+                                        <td className="p-2">
+                                            <input type="time" aria-label={`Time out for ${t.name}`} className="border rounded px-2 py-1" value={r.time_out} disabled={saving} onChange={(e)=>setRowField(t.id, "time_out", e.target.value)} />
+                                        </td>
+                                        <td className="p-2">
+                                            <input type="text" aria-label={`Remarks for ${t.name}`} className="border rounded px-2 py-1 w-full" placeholder="Optional" value={r.remarks} disabled={saving} onChange={(e)=>setRowField(t.id, "remarks", e.target.value)} />
+                                        </td>
+                                    </tr>;
+                            })}
+                        </tbody>
+                    </table>
+                </div>}
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {Object.entries(dailySummary).map((param)=>{
+                    let [label, count] = param;
+                    return <div key={label} className="border rounded p-3 text-center">
+                            <div className="text-2xl font-bold">{count}</div>
+                            <div className="text-xs text-gray-500">{label}</div>
+                        </div>;
+                })}
+            </div>
+            <div className="mt-8 border-t pt-4">
+                <h3 className="text-lg font-semibold mb-3">Monthly Summary</h3>
+                <div className="flex flex-wrap gap-3 mb-3 items-end">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Month</label>
+                        <input type="month" className="border rounded px-2 py-1" value={monthFilter} onChange={(e)=>setMonthFilter(e.target.value)} />
+                    </div>
+                    <button className="bg-gray-700 text-white rounded px-4 py-2" onClick={loadMonthSummary} disabled={monthSummaryLoading}>
+                        {monthSummaryLoading ? "Loading…" : "Load Summary"}
+                    </button>
+                </div>
+                {monthSummary && <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {Object.entries(monthSummary).map((param)=>{
+                            let [label, count] = param;
+                            return <div key={label} className="border rounded p-3 text-center">
+                                    <div className="text-2xl font-bold">{count}</div>
+                                    <div className="text-xs text-gray-500">{label}</div>
+                                </div>;
+                        })}
+                    </div>}
+            </div>
+            {confirmAllPresent > 0 && <ConfirmModal title="Mark everyone Present?" message={`${confirmAllPresent} teacher(s) currently marked Absent, Late or Half-day will be changed to Present. You can still edit any row before saving.`} confirmLabel="Mark All Present" danger={false} onCancel={()=>setConfirmAllPresent(0)} onConfirm={applyMarkAllPresent} />}
+            {confirmDiscard && <ConfirmModal title="Discard unsaved changes?" message={`${unsavedCount} unsaved change${unsavedCount === 1 ? "" : "s"} for ${prettyAttendanceDate(date)} will be removed and the register will go back to what was last saved.`} confirmLabel="Discard" onCancel={()=>setConfirmDiscard(false)} onConfirm={discardChanges} />}
+        </div>;
 }
 // ─── MARK ENTRY ──────────────────────────────────────────────────────────────
 function MarkEntry(param) {
-    let { students, termMarks, setTermMarks, updateTermMark, transferTermMarks, requestOrApplyTermMark, role, bands: defaultBands, specialBands, divisions, school, lockedTerm, lockTermEntry, unlockTermEntry, changeRequests, requestUnlockTerm, resetTermClass, restoreTermClass, termResetBackups } = param;
+    let { students, termMarks, updateTermMark, bands: defaultBands, specialBands, divisions, school } = param;
     const [cls, setCls] = useState("P1");
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
-    const [showBulkMark, setShowBulkMark] = useState(false);
-    const [showTransfer, setShowTransfer] = useState(false);
-    const [confirmDialog, setConfirmDialog] = useState(null); // "reset" | "restore" | null
-    const [bulkMarkPreview, setBulkMarkPreview] = useState(null);
-    const [bulkMarkError, setBulkMarkError] = useState("");
-    const [pendingToast, setPendingToast] = useState("");
-    const [sortByPos, setSortByPos] = useState(false);
+    // Mark Entry is End of Term only -- BOT and Mid Term both live under
+    // the shared Assessment page (AssessmentEntry), which covers every
+    // section (Nursery, Lower, Upper) in one place. Only "End of Term" is
+    // ever entered here.
+    const period = "End of Term";
     const [search, setSearch] = useState("");
-    const bulkMarkFileRef = useRef();
-    // Grading scale actually in effect for the selected class -- the Special
-    // Grading Scale override if one's been set up for it, otherwise the
-    // school's normal default bands. Named `bands` so nothing below needs to
-    // change to pick this up.
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "End of Term", year), [
+    const isLower = LOWER_CLASSES.includes(cls);
+    // Subject order matches the End of Term report card table exactly, so
+    // what a teacher enters here lines up with what prints later.
+    const subjects = isLower ? LOWER_MIDTERM_ORDER : UPPER_MIDTERM_ORDER;
+    const tk = `${term}__${year}`;
+    // Raven has no CA/Exam split -- bandsForClass still supports an
+    // admin-configured special scale keyed by period name, the same
+    // mechanism used for exam-type-specific grading; falls back to the
+    // school's normal bands if no special scale for this period exists.
+    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, period, year, term), [
         cls,
         defaultBands,
         specialBands,
-        year
+        period,
+        year,
+        term
     ]);
-    // Wraps requestOrApplyTermMark to surface a brief toast whenever an edit
-    // was filed for admin approval rather than saved immediately, so teachers
-    // aren't left wondering why a number they typed doesn't show up yet.
-    const handleMarkChange = useCallback((sid, name, tk, sub, field, val, existingVal)=>{
-        requestOrApplyTermMark(sid, name, tk, sub, field, val, existingVal);
-        const isFirstEntry = existingVal === undefined || existingVal === null || existingVal === "";
-        if (role !== "admin" && !isFirstEntry) {
-            setPendingToast("Change to ".concat(name, "'s ").concat(sub, " mark sent to admin for approval."));
-            setTimeout(()=>setPendingToast(""), 3500);
-        }
-    }, [
-        requestOrApplyTermMark,
-        role
-    ]);
-    const isLower = LOWER_CLASSES.includes(cls);
-    const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-    const tk = "".concat(term, "__").concat(year);
-    // Save & lock: once clicked, marks for this class+term+year render
-    // read-only (see MarkInput) until an admin unlocks them again.
-    const lockKey = "".concat(cls, "__").concat(tk);
-    const isLocked = !!(lockedTerm === null || lockedTerm === void 0 ? void 0 : lockedTerm[lockKey]);
-    // Has a teacher already asked the admin to reopen this exact sheet?
-    // Checked against the live change-request queue so the button can't be
-    // double-clicked into duplicate requests.
-    const unlockRequestPending = useMemo(()=>(changeRequests || []).some((r)=>r.kind === "unlock_term" && r.cls === cls && r.tk === tk), [
-        changeRequests,
-        cls,
-        tk
-    ]);
-    const handleSave = useCallback(()=>{
-        lockTermEntry(cls, tk);
-        setPendingToast("".concat(cls, " ").concat(term, " ").concat(year, " marks saved and locked."));
-        setTimeout(()=>setPendingToast(""), 3500);
-    }, [
-        lockTermEntry,
-        cls,
-        tk,
-        term,
-        year
-    ]);
-    const handleUnlock = useCallback(()=>{
-        unlockTermEntry(cls, tk);
-        setPendingToast("".concat(cls, " ").concat(term, " ").concat(year, " marks unlocked for editing."));
-        setTimeout(()=>setPendingToast(""), 3500);
-    }, [
-        unlockTermEntry,
-        cls,
-        tk,
-        term,
-        year
-    ]);
-    const handleRequestUnlock = useCallback(()=>{
-        requestUnlockTerm(cls, tk);
-        setPendingToast("Unlock request for ".concat(cls, " ").concat(term, " ").concat(year, " sent to admin."));
-        setTimeout(()=>setPendingToast(""), 3500);
-    }, [
-        requestUnlockTerm,
-        cls,
-        tk,
-        term,
-        year
-    ]);
-    // Admin-only reset/restore, mirrored from the Monthly Exams sheet: clears
-    // this class+term+year's marks back to blank, keeping a one-step backup.
-    const resetBackupKey = "".concat(cls, "__").concat(tk);
-    const hasTermBackup = !!(termResetBackups === null || termResetBackups === void 0 ? void 0 : termResetBackups[resetBackupKey]);
-    const handleReset = useCallback(()=>setConfirmDialog("reset"), []);
-    const handleRestore = useCallback(()=>setConfirmDialog("restore"), []);
     const classStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
         students,
         cls
     ]);
     const rows = useMemo(()=>classStudents.map((s)=>{
-            var _termMarks_s_id;
-            const m = ((_termMarks_s_id = termMarks[s.id]) === null || _termMarks_s_id === void 0 ? void 0 : _termMarks_s_id[tk]) || {};
+            const m = termMarks[s.id]?.[tk]?.[period] || {};
             const perSub = subjects.map((sub)=>{
-                var _m_sub, _m_sub1;
-                const ca = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.ca;
-                const exam = (_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.exam;
-                const isX = isLower ? exam === undefined || exam === null : (ca === undefined || ca === null) && (exam === undefined || exam === null);
-                if (isX) return {
-                    sub,
-                    ca,
-                    exam,
-                    av: undefined,
-                    agg: undefined,
-                    isX: true
-                };
-                const hasBoth = typeof ca === "number" && typeof exam === "number";
-                const av = hasBoth ? Math.round((ca + exam) / 2) : typeof exam === "number" ? exam : typeof ca === "number" ? ca : undefined;
-                const agg = av !== undefined ? aggOf(av, bands) : undefined;
+                const mark = m[sub];
+                const hasMark = typeof mark === "number";
                 return {
                     sub,
-                    ca,
-                    exam,
-                    av,
-                    agg,
-                    isX: false
+                    mark,
+                    agg: hasMark ? aggOf(mark, bands) : undefined,
+                    grade: hasMark ? gradeLabel(mark, bands) : undefined
                 };
             });
-            const hasX = perSub.some((p)=>p.isX);
-            const hasF9 = !isLower && perSub.some((p)=>p.agg === 9);
-            const totMk = perSub.reduce((a, p)=>{
-                var _p_av;
-                return a + ((_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : 0);
-            }, 0);
-            const totAgg = hasX ? "X" : perSub.reduce((a, p)=>a + (p.agg || 0), 0);
-            const div = hasX ? "X" : typeof totAgg === "number" ? divisionOf(totAgg, isLower ? 5 : 4, divisions, hasF9) : "X";
+            const hasAll = perSub.every((p)=>typeof p.mark === "number");
+            const hasF9 = perSub.some((p)=>p.agg === 9);
+            const totalMarks = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+            const totalAgg = hasAll ? perSub.reduce((a, p)=>a + (p.agg || 0), 0) : undefined;
+            const div = totalAgg !== undefined ? divisionOf(totalAgg, subjects.length, divisions, hasF9) : "-";
             return {
                 s,
                 perSub,
-                totMk,
-                totAgg,
-                div,
-                hasX
+                totalMarks,
+                totalAgg,
+                div
             };
         }), [
         classStudents,
         termMarks,
         tk,
+        period,
         subjects,
         bands,
-        divisions,
-        isLower
+        divisions
     ]);
-    const positions = useMemo(()=>rankWithTies(rows.map((r)=>r.totMk > 0 ? r.totMk : null), rows.map((r)=>typeof r.totAgg === "number" ? r.totAgg : null)), [
-        rows
-    ]);
-    const indexedRows = useMemo(()=>rows.map((r, i)=>({
-                ...r,
-                pos: positions[i]
-            })), [
-        rows,
-        positions
-    ]);
-    const sortedRows = useMemo(()=>{
-        return [
-            ...indexedRows
-        ].sort((a, b)=>{
-            if (a.pos === "-") return 1;
-            if (b.pos === "-") return -1;
-            return a.pos - b.pos;
-        });
-    }, [
-        indexedRows
-    ]);
+    // No position column here -- Mark Entry stays a plain entry sheet;
+    // ranking is shown on the Result Sheet instead.
     const displayRows = useMemo(()=>{
-        const base = sortByPos ? sortedRows : indexedRows;
-        if (!search.trim()) return base;
+        if (!search.trim()) return rows;
         const q = search.trim().toLowerCase();
-        return base.filter((r)=>r.s.name.toLowerCase().includes(q));
+        return rows.filter((r)=>r.s.name.toLowerCase().includes(q));
     }, [
-        sortByPos,
-        sortedRows,
-        indexedRows,
+        rows,
         search
     ]);
-    const parseTermMarksheetText = useCallback((text)=>{
-        const lines = text.split(/\r?\n/).filter((l)=>l.trim());
-        if (lines.length < 2) throw new Error("Data must have a header row and at least one data row.");
-        // Accept either comma-delimited (CSV) or tab-delimited (pasted from
-        // Excel/Sheets, or OCR output that happened to preserve column spacing
-        // as tabs) -- whichever the header row actually uses.
-        const delim = lines[0].includes("	") ? "	" : ",";
-        const headers = lines[0].split(delim).map((h)=>h.trim().toUpperCase());
-        const nameIdx = headers.findIndex((h)=>h === "NAME" || h === "PUPIL" || h === "STUDENT");
-        if (nameIdx === -1) throw new Error("The header row must include a column named NAME, PUPIL, or STUDENT.");
-        const curSubjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-        // Build column map: subject -> { caIdx, examIdx } or { markIdx }
-        const subjectCols = {};
-        curSubjects.forEach((sub)=>{
-            if (isLower) {
-                const idx = headers.findIndex((h)=>h === sub || h === sub.replace(" ", "_"));
-                if (idx !== -1) subjectCols[sub] = {
-                    markIdx: idx
-                };
-            } else {
-                const caIdx = headers.findIndex((h)=>h === "".concat(sub, "_CA") || h === "".concat(sub, " CA") || h === "".concat(sub, "CA"));
-                const exIdx = headers.findIndex((h)=>h === "".concat(sub, "_EXAM") || h === "".concat(sub, " EXAM") || h === "".concat(sub, "EXAM") || h === "".concat(sub, "_EX") || h === "".concat(sub, " EX"));
-                if (caIdx !== -1 || exIdx !== -1) subjectCols[sub] = {
-                    caIdx,
-                    examIdx: exIdx
-                };
-            }
-        });
-        const rows = lines.slice(1).map((line, i)=>{
-            const cells = line.split(delim).map((c)=>c.trim());
-            const rawName = toUpper(cells[nameIdx] || "");
-            const matched = students.find((s)=>s.className === cls && (s.name === rawName || s.name.toLowerCase().includes(rawName.toLowerCase().split(" ")[0]) || rawName.toLowerCase().includes(s.name.toLowerCase().split(" ")[0])));
-            const marks = {};
-            curSubjects.forEach((sub)=>{
-                const col = subjectCols[sub];
-                if (!col) return;
-                if (isLower) {
-                    const v = cells[col.markIdx];
-                    marks[sub] = {
-                        mk: v !== undefined && v !== "" && !isNaN(Number(v)) ? Number(v) : null
-                    };
-                } else {
-                    const ca = col.caIdx !== undefined && col.caIdx !== -1 && cells[col.caIdx] !== "" && !isNaN(Number(cells[col.caIdx])) ? Number(cells[col.caIdx]) : null;
-                    const exam = col.examIdx !== undefined && col.examIdx !== -1 && cells[col.examIdx] !== "" && !isNaN(Number(cells[col.examIdx])) ? Number(cells[col.examIdx]) : null;
-                    marks[sub] = {
-                        ca,
-                        exam
-                    };
-                }
-            });
-            return {
-                id: "bmr_".concat(i),
-                rawName,
-                studentId: (matched === null || matched === void 0 ? void 0 : matched.id) || null,
-                include: true,
-                marks
-            };
-        }).filter((r)=>r.rawName);
-        if (rows.length === 0) throw new Error("No data rows found.");
-        return {
-            rows,
-            subjectCols,
-            headers
-        };
-    }, [
-        isLower,
+    return <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Mark Entry</h2>
+            <div className="flex flex-wrap gap-3 mb-4 items-end">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Class</label>
+                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
+                        {ALL_CLASSES.map((c)=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Term</label>
+                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
+                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Year</label>
+                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                    <label className="block text-sm font-medium mb-1">Search</label>
+                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
+                </div>
+            </div>
+            <div className="overflow-x-auto border rounded">
+                <table className="min-w-full text-sm">
+                    <thead>
+                        <tr className="bg-gray-100">
+                            <th className="p-2 text-left">Pupil</th>
+                            {subjects.map((sub)=><th key={sub} className="p-2 text-center">{upperSubjectLabel(sub)}</th>)}
+                            <th className="p-2 text-center">Total</th>
+                            <th className="p-2 text-center">Tot Agg</th>
+                            <th className="p-2 text-center">Div</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {displayRows.map((r)=><tr key={r.s.id} className="border-t align-top">
+                                <td className="p-2 font-medium whitespace-nowrap">{r.s.name}</td>
+                                {r.perSub.map((p)=><td key={p.sub} className="p-2">
+                                        <input type="number" min={0} max={100} className="border rounded w-16 px-1 py-0.5 text-center" value={p.mark === undefined ? "" : p.mark} onChange={(e)=>{
+                                        const raw = e.target.value;
+                                        updateTermMark(r.s.id, tk, period, p.sub, raw === "" ? undefined : Number(raw));
+                                    }} />
+                                        {p.grade && <div className="text-xs mt-1 text-center font-semibold">{p.grade}</div>}
+                                    </td>)}
+                                <td className="p-2 text-center font-semibold">{r.totalMarks || "-"}</td>
+                                <td className="p-2 text-center font-semibold">{r.totalAgg ?? "-"}</td>
+                                <td className="p-2 text-center font-semibold">{r.div}</td>
+                            </tr>)}
+                    </tbody>
+                </table>
+            </div>
+        </div>;
+}
+// ─── NURSERY MARK ENTRY ─────────────────────────────────────────────────────
+// A deliberately simpler sibling to MarkEntry above: Nursery has no
+// CA/Exam split, no aggregate/division grading, and no lock/approval
+// workflow (yet -- see the note above the component's return). Each
+// subject is just one mark plus one free-text comment, with the
+// performance colour computed live from nurseryColorForMark as the
+// teacher types, matching the report card's automatic colour-key.
+function NurseryMarkEntry(param) {
+    let { students, nurseryMarks, updateNurseryMark, school } = param;
+    const [cls, setCls] = useState("Baby");
+    const [term, setTerm] = useState("Term I");
+    const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
+    // Nursery Mark Entry is End of Term only -- BOT and Mid Term both live
+    // under the shared Assessment page (AssessmentEntry).
+    const period = "End of Term";
+    const [search, setSearch] = useState("");
+    const tk = "".concat(term, "__").concat(year);
+    const classStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
         students,
         cls
     ]);
-    const handleBulkMarkFile = async (e)=>{
-        const file = e.target.files[0];
-        if (!file) return;
-        setBulkMarkError("");
-        try {
-            const text = await file.text();
-            setBulkMarkPreview(parseTermMarksheetText(text));
-        } catch (err) {
-            setBulkMarkError(err.message || "Could not read file.");
-        }
-        if (bulkMarkFileRef.current) bulkMarkFileRef.current.value = "";
-    };
-    const [bulkMarkPastedText, setBulkMarkPastedText] = useState("");
-    const handleLoadPastedMarks = ()=>{
-        setBulkMarkError("");
-        try {
-            setBulkMarkPreview(parseTermMarksheetText(bulkMarkPastedText));
-        } catch (err) {
-            setBulkMarkError(err.message || "Could not read the pasted/scanned text.");
-        }
-    };
-    const confirmBulkMarks = ()=>{
-        if (!bulkMarkPreview) return;
-        const curSubjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-        bulkMarkPreview.rows.forEach((row)=>{
-            var _students_find;
-            if (!row.include || !row.studentId) return;
-            const studentName = ((_students_find = students.find((s)=>s.id === row.studentId)) === null || _students_find === void 0 ? void 0 : _students_find.name) || row.rawName;
-            curSubjects.forEach((sub)=>{
-                var _termMarks_row_studentId_tk, _termMarks_row_studentId;
-                const m = row.marks[sub];
-                if (!m) return;
-                const existing = ((_termMarks_row_studentId = termMarks[row.studentId]) === null || _termMarks_row_studentId === void 0 ? void 0 : (_termMarks_row_studentId_tk = _termMarks_row_studentId[tk]) === null || _termMarks_row_studentId_tk === void 0 ? void 0 : _termMarks_row_studentId_tk[sub]) || {};
-                if (isLower) {
-                    if (m.mk !== null && m.mk !== undefined) requestOrApplyTermMark(row.studentId, studentName, tk, sub, "exam", clampMark(m.mk, lowerSubjectMax(sub)), existing.exam);
-                } else {
-                    if (m.ca !== null && m.ca !== undefined) requestOrApplyTermMark(row.studentId, studentName, tk, sub, "ca", clampMark(m.ca), existing.ca);
-                    if (m.exam !== null && m.exam !== undefined) requestOrApplyTermMark(row.studentId, studentName, tk, sub, "exam", clampMark(m.exam), existing.exam);
-                }
+    const rows = useMemo(()=>classStudents.map((s)=>{
+            var _nurseryMarks_s_id, _nurseryMarks_s_id_tk;
+            const m = ((_nurseryMarks_s_id = nurseryMarks[s.id]) === null || _nurseryMarks_s_id === void 0 ? void 0 : (_nurseryMarks_s_id_tk = _nurseryMarks_s_id[tk]) === null || _nurseryMarks_s_id_tk === void 0 ? void 0 : _nurseryMarks_s_id_tk[period]) || {};
+            const perSub = NURSERY_SUBJECTS.map((sub)=>{
+                var _m_sub, _m_sub1;
+                const mark = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mark;
+                const comment = ((_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.comment) || "";
+                return {
+                    sub,
+                    mark,
+                    comment,
+                    band: nurseryColorForMark(mark)
+                };
             });
-        });
-        setBulkMarkPreview(null);
-        setShowBulkMark(false);
-    };
-    // Generate a template CSV download
-    const downloadMarkTemplate = ()=>{
-        const curSubjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-        let header = "NAME";
-        curSubjects.forEach((sub)=>{
-            if (isLower) header += ",".concat(sub);
-            else header += ",".concat(sub, "_CA,").concat(sub, "_EXAM");
-        });
-        const rows = classStudents.map((s)=>{
-            let row = s.name;
-            curSubjects.forEach(()=>{
-                if (isLower) row += ",";
-                else row += ",,";
-            });
-            return row;
-        });
-        const csv = [
-            header,
-            ...rows
-        ].join("\n");
-        const blob = new Blob([
-            csv
-        ], {
-            type: "text/csv"
-        });
-        triggerBlobDownload(blob, "".concat(cls, "_").concat(term.replace(" ", "_"), "_").concat(year, "_mark_template.csv"));
-    };
-    return /*#__PURE__*/ _jsxs("div", {
+            const enteredCount = perSub.filter((p)=>typeof p.mark === "number").length;
+            const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+            const avg = enteredCount ? total / enteredCount : undefined;
+            return {
+                s,
+                perSub,
+                total,
+                avgBand: nurseryColorForMark(avg)
+            };
+        }), [
+        classStudents,
+        nurseryMarks,
+        tk,
+        period
+    ]);
+    const positions = useMemo(()=>rankWithTies(rows.map((r)=>r.total > 0 ? r.total : null), rows.map(()=>null)), [
+        rows
+    ]);
+    const displayRows = useMemo(()=>{
+        if (!search.trim()) return rows.map((r, i)=>({
+                ...r,
+                pos: positions[i]
+            }));
+        const q = search.trim().toLowerCase();
+        return rows.map((r, i)=>({
+                ...r,
+                pos: positions[i]
+            })).filter((r)=>r.s.name.toLowerCase().includes(q));
+    }, [
+        rows,
+        positions,
+        search
+    ]);
+    return _jsxs("div", {
+        className: "p-4",
         children: [
-            pendingToast && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    position: "fixed",
-                    top: 16,
-                    right: 16,
-                    zIndex: 3000,
-                    background: "#1e3a6e",
-                    color: "white",
-                    padding: "12px 18px",
-                    borderRadius: 10,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-                    maxWidth: 320
-                },
-                children: [
-                    "⏳ ",
-                    pendingToast
-                ]
+            _jsx("h2", {
+                className: "text-xl font-bold mb-4",
+                children: "Nursery Mark Entry"
             }),
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
+            _jsxs("div", {
+                className: "flex flex-wrap gap-3 mb-4 items-end",
                 children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end"
-                        },
+                    _jsxs("div", {
                         children: [
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Class",
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Class"
+                            }),
+                            _jsx("select", {
+                                className: "border rounded px-2 py-1",
                                 value: cls,
-                                onChange: setCls,
-                                opts: ALL_CLASSES
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: setTerm,
-                                opts: TERMS
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Year"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        value: year,
-                                        onChange: (e)=>setYear(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Search Pupil"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        value: search,
-                                        onChange: (e)=>setSearch(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 160
-                                        },
-                                        placeholder: "Type a name..."
-                                    })
-                                ]
+                                onChange: (e)=>setCls(e.target.value),
+                                children: NURSERY_CLASSES.map((c)=>_jsx("option", {
+                                        value: c,
+                                        children: c
+                                    }, c))
                             })
                         ]
                     }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                            alignItems: "center"
-                        },
+                    _jsxs("div", {
                         children: [
-                            /*#__PURE__*/ _jsxs("span", {
-                                style: {
-                                    background: "#dbeafe",
-                                    color: "#1e40af",
-                                    borderRadius: 20,
-                                    padding: "4px 12px",
-                                    fontSize: 12,
-                                    fontWeight: 700
-                                },
-                                children: [
-                                    classStudents.length,
-                                    " students - ",
-                                    isLower ? "Lower" : "Upper",
-                                    " Primary"
-                                ]
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Term"
                             }),
-                            isLocked && /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    background: "#fee2e2",
-                                    color: "#991b1b",
-                                    borderRadius: 20,
-                                    padding: "4px 12px",
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 4
-                                },
-                                children: "🔒 Saved & Locked"
+                            _jsx("select", {
+                                className: "border rounded px-2 py-1",
+                                value: term,
+                                onChange: (e)=>setTerm(e.target.value),
+                                children: TERMS.map((t)=>_jsx("option", {
+                                        value: t,
+                                        children: t
+                                    }, t))
+                            })
+                        ]
+                    }),
+                    _jsxs("div", {
+                        children: [
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Year"
                             }),
-                            isLocked ? role === "admin" ? /*#__PURE__*/ _jsx("button", {
-                                onClick: handleUnlock,
-                                style: btnWarning,
-                                children: "🔓 Unlock for Editing"
-                            }) : unlockRequestPending ? /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    background: "#fef3c7",
-                                    color: "#92400e",
-                                    borderRadius: 20,
-                                    padding: "4px 12px",
-                                    fontSize: 12,
-                                    fontWeight: 700
-                                },
-                                children: "⏳ Unlock Requested"
-                            }) : /*#__PURE__*/ _jsx("button", {
-                                onClick: handleRequestUnlock,
-                                style: btnWarning,
-                                children: "🔓 Request Unlock"
-                            }) : /*#__PURE__*/ _jsx("button", {
-                                onClick: handleSave,
-                                style: btnSuccess,
-                                children: "💾 Save & Lock"
+                            _jsx("input", {
+                                className: "border rounded px-2 py-1 w-24",
+                                value: year,
+                                onChange: (e)=>setYear(e.target.value)
+                            })
+                        ]
+                    }),
+                    _jsxs("div", {
+                        className: "flex-1 min-w-[160px]",
+                        children: [
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Search"
                             }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setSortByPos((v)=>!v),
-                                style: sortByPos ? btnPrimary : btnGhost,
-                                title: "Toggle ordering between alphabetical and highest-to-lowest by total marks",
-                                children: sortByPos ? "🔤 Show A–Z" : "📊 Sort Highest → Lowest"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setShowBulkMark((v)=>!v),
-                                style: btnWarning,
-                                children: "📋 Bulk Mark Sheet"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setShowTransfer(true),
-                                style: btnGhost,
-                                title: "Copy ".concat(cls, "'s saved results from one term/year into another"),
-                                children: "🔀 Transfer Result"
-                            }),
-                            role === "admin" && /*#__PURE__*/ _jsx("button", {
-                                onClick: handleReset,
-                                style: {
-                                    padding: "8px 16px",
-                                    fontSize: 13,
-                                    background: "#fee2e2",
-                                    color: "#991b1b",
-                                    border: "none",
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    cursor: "pointer"
-                                },
-                                title: "Clear all ".concat(term, " ").concat(year, " marks for ").concat(cls, " back to blank"),
-                                children: "♻️ Reset"
-                            }),
-                            role === "admin" && hasTermBackup && /*#__PURE__*/ _jsx("button", {
-                                onClick: handleRestore,
-                                style: {
-                                    padding: "8px 16px",
-                                    fontSize: 13,
-                                    background: "#dbeafe",
-                                    color: "#1e40af",
-                                    border: "none",
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    cursor: "pointer"
-                                },
-                                title: "Bring back ".concat(cls, " ").concat(term, " ").concat(year, " marks from before the last reset"),
-                                children: "⏪ Restore"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>window.print(),
-                                style: btnPrimary,
-                                children: "🖨️ Print"
+                            _jsx("input", {
+                                className: "border rounded px-2 py-1 w-full",
+                                placeholder: "Search pupil...",
+                                value: search,
+                                onChange: (e)=>setSearch(e.target.value)
                             })
                         ]
                     })
                 ]
             }),
-            showBulkMark && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "#fff7ed",
-                    border: "2px solid #f59e0b",
-                    borderRadius: 12,
-                    padding: 20,
-                    marginBottom: 16
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: 12
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsxs("h3", {
-                                style: {
-                                    margin: 0,
-                                    color: "#92400e",
-                                    fontSize: 14
-                                },
-                                children: [
-                                    "📋 Bulk Mark Sheet Upload - ",
-                                    cls,
-                                    " - ",
-                                    term,
-                                    " ",
-                                    year
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>{
-                                    setShowBulkMark(false);
-                                    setBulkMarkPreview(null);
-                                    setBulkMarkError("");
-                                },
-                                style: {
-                                    ...btnGhost,
-                                    padding: "4px 10px",
-                                    fontSize: 12
-                                },
-                                children: "✕ Close"
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            fontSize: 12,
-                            color: "#78350f",
-                            marginBottom: 12,
-                            lineHeight: 1.6
-                        },
-                        children: [
-                            "Upload a CSV file with marks for ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: cls
-                            }),
-                            ". The first row must be a header.",
-                            " ",
-                            isLower ? /*#__PURE__*/ _jsxs(_Fragment, {
-                                children: [
-                                    /*#__PURE__*/ _jsx("b", {
-                                        children: "Columns:"
-                                    }),
-                                    " NAME, ",
-                                    LOWER_SUBJECTS.join(", ")
-                                ]
-                            }) : /*#__PURE__*/ _jsxs(_Fragment, {
-                                children: [
-                                    /*#__PURE__*/ _jsx("b", {
-                                        children: "Columns:"
-                                    }),
-                                    " NAME, then for each subject: ",
-                                    /*#__PURE__*/ _jsx("b", {
-                                        children: "SUBJECT_CA"
-                                    }),
-                                    " and ",
-                                    /*#__PURE__*/ _jsx("b", {
-                                        children: "SUBJECT_EXAM"
-                                    }),
-                                    " (e.g. ENG_CA, ENG_EXAM, MATH_CA, MATH_EXAM)"
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            marginBottom: 12
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: downloadMarkTemplate,
-                                style: {
-                                    ...btnGhost,
-                                    fontSize: 12,
-                                    padding: "6px 12px"
-                                },
-                                children: "⬇️ Download Template CSV"
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: {
-                                            ...lbl,
-                                            margin: 0
-                                        },
-                                        children: "Upload CSV:"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        ref: bulkMarkFileRef,
-                                        type: "file",
-                                        accept: ".csv,.txt",
-                                        onChange: handleBulkMarkFile,
-                                        style: {
-                                            padding: "6px",
-                                            border: "1.5px solid #d1d5db",
-                                            borderRadius: 7,
-                                            fontSize: 13,
-                                            background: "white"
-                                        }
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            background: "white",
-                            border: "1px solid #fde68a",
-                            borderRadius: 8,
-                            padding: 14,
-                            marginBottom: 12
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontSize: 12,
-                                    color: "#92400e",
-                                    marginBottom: 8
-                                },
-                                children: "OR paste the marksheet / scan a photo (OCR)"
-                            }),
-                            /*#__PURE__*/ _jsx("textarea", {
-                                value: bulkMarkPastedText,
-                                onChange: (e)=>setBulkMarkPastedText(e.target.value),
-                                placeholder: isLower ? "NAME	".concat(LOWER_SUBJECTS.join("	"), "\nJOHN OKELLO	78	65	70	82	90	88	91") : "NAME	ENG_CA	ENG_EXAM	...\nJOHN OKELLO	28	50",
-                                rows: 3,
-                                style: {
-                                    width: "100%",
-                                    padding: 8,
-                                    border: "1.5px solid #d1d5db",
-                                    borderRadius: 7,
-                                    fontSize: 12,
-                                    fontFamily: "monospace",
-                                    resize: "vertical",
-                                    marginBottom: 8,
-                                    boxSizing: "border-box"
-                                }
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    display: "flex",
-                                    gap: 8,
-                                    flexWrap: "wrap",
-                                    alignItems: "flex-start"
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: handleLoadPastedMarks,
-                                        disabled: !bulkMarkPastedText.trim(),
-                                        style: {
-                                            ...btnWarning,
-                                            fontSize: 12,
-                                            padding: "6px 12px",
-                                            opacity: bulkMarkPastedText.trim() ? 1 : 0.5
-                                        },
-                                        children: "📥 Load Pasted Data"
-                                    }),
-                                    /*#__PURE__*/ _jsx(OcrScanButton, {
-                                        label: "📷 Scan Marksheet Photo",
-                                        instructions: "After scanning, check every name and mark below — camera photos of marksheets are the hardest case for OCR. Once it looks right, it drops into the paste box above so you can hit Load Pasted Data.",
-                                        onUseText: (text)=>setBulkMarkPastedText(text)
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    bulkMarkError && /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            background: "#fef2f2",
-                            border: "1px solid #fca5a5",
-                            borderRadius: 8,
-                            padding: 10,
-                            marginBottom: 12,
-                            color: "#dc2626",
-                            fontSize: 13
-                        },
-                        children: bulkMarkError
-                    }),
-                    bulkMarkPreview && (()=>{
-                        const curSubjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-                        const detected = curSubjects.filter((sub)=>bulkMarkPreview.subjectCols[sub]);
-                        return /*#__PURE__*/ _jsxs(_Fragment, {
-                            children: [
-                                /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        fontSize: 12,
-                                        color: "#065f46",
-                                        background: "#f0fdf4",
-                                        borderRadius: 8,
-                                        padding: "8px 12px",
-                                        marginBottom: 10
-                                    },
-                                    children: [
-                                        "✅ Detected ",
-                                        /*#__PURE__*/ _jsxs("b", {
-                                            children: [
-                                                bulkMarkPreview.rows.length,
-                                                " rows"
-                                            ]
-                                        }),
-                                        ". Subjects found: ",
-                                        /*#__PURE__*/ _jsx("b", {
-                                            children: detected.join(", ") || "none"
-                                        }),
-                                        ".",
-                                        curSubjects.filter((s)=>!bulkMarkPreview.subjectCols[s]).length > 0 && /*#__PURE__*/ _jsxs("span", {
-                                            style: {
-                                                color: "#b45309"
-                                            },
-                                            children: [
-                                                " Missing: ",
-                                                curSubjects.filter((s)=>!bulkMarkPreview.subjectCols[s]).join(", "),
-                                                "."
-                                            ]
-                                        })
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsx("div", {
-                                    style: {
-                                        maxHeight: 320,
-                                        overflowY: "auto",
-                                        marginBottom: 12,
-                                        border: "1px solid #fde68a",
-                                        borderRadius: 8
-                                    },
-                                    children: /*#__PURE__*/ _jsxs("table", {
-                                        style: {
-                                            width: "100%",
-                                            fontSize: 11,
-                                            minWidth: 500
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("thead", {
-                                                children: /*#__PURE__*/ _jsxs("tr", {
-                                                    style: {
-                                                        background: "#fef3c7"
-                                                    },
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: th,
-                                                            children: "✓"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                textAlign: "left"
-                                                            },
-                                                            children: "CSV NAME"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                textAlign: "left"
-                                                            },
-                                                            children: "MATCHED PUPIL"
-                                                        }),
-                                                        detected.map((sub)=>isLower ? /*#__PURE__*/ _jsx("th", {
-                                                                style: th,
-                                                                children: sub
-                                                            }, sub) : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                                                children: [
-                                                                    /*#__PURE__*/ _jsxs("th", {
-                                                                        style: th,
-                                                                        children: [
-                                                                            sub,
-                                                                            " CA"
-                                                                        ]
-                                                                    }),
-                                                                    /*#__PURE__*/ _jsxs("th", {
-                                                                        style: th,
-                                                                        children: [
-                                                                            sub,
-                                                                            " EX"
-                                                                        ]
-                                                                    })
-                                                                ]
-                                                            }, sub))
-                                                    ]
-                                                })
-                                            }),
-                                            /*#__PURE__*/ _jsx("tbody", {
-                                                children: bulkMarkPreview.rows.map((row, ri)=>/*#__PURE__*/ _jsxs("tr", {
-                                                        style: {
-                                                            background: ri % 2 === 0 ? "white" : "#fffbeb",
-                                                            opacity: row.include ? 1 : 0.4
-                                                        },
-                                                        children: [
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: td,
-                                                                children: /*#__PURE__*/ _jsx("input", {
-                                                                    type: "checkbox",
-                                                                    checked: row.include,
-                                                                    onChange: ()=>setBulkMarkPreview((prev)=>({
-                                                                                ...prev,
-                                                                                rows: prev.rows.map((r, i)=>i === ri ? {
-                                                                                        ...r,
-                                                                                        include: !r.include
-                                                                                    } : r)
-                                                                            }))
-                                                                })
-                                                            }),
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
-                                                                    textAlign: "left",
-                                                                    fontWeight: 600
-                                                                },
-                                                                children: row.rawName
-                                                            }),
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
-                                                                    textAlign: "left"
-                                                                },
-                                                                children: /*#__PURE__*/ _jsxs("select", {
-                                                                    value: row.studentId || "",
-                                                                    onChange: (e)=>setBulkMarkPreview((prev)=>({
-                                                                                ...prev,
-                                                                                rows: prev.rows.map((r, i)=>i === ri ? {
-                                                                                        ...r,
-                                                                                        studentId: e.target.value || null
-                                                                                    } : r)
-                                                                            })),
-                                                                    style: {
-                                                                        ...inp,
-                                                                        padding: "2px 4px",
-                                                                        fontSize: 11,
-                                                                        minWidth: 0,
-                                                                        width: 150,
-                                                                        borderColor: row.studentId ? "#22c55e" : "#f59e0b",
-                                                                        background: row.studentId ? "#f0fdf4" : "#fefce8"
-                                                                    },
-                                                                    children: [
-                                                                        /*#__PURE__*/ _jsx("option", {
-                                                                            value: "",
-                                                                            children: "- not matched -"
-                                                                        }),
-                                                                        classStudents.map((s)=>/*#__PURE__*/ _jsx("option", {
-                                                                                value: s.id,
-                                                                                children: s.name
-                                                                            }, s.id))
-                                                                    ]
-                                                                })
-                                                            }),
-                                                            detected.map((sub)=>{
-                                                                const m = row.marks[sub] || {};
-                                                                const subMax = isLower ? lowerSubjectMax(sub) : 100;
-                                                                return isLower ? /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: m.mk != null ? clampMark(m.mk, subMax) : "-"
-                                                                }, sub) : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                                                    children: [
-                                                                        /*#__PURE__*/ _jsx("td", {
-                                                                            style: td,
-                                                                            children: m.ca != null ? clampMark(m.ca, subMax) : "-"
-                                                                        }),
-                                                                        /*#__PURE__*/ _jsx("td", {
-                                                                            style: td,
-                                                                            children: m.exam != null ? clampMark(m.exam, subMax) : "-"
-                                                                        })
-                                                                    ]
-                                                                }, sub);
-                                                            })
-                                                        ]
-                                                    }, row.id))
-                                            })
-                                        ]
-                                    })
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        display: "flex",
-                                        gap: 10,
-                                        alignItems: "center"
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ _jsxs("button", {
-                                            onClick: confirmBulkMarks,
-                                            disabled: !bulkMarkPreview.rows.some((r)=>r.include && r.studentId),
-                                            style: {
-                                                ...btnPrimary,
-                                                opacity: bulkMarkPreview.rows.some((r)=>r.include && r.studentId) ? 1 : 0.5
-                                            },
-                                            children: [
-                                                "💾 Save Marks for ",
-                                                bulkMarkPreview.rows.filter((r)=>r.include && r.studentId).length,
-                                                " Pupils"
-                                            ]
-                                        }),
-                                        /*#__PURE__*/ _jsx("button", {
-                                            onClick: ()=>setBulkMarkPreview(null),
-                                            style: btnGhost,
-                                            children: "Clear"
-                                        }),
-                                        /*#__PURE__*/ _jsx("span", {
-                                            style: {
-                                                fontSize: 11,
-                                                color: "#6b7280"
-                                            },
-                                            children: "Unmatched rows will not be saved."
-                                        })
-                                    ]
-                                })
-                            ]
-                        });
-                    })()
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                style: {
-                    overflowX: "auto"
-                },
-                children: /*#__PURE__*/ _jsxs("table", {
-                    style: {
-                        width: "100%",
-                        fontSize: 12,
-                        minWidth: 900
-                    },
+            _jsx("div", {
+                className: "overflow-x-auto border rounded",
+                children: _jsxs("table", {
+                    className: "min-w-full text-sm",
                     children: [
-                        /*#__PURE__*/ _jsxs("thead", {
-                            children: [
-                                /*#__PURE__*/ _jsxs("tr", {
-                                    style: {
-                                        background: "#1e3a6e",
-                                        color: "white"
-                                    },
+                        _jsx("thead", {
+                            children: _jsxs("tr", {
+                                className: "bg-gray-100",
+                                children: [
+                                    _jsx("th", {
+                                        className: "p-2 text-left",
+                                        children: "Pos"
+                                    }),
+                                    _jsx("th", {
+                                        className: "p-2 text-left",
+                                        children: "Pupil"
+                                    }),
+                                    NURSERY_SUBJECTS.map((sub)=>_jsx("th", {
+                                            className: "p-2 text-center",
+                                            children: sub
+                                        }, sub)),
+                                    _jsx("th", {
+                                        className: "p-2 text-center",
+                                        children: "Total"
+                                    })
+                                ]
+                            })
+                        }),
+                        _jsx("tbody", {
+                            children: displayRows.map((r)=>_jsxs("tr", {
+                                    className: "border-t align-top",
                                     children: [
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: th,
-                                            rowSpan: 2,
-                                            children: "S/N"
+                                        _jsx("td", {
+                                            className: "p-2",
+                                            children: r.pos
                                         }),
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: {
-                                                ...th,
-                                                textAlign: "left",
-                                                minWidth: 160
-                                            },
-                                            rowSpan: 2,
-                                            children: "NAME OF PUPIL"
+                                        _jsx("td", {
+                                            className: "p-2 font-medium whitespace-nowrap",
+                                            children: r.s.name
                                         }),
-                                        isLower ? subjects.map((s)=>/*#__PURE__*/ _jsxs("th", {
-                                                style: th,
-                                                rowSpan: 2,
+                                        r.perSub.map((p)=>_jsxs("td", {
+                                                className: "p-2",
                                                 children: [
-                                                    s,
-                                                    lowerSubjectMax(s) !== 100 ? " /".concat(lowerSubjectMax(s)) : ""
+                                                    _jsx("input", {
+                                                        type: "number",
+                                                        min: 0,
+                                                        max: 100,
+                                                        className: "border rounded w-16 px-1 py-0.5 text-center",
+                                                        value: p.mark === undefined ? "" : p.mark,
+                                                        onChange: (e)=>{
+                                                            const raw = e.target.value;
+                                                            updateNurseryMark(r.s.id, tk, period, p.sub, "mark", raw === "" ? undefined : Number(raw));
+                                                        }
+                                                    }),
+                                                    period === "End of Term" && p.band && _jsx("div", {
+                                                        className: "text-xs mt-1 px-1 rounded text-white text-center",
+                                                        style: {
+                                                            backgroundColor: p.band.color
+                                                        },
+                                                        title: p.band.label,
+                                                        children: p.band.label
+                                                    }),
+                                                    period === "End of Term" && _jsx("input", {
+                                                        type: "text",
+                                                        placeholder: "Comment",
+                                                        className: "border rounded w-24 px-1 py-0.5 text-xs mt-1",
+                                                        value: p.comment,
+                                                        onChange: (e)=>updateNurseryMark(r.s.id, tk, period, p.sub, "comment", e.target.value)
+                                                    })
                                                 ]
-                                            }, s)) : subjects.map((s)=>/*#__PURE__*/ _jsx("th", {
-                                                style: th,
-                                                colSpan: 4,
-                                                children: s
-                                            }, s)),
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: th,
-                                            rowSpan: 2,
-                                            children: "TOT MK"
-                                        }),
-                                        !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2,
-                                                    children: "TOT AGG"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2,
-                                                    children: "DIV"
-                                                })
-                                            ]
-                                        }),
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: th,
-                                            rowSpan: 2,
-                                            children: "POS"
+                                            }, p.sub)),
+                                        _jsx("td", {
+                                            className: "p-2 text-center font-semibold",
+                                            children: r.total || "-"
                                         })
                                     ]
-                                }),
-                                !isLower && /*#__PURE__*/ _jsx("tr", {
-                                    style: {
-                                        background: "#1e40af",
-                                        color: "white"
-                                    },
-                                    children: subjects.map((s)=>/*#__PURE__*/ _jsxs(React.Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#fef9c3",
-                                                        color: "#713f12"
-                                                    },
-                                                    children: "CA"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#dcfce7",
-                                                        color: "#14532d"
-                                                    },
-                                                    children: "EXAM"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#dbeafe",
-                                                        color: "#1e3a6e"
-                                                    },
-                                                    children: "AV"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#fed7aa",
-                                                        color: "#7c2d12"
-                                                    },
-                                                    children: "AGG"
-                                                })
-                                            ]
-                                        }, s))
-                                })
-                            ]
-                        }),
-                        /*#__PURE__*/ _jsxs("tbody", {
-                            children: [
-                                displayRows.map((r, i)=>/*#__PURE__*/ _jsxs("tr", {
-                                        style: {
-                                            background: i % 2 === 0 ? "white" : "#f8fafc"
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: td,
-                                                children: i + 1
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 600,
-                                                    textAlign: "left"
-                                                },
-                                                children: r.s.name
-                                            }),
-                                            isLower ? r.perSub.map((p)=>/*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx(MarkInput, {
-                                                        value: p.av,
-                                                        existingVal: p.exam,
-                                                        max: lowerSubjectMax(p.sub),
-                                                        style: markInput,
-                                                        locked: isLocked,
-                                                        onCommit: (newVal, existingVal)=>handleMarkChange(r.s.id, r.s.name, tk, p.sub, "exam", newVal, existingVal)
-                                                    })
-                                                }, p.sub)) : r.perSub.map((p)=>/*#__PURE__*/ {
-                                                var _p_av;
-                                                return _jsxs(React.Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#fefce8"
-                                                            },
-                                                            children: /*#__PURE__*/ _jsx(MarkInput, {
-                                                                value: p.ca,
-                                                                existingVal: p.ca,
-                                                                max: 100,
-                                                                style: markInput,
-                                                                locked: isLocked,
-                                                                onCommit: (newVal, existingVal)=>handleMarkChange(r.s.id, r.s.name, tk, p.sub, "ca", newVal, existingVal)
-                                                            })
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#f0fdf4"
-                                                            },
-                                                            children: /*#__PURE__*/ _jsx(MarkInput, {
-                                                                value: p.exam,
-                                                                existingVal: p.exam,
-                                                                max: 100,
-                                                                style: markInput,
-                                                                locked: isLocked,
-                                                                onCommit: (newVal, existingVal)=>handleMarkChange(r.s.id, r.s.name, tk, p.sub, "exam", newVal, existingVal)
-                                                            })
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#eff6ff",
-                                                                fontWeight: 600
-                                                            },
-                                                            children: p.isX ? "X" : (_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : "-"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#fff7ed",
-                                                                fontWeight: 600
-                                                            },
-                                                            children: p.isX ? "X" : p.av !== undefined ? p.agg : "-"
-                                                        })
-                                                    ]
-                                                }, p.sub);
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    background: "#ede9fe"
-                                                },
-                                                children: r.totMk || "-"
-                                            }),
-                                            !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                children: [
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            background: "#ede9fe",
-                                                            color: r.hasX ? "#dc2626" : "inherit",
-                                                            fontWeight: r.hasX ? 700 : 400
-                                                        },
-                                                        children: r.hasX ? "X" : r.totAgg || "-"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            fontWeight: 700,
-                                                            color: r.hasX ? "#dc2626" : "#1e40af"
-                                                        },
-                                                        children: r.hasX ? "X" : r.totMk ? r.div : "-"
-                                                    })
-                                                ]
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td
-                                                },
-                                                children: r.pos !== "-" ? /*#__PURE__*/ _jsx(PositionBadge, {
-                                                    pos: r.pos,
-                                                    size: 13
-                                                }) : "-"
-                                            })
-                                        ]
-                                    }, r.s.id)),
-                                classStudents.length === 0 && /*#__PURE__*/ _jsx("tr", {
-                                    children: /*#__PURE__*/ _jsxs("td", {
-                                        colSpan: 30,
-                                        style: {
-                                            padding: 24,
-                                            textAlign: "center",
-                                            color: "#9ca3af"
-                                        },
-                                        children: [
-                                            "No students in ",
-                                            cls,
-                                            "."
-                                        ]
-                                    })
-                                }),
-                                classStudents.length > 0 && displayRows.length === 0 && /*#__PURE__*/ _jsx("tr", {
-                                    children: /*#__PURE__*/ _jsxs("td", {
-                                        colSpan: 30,
-                                        style: {
-                                            padding: 24,
-                                            textAlign: "center",
-                                            color: "#9ca3af"
-                                        },
-                                        children: [
-                                            'No pupil matches "',
-                                            search,
-                                            '".'
-                                        ]
-                                    })
-                                })
-                            ]
+                                }, r.s.id))
                         })
                     ]
                 })
-            }),
-            showTransfer && /*#__PURE__*/ _jsx(TransferResultModal, {
-                title: "Transfer Result — ".concat(cls),
-                note: "Copies every ".concat(cls, ' pupil\'s saved marks from the "From" term/year into the "To" term/year, overwriting anything already there.'),
-                fields: [
-                    {
-                        key: "term",
-                        label: "Term",
-                        options: TERMS
-                    },
-                    {
-                        key: "year",
-                        label: "Year",
-                        type: "text"
-                    }
-                ],
-                initialFrom: {
-                    term,
-                    year
-                },
-                initialTo: {
-                    term,
-                    year
-                },
-                onClose: ()=>setShowTransfer(false),
-                onConfirm: (from, to)=>{
-                    transferTermMarks(cls, "".concat(from.term, "__").concat(from.year), "".concat(to.term, "__").concat(to.year));
-                    setShowTransfer(false);
-                    setPendingToast("".concat(cls, " marks transferred from ").concat(from.term, " ").concat(from.year, " to ").concat(to.term, " ").concat(to.year, "."));
-                    setTimeout(()=>setPendingToast(""), 4000);
-                }
-            }),
-            confirmDialog && /*#__PURE__*/ _jsx(ConfirmModal, {
-                title: confirmDialog === "reset" ? "Clear Results" : "Restore Results",
-                message: confirmDialog === "reset" ? "Are you sure you want to clear all ".concat(cls, " ").concat(term, " ").concat(year, " marks back to blank?") : "Restore ".concat(cls, " ").concat(term, " ").concat(year, " marks back to what they were before the last reset?"),
-                confirmLabel: confirmDialog === "reset" ? "Clear Results" : "Restore Results",
-                danger: confirmDialog === "reset",
-                onCancel: ()=>setConfirmDialog(null),
-                onConfirm: ()=>{
-                    if (confirmDialog === "reset") resetTermClass(cls, tk);
-                    else restoreTermClass(cls, tk);
-                    setConfirmDialog(null);
-                }
             })
         ]
     });
 }
-// ─── MOCK INFO ───────────────────────────────────────────────────────────────
-const MOCK_TYPES = [
-    "Municipal Mock",
-    "TAEB Mock"
+// ─── ASSESSMENT (BOT / Mid Term) ────────────────────────────────────────────
+// Shared across every section -- Nursery, Lower Primary, Upper Primary --
+// unlike Mark Entry/Nursery Mark Entry which are each one section's End of
+// Term screen. BOT (Beginning of Term) and Mid Term are the two assessment
+// points under this page, stored the same way as any other period (see
+// updateTermMark's and updateNurseryMark's shape notes) and selected via the
+// Assessment dropdown below -- both are wired to Slips; Report Cards only
+// ever read the "Mid Term" period, never "BOT", so entering BOT marks never
+// touches what prints on a report card.
+const MIDTERM_ASSESSMENTS = [
+    "BOT",
+    "Mid Term"
 ];
+function AssessmentEntry(param) {
+    let { students, termMarks, updateTermMark, nurseryMarks, updateNurseryMark, bands: defaultBands, specialBands, divisions, school } = param;
+    const allClasses = [
+        ...NURSERY_CLASSES,
+        ...ALL_CLASSES
+    ];
+    const [cls, setCls] = useState(allClasses[0]);
+    const [term, setTerm] = useState("Term I");
+    const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
+    const [assessment, setAssessment] = useState("BOT");
+    const [search, setSearch] = useState("");
+    const isNursery = NURSERY_CLASSES.includes(cls);
+    const isLower = LOWER_CLASSES.includes(cls);
+    const subjects = isNursery ? NURSERY_SUBJECTS : isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
+    const tk = `${term}__${year}`;
+    const bands = useMemo(()=>isNursery ? null : bandsForClass(cls, defaultBands, specialBands, assessment, year), [
+        isNursery,
+        cls,
+        defaultBands,
+        specialBands,
+        assessment,
+        year
+    ]);
+    const classStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
+        students,
+        cls
+    ]);
+    const rows = useMemo(()=>classStudents.map((s)=>{
+            if (isNursery) {
+                const m = nurseryMarks[s.id]?.[tk]?.[assessment] || {};
+                const perSub = subjects.map((sub)=>{
+                    const mark = m[sub]?.mark;
+                    const comment = m[sub]?.comment || "";
+                    return {
+                        sub,
+                        mark,
+                        comment,
+                        band: nurseryColorForMark(mark)
+                    };
+                });
+                const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+                return {
+                    s,
+                    perSub,
+                    total
+                };
+            }
+            const m = termMarks[s.id]?.[tk]?.[assessment] || {};
+            const perSub = subjects.map((sub)=>{
+                const mark = m[sub];
+                const hasMark = typeof mark === "number";
+                return {
+                    sub,
+                    mark,
+                    grade: hasMark ? gradeLabel(mark, bands) : undefined
+                };
+            });
+            const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+            return {
+                s,
+                perSub,
+                total
+            };
+        }), [
+        classStudents,
+        isNursery,
+        nurseryMarks,
+        termMarks,
+        tk,
+        assessment,
+        subjects,
+        bands
+    ]);
+    const positions = useMemo(()=>rankWithTies(rows.map((r)=>r.total > 0 ? r.total : null), rows.map(()=>null)), [
+        rows
+    ]);
+    const displayRows = useMemo(()=>{
+        const withPos = rows.map((r, i)=>({
+                ...r,
+                pos: positions[i]
+            }));
+        if (!search.trim()) return withPos;
+        const q = search.trim().toLowerCase();
+        return withPos.filter((r)=>r.s.name.toLowerCase().includes(q));
+    }, [
+        rows,
+        positions,
+        search
+    ]);
+    return <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Assessments</h2>
+            <div className="flex flex-wrap gap-3 mb-4 items-end">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Class</label>
+                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
+                        {allClasses.map((c)=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Term</label>
+                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
+                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Year</label>
+                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Assessment</label>
+                    <select className="border rounded px-2 py-1" value={assessment} onChange={(e)=>setAssessment(e.target.value)}>
+                        {MIDTERM_ASSESSMENTS.map((a)=><option key={a} value={a}>{a}</option>)}
+                    </select>
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                    <label className="block text-sm font-medium mb-1">Search</label>
+                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
+                </div>
+            </div>
+            <div className="overflow-x-auto border rounded">
+                <table className="min-w-full text-sm">
+                    <thead>
+                        <tr className="bg-gray-100">
+                            <th className="p-2 text-left">Pos</th>
+                            <th className="p-2 text-left">Pupil</th>
+                            {subjects.map((sub)=><th key={sub} className="p-2 text-center">{sub}</th>)}
+                            <th className="p-2 text-center">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {displayRows.map((r)=><tr key={r.s.id} className="border-t align-top">
+                                <td className="p-2">{r.pos}</td>
+                                <td className="p-2 font-medium whitespace-nowrap">{r.s.name}</td>
+                                {r.perSub.map((p)=><td key={p.sub} className="p-2">
+                                        <input type="number" min={0} max={100} className="border rounded w-16 px-1 py-0.5 text-center" value={p.mark === undefined ? "" : p.mark} onChange={(e)=>{
+                                        const raw = e.target.value;
+                                        const val = raw === "" ? undefined : Number(raw);
+                                        if (isNursery) updateNurseryMark(r.s.id, tk, assessment, p.sub, "mark", val);
+                                        else updateTermMark(r.s.id, tk, assessment, p.sub, val);
+                                    }} />
+                                        {isNursery && p.band && <div className="text-xs mt-1 px-1 rounded text-white text-center" style={{
+                                        backgroundColor: p.band.color
+                                    }} title={p.band.label}>{p.band.label}</div>}
+                                        {isNursery && <input type="text" placeholder="Comment" className="border rounded w-24 px-1 py-0.5 text-xs mt-1" value={p.comment} onChange={(e)=>updateNurseryMark(r.s.id, tk, assessment, p.sub, "comment", e.target.value)} />}
+                                        {!isNursery && p.grade && <div className="text-xs mt-1 text-center font-semibold">{p.grade}</div>}
+                                    </td>)}
+                                <td className="p-2 text-center font-semibold">{r.total || "-"}</td>
+                            </tr>)}
+                    </tbody>
+                </table>
+            </div>
+        </div>;
+}
+// ─── NURSERY REPORT CARD ────────────────────────────────────────────────────
+// Matches the paper report card layout: a Mid Term row (marks + total +
+// grade only) and an End of Term table (marks + auto colour band + comment
+// + initials), plus the Key legend. Conduct/Health/Attendance/Class
+// Teacher's Report/Headteacher's Comment/next-term dates/signature print as
+// blank lines to fill by hand -- same as the paper original -- rather than
+// adding a whole new per-pupil data model for those right now.
+const NURSERY_GRADE_LABEL = {
+    green: "A",
+    blue: "B",
+    purple: "C",
+    brown: "D",
+    red: "E"
+};
+function NurseryReportCard(param) {
+    let { students, nurseryMarks, school } = param;
+    const [cls, setCls] = useState("Baby");
+    const [term, setTerm] = useState("Term I");
+    const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
+    const [search, setSearch] = useState("");
+    const tk = "".concat(term, "__").concat(year);
+    const classStudents = useMemo(()=>students.filter((s)=>s.className === cls && s.name.toLowerCase().includes(search.toLowerCase())).sort((a, b)=>a.name.localeCompare(b.name)), [
+        students,
+        cls,
+        search
+    ]);
+    // classSize is the paper card's "TOTAL IN CLASS" field -- how many
+    // pupils are in this class, not any individual pupil's own total.
+    const classSize = useMemo(()=>students.filter((s)=>s.className === cls).length, [
+        students,
+        cls
+    ]);
+    const buildPeriod = (m)=>{
+        const perSub = NURSERY_SUBJECTS.map((sub)=>{
+            var _m_sub, _m_sub1;
+            const mark = (_m_sub = m === null || m === void 0 ? void 0 : m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mark;
+            const comment = ((_m_sub1 = m === null || m === void 0 ? void 0 : m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.comment) || "";
+            return {
+                sub,
+                mark,
+                comment,
+                band: nurseryColorForMark(mark)
+            };
+        });
+        const enteredCount = perSub.filter((p)=>typeof p.mark === "number").length;
+        const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+        const avg = enteredCount ? total / enteredCount : undefined;
+        const avgBand = nurseryColorForMark(avg);
+        return {
+            perSub,
+            total,
+            grade: avgBand ? NURSERY_GRADE_LABEL[avgBand.color] : "-"
+        };
+    };
+    const cards = useMemo(()=>classStudents.map((s)=>{
+            const mid = buildPeriod(nurseryMarks[s.id]?.[tk]?.["Mid Term"]);
+            const end = buildPeriod(nurseryMarks[s.id]?.[tk]?.["End of Term"]);
+            return {
+                s,
+                mid,
+                end
+            };
+        }), [
+        classStudents,
+        nurseryMarks,
+        tk
+    ]);
+    return _jsxs("div", {
+        className: "p-4",
+        children: [
+            _jsx("h2", {
+                className: "text-xl font-bold mb-4 print:hidden",
+                children: "Nursery Report Cards"
+            }),
+            _jsxs("div", {
+                className: "flex flex-wrap gap-3 mb-4 items-end print:hidden",
+                children: [
+                    _jsxs("div", {
+                        children: [
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Class"
+                            }),
+                            _jsx("select", {
+                                className: "border rounded px-2 py-1",
+                                value: cls,
+                                onChange: (e)=>setCls(e.target.value),
+                                children: NURSERY_CLASSES.map((c)=>_jsx("option", {
+                                        value: c,
+                                        children: c
+                                    }, c))
+                            })
+                        ]
+                    }),
+                    _jsxs("div", {
+                        children: [
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Term"
+                            }),
+                            _jsx("select", {
+                                className: "border rounded px-2 py-1",
+                                value: term,
+                                onChange: (e)=>setTerm(e.target.value),
+                                children: TERMS.map((t)=>_jsx("option", {
+                                        value: t,
+                                        children: t
+                                    }, t))
+                            })
+                        ]
+                    }),
+                    _jsxs("div", {
+                        children: [
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Year"
+                            }),
+                            _jsx("input", {
+                                className: "border rounded px-2 py-1 w-24",
+                                value: year,
+                                onChange: (e)=>setYear(e.target.value)
+                            })
+                        ]
+                    }),
+                    _jsxs("div", {
+                        className: "flex-1 min-w-[160px]",
+                        children: [
+                            _jsx("label", {
+                                className: "block text-sm font-medium mb-1",
+                                children: "Search"
+                            }),
+                            _jsx("input", {
+                                className: "border rounded px-2 py-1 w-full",
+                                placeholder: "Search pupil...",
+                                value: search,
+                                onChange: (e)=>setSearch(e.target.value)
+                            })
+                        ]
+                    }),
+                    _jsx("button", {
+                        className: "bg-blue-600 text-white rounded px-4 py-2",
+                        onClick: ()=>window.print(),
+                        children: "Print"
+                    })
+                ]
+            }),
+            cards.map((c)=>_jsxs("div", {
+                    className: "border-4 border-red-300 rounded p-4 mb-6 max-w-2xl mx-auto bg-white print:break-after-page",
+                    children: [
+                        _jsxs("div", {
+                            className: "flex items-center justify-between",
+                            children: [
+                                school.logo && _jsx("img", {
+                                    src: school.logo,
+                                    alt: "logo",
+                                    className: "w-16 h-16 object-contain"
+                                }),
+                                _jsxs("div", {
+                                    className: "text-center flex-1",
+                                    children: [
+                                        _jsx("div", {
+                                            className: "text-lg font-bold tracking-wide",
+                                            children: school.name || "SCHOOL NAME"
+                                        }),
+                                        school.poBox && _jsx("div", {
+                                            className: "text-xs",
+                                            children: school.poBox
+                                        }),
+                                        school.tel && _jsxs("div", {
+                                            className: "text-xs",
+                                            children: [
+                                                "Tel. ",
+                                                school.tel
+                                            ]
+                                        })
+                                    ]
+                                }),
+                                school.logo && _jsx("img", {
+                                    src: school.logo,
+                                    alt: "logo",
+                                    className: "w-16 h-16 object-contain"
+                                })
+                            ]
+                        }),
+                        _jsxs("div", {
+                            className: "mt-3 text-sm",
+                            children: [
+                                _jsxs("div", {
+                                    children: [
+                                        _jsx("span", {
+                                            className: "font-semibold",
+                                            children: "PUPILS NAME: "
+                                        }),
+                                        c.s.name,
+                                        "\u00A0\u00A0\u00A0",
+                                        _jsx("span", {
+                                            className: "font-semibold",
+                                            children: "CLASS: "
+                                        }),
+                                        cls
+                                    ]
+                                }),
+                                _jsxs("div", {
+                                    children: [
+                                        _jsx("span", {
+                                            className: "font-semibold",
+                                            children: "GRADE: "
+                                        }),
+                                        c.end.grade,
+                                        "\u00A0\u00A0\u00A0",
+                                        _jsx("span", {
+                                            className: "font-semibold",
+                                            children: "TOTAL IN CLASS: "
+                                        }),
+                                        classSize,
+                                        "\u00A0\u00A0\u00A0",
+                                        _jsx("span", {
+                                            className: "font-semibold",
+                                            children: "TERM: "
+                                        }),
+                                        term,
+                                        "\u00A0\u00A0\u00A0",
+                                        _jsx("span", {
+                                            className: "font-semibold",
+                                            children: "YEAR: "
+                                        }),
+                                        year
+                                    ]
+                                })
+                            ]
+                        }),
+                        _jsx("div", {
+                            className: "text-center font-semibold mt-3 mb-1",
+                            children: "MID TERM PERFORMANCE"
+                        }),
+                        _jsx("table", {
+                            className: "w-full text-xs border-collapse border",
+                            children: _jsxs("tbody", {
+                                children: [
+                                    _jsx("tr", {
+                                        children: [
+                                            ...NURSERY_SUBJECTS.map((sub)=>_jsx("th", {
+                                                    className: "border p-1",
+                                                    children: sub
+                                                }, sub)),
+                                            _jsx("th", {
+                                                className: "border p-1",
+                                                children: "TOTAL"
+                                            }),
+                                            _jsx("th", {
+                                                className: "border p-1",
+                                                children: "GRADE"
+                                            })
+                                        ]
+                                    }),
+                                    _jsxs("tr", {
+                                        children: [
+                                            ...c.mid.perSub.map((p)=>_jsx("td", {
+                                                    className: "border p-1 text-center",
+                                                    children: p.mark === undefined ? "-" : p.mark
+                                                }, p.sub)),
+                                            _jsx("td", {
+                                                className: "border p-1 text-center font-semibold",
+                                                children: c.mid.total || "-"
+                                            }),
+                                            _jsx("td", {
+                                                className: "border p-1 text-center font-semibold",
+                                                children: c.mid.grade
+                                            })
+                                        ]
+                                    })
+                                ]
+                            })
+                        }),
+                        _jsx("div", {
+                            className: "text-center font-semibold mt-3 mb-1",
+                            children: "END OF TERM PERFORMANCE"
+                        }),
+                        _jsxs("table", {
+                            className: "w-full text-xs border-collapse border",
+                            children: [
+                                _jsx("thead", {
+                                    children: _jsxs("tr", {
+                                        children: [
+                                            _jsx("th", {
+                                                className: "border p-1",
+                                                children: "SUBJECT"
+                                            }),
+                                            _jsx("th", {
+                                                className: "border p-1",
+                                                children: "MARKS"
+                                            }),
+                                            _jsx("th", {
+                                                className: "border p-1",
+                                                children: "COLOUR"
+                                            }),
+                                            _jsx("th", {
+                                                className: "border p-1",
+                                                children: "COMMENT"
+                                            }),
+                                            _jsx("th", {
+                                                className: "border p-1",
+                                                children: "INITIALS"
+                                            })
+                                        ]
+                                    })
+                                }),
+                                _jsxs("tbody", {
+                                    children: [
+                                        c.end.perSub.map((p)=>_jsxs("tr", {
+                                                children: [
+                                                    _jsx("td", {
+                                                        className: "border p-1",
+                                                        children: p.sub
+                                                    }),
+                                                    _jsx("td", {
+                                                        className: "border p-1 text-center",
+                                                        children: p.mark === undefined ? "-" : p.mark
+                                                    }),
+                                                    _jsx("td", {
+                                                        className: "border p-1",
+                                                        style: p.band ? {
+                                                            backgroundColor: p.band.color,
+                                                            // Without these, browsers drop cell backgrounds when printing
+                                                            // (default "Background graphics" = off) and the colour column
+                                                            // comes out blank on paper.
+                                                            WebkitPrintColorAdjust: "exact",
+                                                            printColorAdjust: "exact"
+                                                        } : undefined
+                                                    }),
+                                                    _jsx("td", {
+                                                        className: "border p-1",
+                                                        children: p.comment
+                                                    }),
+                                                    _jsx("td", {
+                                                        className: "border p-1"
+                                                    })
+                                                ]
+                                            }, p.sub)),
+                                        _jsxs("tr", {
+                                            children: [
+                                                _jsx("td", {
+                                                    className: "border p-1 font-semibold",
+                                                    children: "TOTAL"
+                                                }),
+                                                _jsx("td", {
+                                                    className: "border p-1 text-center font-semibold",
+                                                    children: c.end.total || "-"
+                                                }),
+                                                _jsx("td", {
+                                                    className: "border p-1"
+                                                }),
+                                                _jsx("td", {
+                                                    className: "border p-1"
+                                                }),
+                                                _jsx("td", {
+                                                    className: "border p-1"
+                                                })
+                                            ]
+                                        })
+                                    ]
+                                })
+                            ]
+                        }),
+                        _jsxs("div", {
+                            className: "mt-2 text-[10px]",
+                            children: [
+                                _jsx("span", {
+                                    className: "font-semibold underline",
+                                    children: "KEY"
+                                }),
+                                ": ",
+                                NURSERY_COLOR_BANDS.map((b)=>"".concat(b.label, " - ").concat(b.color[0].toUpperCase() + b.color.slice(1))).join("    ")
+                            ]
+                        }),
+                        _jsxs("div", {
+                            className: "mt-3 text-xs space-y-1",
+                            children: [
+                                _jsx("div", {
+                                    children: "CONDUCT: __________________  HEALTH: __________________  ATTENDANCE: __________________"
+                                }),
+                                _jsx("div", {
+                                    children: "CLASS TEACHER'S REPORT: ______________________________________________________"
+                                }),
+                                _jsx("div", {
+                                    children: "NEXT TERM BEGINS ON: _______________  ENDS ON: _______________"
+                                }),
+                                _jsx("div", {
+                                    children: "HEADTEACHER'S COMMENT: ______________________________________________________"
+                                }),
+                                _jsx("div", {
+                                    children: "SIGNATURE: __________________"
+                                })
+                            ]
+                        }),
+                        school.motto && _jsxs("div", {
+                            className: "text-center italic text-xs mt-3",
+                            children: [
+                                "MOTTO: ",
+                                school.motto
+                            ]
+                        })
+                    ]
+                }, c.s.id))
+        ]
+    });
+}
+// ─── MOCK INFO ───────────────────────────────────────────────────────────────
+const MOCK_TYPES = flattenExamOptions(MOCK_EXAM_OPTIONS);
 function MockInfo(param) {
-    let { students, school, bands: defaultBands, specialBands, divisions, markEditing, role } = param;
-    const [cls, setCls] = useState("P7");
-    const [mockType, setMockType] = useState(MOCK_TYPES[0]);
+    let { students, school, bands: defaultBands, specialBands, divisions, markEditing, role, examOptions = MOCK_EXAM_OPTIONS, classOptions = MOCK_CLASSES, examLabel = "Mock Exam", resultsLabel = "Mock", customExamName = false } = param;
+    // The same sheet serves Mock Info (District / Special / Pre-Mock), the
+    // Pre-PLE tab in PLE Info, and the Other Exam page (customExamName: the
+    // exam name is typed instead of picked).
+    const flatTypes = flattenExamOptions(examOptions);
+    const [cls, setCls] = useState(classOptions.includes("P7") ? "P7" : classOptions[0]);
+    const [mockType, setMockType] = useState(customExamName ? "" : flatTypes[0]);
+    const activeExamGroup = examOptions.find((o)=>typeof o !== "string" && Array.isArray(o.items) && o.items.includes(mockType));
+    const noExamName = customExamName && !String(mockType).trim();
+    // Storage name for an exam: typed Other Exam names are prefixed so they can
+    // never overwrite a real Mock / Pre-PLE sitting saved under the same name.
+    const storageName = (t)=>customExamName ? OTHER_EXAM_KEY_PREFIX + String(t || "").trim() : t;
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
     const [mockMarks, setMockMarks] = useState({});
     const [loaded, setLoaded] = useState(false);
@@ -11020,7 +10136,7 @@ function MockInfo(param) {
         if (!loaded) return;
         const str = JSON.stringify(mockMarks);
         if (str === lastSeenMockRef.current) return; // nothing new to save (e.g. this is the initial load, or a poll-applied remote value)
-        const detail = mockAuditDetailRef.current || "Mock Results updated";
+        const detail = mockAuditDetailRef.current || "".concat(resultsLabel, " Results updated");
         mockAuditDetailRef.current = "";
         const t = setTimeout(()=>{
             queueSharedSave("mkis_mock_marks", mockLatestRef, setMockMarks, lastSeenMockRef, detail);
@@ -11069,16 +10185,18 @@ function MockInfo(param) {
             clearInterval(id);
         };
     }, []);
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, mockType, year), [
+    // storageName() so typed Other Exams resolve to the "Other Exams" checkbox.
+    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, storageName(mockType), year), [
         cls,
         defaultBands,
         specialBands,
         mockType,
+        customExamName,
         year
     ]);
     const isLower = LOWER_CLASSES.includes(cls);
     const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-    const mk = "".concat(mockType, "__").concat(year);
+    const mk = "".concat(storageName(mockType), "__").concat(year);
     const updateMockMark = (sid, sub, val)=>{
         markEditing && markEditing();
         mockEditingUntilRef.current = Date.now() + 2500;
@@ -11105,7 +10223,7 @@ function MockInfo(param) {
     const resetMockClass = ()=>{
         markEditing && markEditing();
         mockEditingUntilRef.current = Date.now() + 2500;
-        mockAuditDetailRef.current = "Mock Results reset — ".concat(cls, " ").concat(mk);
+        mockAuditDetailRef.current = "".concat(resultsLabel, " Results reset — ").concat(cls, " ").concat(mk);
         setMockMarks((prev)=>{
             const next = {
                 ...prev
@@ -11129,12 +10247,12 @@ function MockInfo(param) {
     };
     // Copies one mock exam/year's saved marks for the current class into a
     // different mock exam type and/or year, overwriting anything already
-    // saved at the destination (e.g. copying TAEB Mock into Municipal Mock,
+    // saved at the destination (e.g. copying Special Mock into District Mock,
     // or last year's mock into this year's).
     const transferMockMarks = (fromMk, toMk)=>{
         markEditing && markEditing();
         mockEditingUntilRef.current = Date.now() + 2500;
-        mockAuditDetailRef.current = "Mock Results transferred — ".concat(cls, " ").concat(fromMk, " → ").concat(toMk);
+        mockAuditDetailRef.current = "".concat(resultsLabel, " Results transferred — ").concat(cls, " ").concat(fromMk, " → ").concat(toMk);
         setMockMarks((prev)=>{
             const next = {
                 ...prev
@@ -11258,7 +10376,7 @@ function MockInfo(param) {
                 var _p_exam, _p_agg;
                 return "<td>".concat(showResults ? escapeHtml((_p_exam = p.exam) !== null && _p_exam !== void 0 ? _p_exam : "") : "", "</td><td>").concat(showResults ? escapeHtml(p.isX ? "X" : (_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : "") : "", "</td>");
             }).join(""), "\n        <td>").concat(showResults ? escapeHtml(r.totMk || "") : "", "</td>\n        ").concat(isLower ? "" : "<td>".concat(showResults ? escapeHtml(r.hasX ? "X" : r.totAgg || "") : "", "</td><td>").concat(showResults ? escapeHtml(r.hasX ? "X" : r.totMk ? r.div : "") : "", "</td>"), "\n        <td>").concat(showResults && r.pos !== "-" ? escapeHtml(String(r.pos)) : "", "</td>\n      </tr>")).join("");
-        let body = '\n      <div class="title">'.concat(escapeHtml(school.name), '</div>\n      <div class="subtitle">').concat(escapeHtml(mockType), " ").concat(showResults ? "" : "— BLANK MARK SHEET", " — ").concat(escapeHtml(cls), ", ").concat(escapeHtml(String(year)), '</div>\n      <table>\n        <thead>\n          <tr>\n            <th rowspan="2">S/N</th>\n            <th rowspan="2">NAME OF PUPIL</th>\n            ').concat(subjects.map((s)=>'<th colspan="2">'.concat(escapeHtml(s), "</th>")).join(""), '\n            <th rowspan="2">TOT MK</th>\n            ').concat(isLower ? "" : '<th rowspan="2">TOT AGG</th><th rowspan="2">DIV</th>', '\n            <th rowspan="2">POS</th>\n          </tr>\n          <tr>\n            ').concat(subjects.map(()=>"<th>MARK</th><th>AGG</th>").join(""), "\n          </tr>\n        </thead>\n        <tbody>").concat(rowsHtml, "</tbody>\n      </table>");
+        let body = examHeadingHtml("".concat(mockType, " ").concat(showResults ? "" : "— BLANK MARK SHEET", " — ").concat(cls, ", ").concat(String(year))).concat('\n      <table>\n        <thead>\n          <tr>\n            <th rowspan="2">S/N</th>\n            <th rowspan="2">NAME OF PUPIL</th>\n            ').concat(subjects.map((s)=>'<th colspan="2">'.concat(escapeHtml(s), "</th>")).join(""), '\n            <th rowspan="2">TOT MK</th>\n            ').concat(isLower ? "" : '<th rowspan="2">TOT AGG</th><th rowspan="2">DIV</th>', '\n            <th rowspan="2">POS</th>\n          </tr>\n          <tr>\n            ').concat(subjects.map(()=>"<th>MARK</th><th>AGG</th>").join(""), "\n          </tr>\n        </thead>\n        <tbody>").concat(rowsHtml, "</tbody>\n      </table>");
         if (showResults && !isLower && (subjectAnalysis === null || subjectAnalysis === void 0 ? void 0 : subjectAnalysis.length)) {
             const aHead = [
                 "SUBJECT",
@@ -11615,13 +10733,43 @@ function MockInfo(param) {
                                 label: "Class",
                                 value: cls,
                                 onChange: setCls,
-                                opts: ALL_CLASSES
+                                opts: classOptions
                             }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Mock Exam",
-                                value: mockType,
-                                onChange: setMockType,
-                                opts: MOCK_TYPES
+                            customExamName ? /*#__PURE__*/ _jsxs("div", {
+                                children: [
+                                    /*#__PURE__*/ _jsx("label", {
+                                        style: lbl,
+                                        children: "Type Exam Name"
+                                    }),
+                                    /*#__PURE__*/ _jsx("input", {
+                                        type: "text",
+                                        value: mockType,
+                                        onChange: (e)=>setMockType(e.target.value),
+                                        placeholder: "Type Exam Name",
+                                        style: {
+                                            ...inp,
+                                            width: 220
+                                        }
+                                    })
+                                ]
+                            }) : /*#__PURE__*/ _jsxs(_Fragment, {
+                                children: [
+                                    /*#__PURE__*/ _jsx(Sel, {
+                                        label: examLabel,
+                                        value: activeExamGroup ? activeExamGroup.group : mockType,
+                                        onChange: (v)=>{
+                                            const g = examOptions.find((o)=>typeof o !== "string" && o.group === v);
+                                            setMockType(g ? g.items[0] : v);
+                                        },
+                                        opts: examOptions.map((o)=>typeof o === "string" ? o : o.group)
+                                    }),
+                                    activeExamGroup && /*#__PURE__*/ _jsx(Sel, {
+                                        label: activeExamGroup.group,
+                                        value: mockType,
+                                        onChange: setMockType,
+                                        opts: activeExamGroup.items
+                                    })
+                                ]
                             }),
                             /*#__PURE__*/ _jsxs("div", {
                                 children: [
@@ -11735,6 +10883,17 @@ function MockInfo(param) {
                     })
                 ]
             }),
+            ...noExamName ? [
+                /*#__PURE__*/ _jsx("div", {
+                    style: {
+                        padding: 24,
+                        textAlign: "center",
+                        color: "#6b7280",
+                        fontSize: 14
+                    },
+                    children: "Type the exam name above to start entering marks."
+                })
+            ] : [
             showBulkMock && /*#__PURE__*/ _jsxs("div", {
                 className: "no-print",
                 style: {
@@ -12135,65 +11294,8 @@ function MockInfo(param) {
                     overflowX: "auto"
                 },
                 children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            textAlign: "center",
-                            marginBottom: 12
-                        },
-                        children: [
-                            school.logo && /*#__PURE__*/ _jsx("img", {
-                                src: school.logo,
-                                alt: "School badge",
-                                style: {
-                                    width: 56,
-                                    height: 56,
-                                    objectFit: "contain",
-                                    display: "block",
-                                    margin: "0 auto 6px"
-                                }
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontWeight: 900,
-                                    fontSize: 16,
-                                    color: "#1e3a6e",
-                                    textTransform: "uppercase",
-                                    letterSpacing: 0.5
-                                },
-                                children: school.name
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    fontSize: 11,
-                                    color: "#6b7280",
-                                    marginTop: 2
-                                },
-                                children: [
-                                    school.poBox,
-                                    school.tel ? " | Tel: ".concat(school.tel) : ""
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            textAlign: "center",
-                            marginBottom: 10,
-                            fontWeight: 800,
-                            fontSize: 14,
-                            color: "#1e3a6e",
-                            textTransform: "uppercase",
-                            letterSpacing: 0.5
-                        },
-                        children: [
-                            mockType,
-                            " ",
-                            showResults ? "" : "— Blank Mark Sheet",
-                            " — ",
-                            cls,
-                            ", ",
-                            year
-                        ]
+                    /*#__PURE__*/ _jsx(ExamHeading, {
+                        subtitle: "".concat(mockType, " ").concat(showResults ? "" : "— Blank Mark Sheet", " — ").concat(cls, ", ").concat(year)
                     }),
                     /*#__PURE__*/ _jsxs("table", {
                         style: {
@@ -12778,10 +11880,14 @@ function MockInfo(param) {
                 title: "Transfer Result — ".concat(cls),
                 note: "Copies every ".concat(cls, ' pupil\'s saved results from the "From" mock exam/year into the "To" mock exam/year, overwriting anything already there.'),
                 fields: [
-                    {
+                    customExamName ? {
                         key: "mockType",
-                        label: "Mock Exam",
-                        options: MOCK_TYPES
+                        label: "Type Exam Name",
+                        type: "text"
+                    } : {
+                        key: "mockType",
+                        label: examLabel,
+                        options: flatTypes
                     },
                     {
                         key: "year",
@@ -12799,4888 +11905,162 @@ function MockInfo(param) {
                 },
                 onClose: ()=>setShowTransfer(false),
                 onConfirm: (from, to)=>{
-                    transferMockMarks("".concat(from.mockType, "__").concat(from.year), "".concat(to.mockType, "__").concat(to.year));
+                    if (!(customExamName && (!String(from.mockType).trim() || !String(to.mockType).trim()))) transferMockMarks("".concat(storageName(from.mockType), "__").concat(from.year), "".concat(storageName(to.mockType), "__").concat(to.year));
                     setShowTransfer(false);
                 }
             })
+            ]
         ]
     });
 }
-// ─── MONTHLY EXAMS ───────────────────────────────────────────────────────────
-function MonthlyExams(param) {
-    let { students, monthlyMarks, updateMonthlyMark, transferMonthlyMarks, resetMonthlyMonth, restoreMonthlyMonth, monthlyResetBackups, requestOrApplyMonthlyMark, role, bands: defaultBands, specialBands, divisions, school, lockedMonthly, lockMonthlyEntry, unlockMonthlyEntry, changeRequests, requestUnlockMonthly } = param;
-    const [cls, setCls] = useState("P4");
-    const [term, setTerm] = useState("Term I");
-    const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
-    const [pendingToast, setPendingToast] = useState("");
-    const [showTransfer, setShowTransfer] = useState(false);
-    const [pdfBusy, setPdfBusy] = useState(false);
-    const [search, setSearch] = useState("");
-    const monthBlocksRef = useRef(null);
-    const months = TERM_MONTHS[term];
-    const tk = "".concat(term, "__").concat(year);
-    const isLower = LOWER_CLASSES.includes(cls);
-    const subjects = isLower ? LOWER_MONTHLY_SUBJECTS : MONTHLY_SUBJECTS;
-    // Special Grading Scale override for the selected class, if any (scoped to
-    // the "Monthly Exams" exam type).
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "Monthly Exams", year), [
-        cls,
-        defaultBands,
-        specialBands,
-        year
-    ]);
-    // ── Bulk Mark Sheet import: accepts either an uploaded CSV file or a
-    // marksheet pasted straight from Excel/Sheets (tab-separated) into a
-    // textarea. Both paths flow through the same parser below. ──────────────
-    const [showBulkMonthly, setShowBulkMonthly] = useState(false);
-    const [bulkMonth, setBulkMonth] = useState(months[0]);
-    const [bulkMonthlyText, setBulkMonthlyText] = useState("");
-    const [bulkMonthlyPreview, setBulkMonthlyPreview] = useState(null);
-    const [bulkMonthlyError, setBulkMonthlyError] = useState("");
-    const bulkMonthlyFileRef = useRef();
-    // Keep the bulk-import month selector valid if the term changes underneath it.
-    useEffect(()=>{
-        if (!months.includes(bulkMonth)) setBulkMonth(months[0]);
-    }, [
-        months,
-        bulkMonth
-    ]);
-    // Wraps requestOrApplyMonthlyMark to surface a brief toast whenever an
-    // edit was filed for admin approval rather than saved immediately.
-    const handleMarkChange = useCallback((sid, name, tk2, month, sub, field, val, existingVal)=>{
-        requestOrApplyMonthlyMark(sid, name, tk2, month, sub, field, val, existingVal);
-        const isFirstEntry = existingVal === undefined || existingVal === null || existingVal === "";
-        if (role !== "admin" && !isFirstEntry) {
-            setPendingToast("Change to ".concat(name, "'s ").concat(sub, " mark sent to admin for approval."));
-            setTimeout(()=>setPendingToast(""), 3500);
-        }
-    }, [
-        requestOrApplyMonthlyMark,
-        role
-    ]);
-    const classStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
-        students,
-        cls
-    ]);
-    const getMonthsData = useCallback(()=>months.map((month)=>{
-            const sortedRows = computeMonthRows({
-                month,
-                classStudents,
-                monthlyMarks,
-                tk,
-                subjects,
-                isLower,
-                bands,
-                divisions
-            });
-            const divCounts = isLower ? null : (()=>{
-                const counts = {
-                    I: 0,
-                    II: 0,
-                    III: 0,
-                    IV: 0,
-                    U: 0,
-                    X: 0
-                };
-                sortedRows.forEach((r)=>{
-                    const d = r.div;
-                    if (d === "X") counts.X++;
-                    else if (counts[d] !== undefined) counts[d]++;
-                    else counts.U++;
-                });
-                return counts;
-            })();
-            return {
-                month,
-                sortedRows,
-                divCounts
-            };
-        }), [
-        months,
-        classStudents,
-        monthlyMarks,
-        tk,
-        subjects,
-        isLower,
-        bands,
-        divisions
-    ]);
-    // Parses pasted or uploaded marksheet text into preview rows. The header
-    // row needs a NAME/PUPIL/STUDENT column plus one column per subject, and
-    // works with either comma-separated (CSV) or tab-separated (pasted from
-    // Excel/Sheets) data -- whichever delimiter the header row actually uses.
-    const parseMonthlyMarksheet = useCallback((text)=>{
-        const lines = text.split(/\r?\n/).filter((l)=>l.trim().length > 0);
-        if (lines.length < 2) throw new Error("Data must have a header row and at least one row of marks.");
-        const delim = lines[0].includes("	") ? "	" : ",";
-        const headers = lines[0].split(delim).map((h)=>h.trim().toUpperCase());
-        const nameIdx = headers.findIndex((h)=>h === "NAME" || h === "PUPIL" || h === "STUDENT");
-        if (nameIdx === -1) throw new Error("The header row must include a column named NAME, PUPIL, or STUDENT.");
-        const subjectCols = {};
-        subjects.forEach((sub)=>{
-            const idx = headers.findIndex((h)=>h === sub || h === sub.replace(/ /g, "_") || h === sub.replace(/ /g, ""));
-            if (idx !== -1) subjectCols[sub] = idx;
-        });
-        const rows = lines.slice(1).map((line, i)=>{
-            const cells = line.split(delim).map((c)=>c.trim());
-            const rawName = toUpper(cells[nameIdx] || "");
-            if (!rawName) return null;
-            const matched = classStudents.find((s)=>s.name === rawName || s.name.toLowerCase().includes(rawName.toLowerCase().split(" ")[0]) || rawName.toLowerCase().includes(s.name.toLowerCase().split(" ")[0]));
-            const marks = {};
-            subjects.forEach((sub)=>{
-                const idx = subjectCols[sub];
-                if (idx === undefined) return;
-                const v = cells[idx];
-                marks[sub] = v !== undefined && v !== "" && !isNaN(Number(v)) ? Number(v) : null;
-            });
-            return {
-                id: "bmm_".concat(i),
-                rawName,
-                studentId: (matched === null || matched === void 0 ? void 0 : matched.id) || null,
-                include: true,
-                marks
-            };
-        }).filter(Boolean);
-        if (rows.length === 0) throw new Error("No data rows found.");
-        return {
-            rows,
-            subjectCols,
-            headers
-        };
-    }, [
-        subjects,
-        classStudents
-    ]);
-    const handleBulkMonthlyFile = async (e)=>{
-        const file = e.target.files[0];
-        if (!file) return;
-        setBulkMonthlyError("");
-        try {
-            const text = await file.text();
-            setBulkMonthlyPreview(parseMonthlyMarksheet(text));
-        } catch (err) {
-            setBulkMonthlyError(err.message || "Could not read that file.");
-        }
-        if (bulkMonthlyFileRef.current) bulkMonthlyFileRef.current.value = "";
-    };
-    const handleLoadPastedMonthly = ()=>{
-        setBulkMonthlyError("");
-        if (!bulkMonthlyText.trim()) {
-            setBulkMonthlyError("Paste your marksheet data into the box first.");
-            return;
-        }
-        try {
-            setBulkMonthlyPreview(parseMonthlyMarksheet(bulkMonthlyText));
-        } catch (err) {
-            setBulkMonthlyError(err.message || "Could not read the pasted data.");
-        }
-    };
-    const bulkMonthLockKey = "".concat(cls, "__").concat(tk, "__").concat(bulkMonth);
-    const isBulkMonthLocked = !!(lockedMonthly === null || lockedMonthly === void 0 ? void 0 : lockedMonthly[bulkMonthLockKey]);
-    const confirmBulkMonthlyMarks = ()=>{
-        if (!bulkMonthlyPreview || isBulkMonthLocked) return;
-        let applied = 0, requested = 0;
-        bulkMonthlyPreview.rows.forEach((row)=>{
-            var _students_find;
-            if (!row.include || !row.studentId) return;
-            const studentName = ((_students_find = students.find((s)=>s.id === row.studentId)) === null || _students_find === void 0 ? void 0 : _students_find.name) || row.rawName;
-            subjects.forEach((sub)=>{
-                var _monthlyMarks_row_studentId_tk_bulkMonth_sub, _monthlyMarks_row_studentId_tk_bulkMonth, _monthlyMarks_row_studentId_tk, _monthlyMarks_row_studentId;
-                const val = row.marks[sub];
-                if (val === null || val === undefined) return;
-                const max = isLower ? lowerSubjectMax(sub) : 100;
-                const existing = (_monthlyMarks_row_studentId = monthlyMarks[row.studentId]) === null || _monthlyMarks_row_studentId === void 0 ? void 0 : (_monthlyMarks_row_studentId_tk = _monthlyMarks_row_studentId[tk]) === null || _monthlyMarks_row_studentId_tk === void 0 ? void 0 : (_monthlyMarks_row_studentId_tk_bulkMonth = _monthlyMarks_row_studentId_tk[bulkMonth]) === null || _monthlyMarks_row_studentId_tk_bulkMonth === void 0 ? void 0 : (_monthlyMarks_row_studentId_tk_bulkMonth_sub = _monthlyMarks_row_studentId_tk_bulkMonth[sub]) === null || _monthlyMarks_row_studentId_tk_bulkMonth_sub === void 0 ? void 0 : _monthlyMarks_row_studentId_tk_bulkMonth_sub.mk;
-                const isFirstEntry = existing === undefined || existing === null || existing === "";
-                requestOrApplyMonthlyMark(row.studentId, studentName, tk, bulkMonth, sub, "mk", clampMark(val, max), existing);
-                if (role === "admin" || isFirstEntry) applied++;
-                else requested++;
-            });
-        });
-        setBulkMonthlyPreview(null);
-        setShowBulkMonthly(false);
-        setBulkMonthlyText("");
-        setPendingToast("Saved ".concat(applied, " mark").concat(applied === 1 ? "" : "s", " for ").concat(bulkMonth, " ").concat(term, " ").concat(year).concat(requested ? ", ".concat(requested, " sent to admin for approval") : "", "."));
-        setTimeout(()=>setPendingToast(""), 4500);
-    };
-    // Generates a starter CSV (NAME + one column per subject) for the
-    // currently selected class, so teachers can fill it in and upload it back.
-    const downloadMonthlyMarkTemplate = ()=>{
-        const header = [
-            "NAME",
-            ...subjects
-        ].join(",");
-        const rows = classStudents.map((s)=>[
-                s.name,
-                ...subjects.map(()=>"")
-            ].join(","));
-        const csv = [
-            header,
-            ...rows
-        ].join("\n");
-        const blob = new Blob([
-            csv
-        ], {
-            type: "text/csv"
-        });
-        triggerBlobDownload(blob, "".concat(cls, "_").concat(bulkMonth, "_").concat(term.replace(" ", "_"), "_").concat(year, "_monthly_template.csv"));
-    };
-    return /*#__PURE__*/ _jsxs("div", {
-        children: [
-            pendingToast && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    position: "fixed",
-                    top: 16,
-                    right: 16,
-                    zIndex: 3000,
-                    background: "#1e3a6e",
-                    color: "white",
-                    padding: "12px 18px",
-                    borderRadius: 10,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-                    maxWidth: 320
-                },
-                children: [
-                    "⏳ ",
-                    pendingToast
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Class",
-                                value: cls,
-                                onChange: setCls,
-                                opts: ALL_CLASSES
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: setTerm,
-                                opts: TERMS
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Year"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        value: year,
-                                        onChange: (e)=>setYear(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Search Pupil"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        value: search,
-                                        onChange: (e)=>setSearch(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 160
-                                        },
-                                        placeholder: "Type a name..."
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap",
-                            alignItems: "center"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsxs("span", {
-                                style: {
-                                    background: "#dbeafe",
-                                    color: "#1e40af",
-                                    borderRadius: 20,
-                                    padding: "4px 12px",
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    alignSelf: "center"
-                                },
-                                children: [
-                                    cls,
-                                    " - ",
-                                    classStudents.length,
-                                    " students"
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setShowBulkMonthly((v)=>!v),
-                                style: btnWarning,
-                                children: "📋 Bulk Mark Sheet"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setShowTransfer(true),
-                                style: btnGhost,
-                                title: "Copy ".concat(cls, "'s saved results from one month/term/year into another"),
-                                children: "🔀 Transfer Result"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>exportMonthlyExcel({
-                                        school,
-                                        cls,
-                                        term,
-                                        year,
-                                        isLower,
-                                        subjects,
-                                        monthsData: getMonthsData()
-                                    }),
-                                style: btnExcel,
-                                children: "📊 Download Excel"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>exportMonthlyWord({
-                                        school,
-                                        cls,
-                                        term,
-                                        year,
-                                        isLower,
-                                        subjects,
-                                        monthsData: getMonthsData()
-                                    }),
-                                style: btnWord,
-                                children: "📄 Download Word"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                disabled: pdfBusy,
-                                onClick: async ()=>{
-                                    setPdfBusy(true);
-                                    try {
-                                        var _monthBlocksRef_current;
-                                        const nodes = Array.from(((_monthBlocksRef_current = monthBlocksRef.current) === null || _monthBlocksRef_current === void 0 ? void 0 : _monthBlocksRef_current.querySelectorAll(".month-block-sheet")) || []);
-                                        await downloadNodesAsPdf(nodes, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Monthly_Results.pdf"), "landscape");
-                                    } finally{
-                                        setPdfBusy(false);
-                                    }
-                                },
-                                style: pdfBusy ? btnPdfBusy : btnPdf,
-                                children: pdfBusy ? "⏳ Generating..." : "📕 Download PDF"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>window.print(),
-                                style: btnPrimary,
-                                children: "🖨️ Print"
-                            })
-                        ]
-                    })
-                ]
-            }),
-            showBulkMonthly && /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    background: "#fff7ed",
-                    border: "2px solid #f59e0b",
-                    borderRadius: 12,
-                    padding: 20,
-                    marginBottom: 16
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: 12,
-                            flexWrap: "wrap",
-                            gap: 8
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsxs("h3", {
-                                style: {
-                                    margin: 0,
-                                    color: "#92400e",
-                                    fontSize: 14
-                                },
-                                children: [
-                                    "📋 Bulk Mark Sheet - ",
-                                    cls,
-                                    " - ",
-                                    term,
-                                    " ",
-                                    year
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>{
-                                    setShowBulkMonthly(false);
-                                    setBulkMonthlyPreview(null);
-                                    setBulkMonthlyError("");
-                                    setBulkMonthlyText("");
-                                },
-                                style: {
-                                    ...btnGhost,
-                                    padding: "4px 10px",
-                                    fontSize: 12
-                                },
-                                children: "✕ Close"
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end",
-                            marginBottom: 12
-                        },
-                        children: /*#__PURE__*/ _jsx(Sel, {
-                            label: "Month to load into",
-                            value: bulkMonth,
-                            onChange: setBulkMonth,
-                            opts: months
-                        })
-                    }),
-                    isBulkMonthLocked && /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            background: "#fef2f2",
-                            border: "1px solid #fca5a5",
-                            borderRadius: 8,
-                            padding: 10,
-                            marginBottom: 12,
-                            color: "#dc2626",
-                            fontSize: 13
-                        },
-                        children: [
-                            "🔒 ",
-                            bulkMonth,
-                            " ",
-                            term,
-                            " ",
-                            year,
-                            " is saved & locked for ",
-                            cls,
-                            ". Unlock it on the calendar block below before loading bulk marks."
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            fontSize: 12,
-                            color: "#78350f",
-                            marginBottom: 12,
-                            lineHeight: 1.6
-                        },
-                        children: [
-                            "The first row must be a header with a ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "NAME"
-                            }),
-                            " column, followed by one column per subject: ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: subjects.join(", ")
-                            }),
-                            ". Works with a CSV file ",
-                            /*#__PURE__*/ _jsx("i", {
-                                children: "or"
-                            }),
-                            " a marksheet pasted straight from Excel/Google Sheets (comma- or tab-separated -- both are detected automatically)."
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: 16,
-                            marginBottom: 12
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    background: "white",
-                                    border: "1px solid #fde68a",
-                                    borderRadius: 8,
-                                    padding: 14
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("div", {
-                                        style: {
-                                            fontWeight: 700,
-                                            fontSize: 12,
-                                            color: "#92400e",
-                                            marginBottom: 8
-                                        },
-                                        children: "OPTION 1 - Upload a file"
-                                    }),
-                                    /*#__PURE__*/ _jsxs("div", {
-                                        style: {
-                                            display: "flex",
-                                            gap: 10,
-                                            flexWrap: "wrap",
-                                            alignItems: "center"
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("button", {
-                                                onClick: downloadMonthlyMarkTemplate,
-                                                style: {
-                                                    ...btnGhost,
-                                                    fontSize: 12,
-                                                    padding: "6px 12px"
-                                                },
-                                                children: "⬇️ Download Template CSV"
-                                            }),
-                                            /*#__PURE__*/ _jsx("input", {
-                                                ref: bulkMonthlyFileRef,
-                                                type: "file",
-                                                accept: ".csv,.txt",
-                                                onChange: handleBulkMonthlyFile,
-                                                style: {
-                                                    padding: "6px",
-                                                    border: "1.5px solid #d1d5db",
-                                                    borderRadius: 7,
-                                                    fontSize: 13,
-                                                    background: "white"
-                                                }
-                                            })
-                                        ]
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    background: "white",
-                                    border: "1px solid #fde68a",
-                                    borderRadius: 8,
-                                    padding: 14
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("div", {
-                                        style: {
-                                            fontWeight: 700,
-                                            fontSize: 12,
-                                            color: "#92400e",
-                                            marginBottom: 8
-                                        },
-                                        children: "OPTION 2 - Paste the whole marksheet"
-                                    }),
-                                    /*#__PURE__*/ _jsx("textarea", {
-                                        value: bulkMonthlyText,
-                                        onChange: (e)=>setBulkMonthlyText(e.target.value),
-                                        placeholder: "NAME	".concat(subjects.join("	"), "\nJOHN OKELLO	78	65	70	82"),
-                                        rows: 3,
-                                        style: {
-                                            width: "100%",
-                                            padding: 8,
-                                            border: "1.5px solid #d1d5db",
-                                            borderRadius: 7,
-                                            fontSize: 12,
-                                            fontFamily: "monospace",
-                                            resize: "vertical",
-                                            marginBottom: 8
-                                        }
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: handleLoadPastedMonthly,
-                                        disabled: !bulkMonthlyText.trim(),
-                                        style: {
-                                            ...btnWarning,
-                                            fontSize: 12,
-                                            padding: "6px 12px",
-                                            opacity: bulkMonthlyText.trim() ? 1 : 0.5
-                                        },
-                                        children: "📥 Load Pasted Data"
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    background: "white",
-                                    border: "1px solid #fde68a",
-                                    borderRadius: 8,
-                                    padding: 14
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("div", {
-                                        style: {
-                                            fontWeight: 700,
-                                            fontSize: 12,
-                                            color: "#92400e",
-                                            marginBottom: 8
-                                        },
-                                        children: "OPTION 3 - Scan a photo of the marksheet (OCR)"
-                                    }),
-                                    /*#__PURE__*/ _jsx(OcrScanButton, {
-                                        label: "📷 Scan Marksheet Photo",
-                                        instructions: "After scanning, check every name and mark below — camera photos of marksheets are the hardest case for OCR. Once it looks right, it drops straight into the paste box above (Option 2) so you can hit Load Pasted Data.",
-                                        onUseText: (text)=>setBulkMonthlyText(text)
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    bulkMonthlyError && /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            background: "#fef2f2",
-                            border: "1px solid #fca5a5",
-                            borderRadius: 8,
-                            padding: 10,
-                            marginBottom: 12,
-                            color: "#dc2626",
-                            fontSize: 13
-                        },
-                        children: bulkMonthlyError
-                    }),
-                    bulkMonthlyPreview && (()=>{
-                        const detected = subjects.filter((sub)=>bulkMonthlyPreview.subjectCols[sub] !== undefined);
-                        const missing = subjects.filter((sub)=>bulkMonthlyPreview.subjectCols[sub] === undefined);
-                        return /*#__PURE__*/ _jsxs(_Fragment, {
-                            children: [
-                                /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        fontSize: 12,
-                                        color: "#065f46",
-                                        background: "#f0fdf4",
-                                        borderRadius: 8,
-                                        padding: "8px 12px",
-                                        marginBottom: 10
-                                    },
-                                    children: [
-                                        "✅ Detected ",
-                                        /*#__PURE__*/ _jsxs("b", {
-                                            children: [
-                                                bulkMonthlyPreview.rows.length,
-                                                " rows"
-                                            ]
-                                        }),
-                                        ". Subjects found: ",
-                                        /*#__PURE__*/ _jsx("b", {
-                                            children: detected.join(", ") || "none"
-                                        }),
-                                        ".",
-                                        missing.length > 0 && /*#__PURE__*/ _jsxs("span", {
-                                            style: {
-                                                color: "#b45309"
-                                            },
-                                            children: [
-                                                " Missing: ",
-                                                missing.join(", "),
-                                                "."
-                                            ]
-                                        })
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsx("div", {
-                                    style: {
-                                        maxHeight: 320,
-                                        overflowY: "auto",
-                                        marginBottom: 12,
-                                        border: "1px solid #fde68a",
-                                        borderRadius: 8
-                                    },
-                                    children: /*#__PURE__*/ _jsxs("table", {
-                                        style: {
-                                            width: "100%",
-                                            fontSize: 11,
-                                            minWidth: 500
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("thead", {
-                                                children: /*#__PURE__*/ _jsxs("tr", {
-                                                    style: {
-                                                        background: "#fef3c7"
-                                                    },
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: th,
-                                                            children: "✓"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                textAlign: "left"
-                                                            },
-                                                            children: "SHEET NAME"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                textAlign: "left"
-                                                            },
-                                                            children: "MATCHED PUPIL"
-                                                        }),
-                                                        detected.map((sub)=>/*#__PURE__*/ _jsx("th", {
-                                                                style: th,
-                                                                children: sub
-                                                            }, sub))
-                                                    ]
-                                                })
-                                            }),
-                                            /*#__PURE__*/ _jsx("tbody", {
-                                                children: bulkMonthlyPreview.rows.map((row, ri)=>/*#__PURE__*/ _jsxs("tr", {
-                                                        style: {
-                                                            background: ri % 2 === 0 ? "white" : "#fffbeb",
-                                                            opacity: row.include ? 1 : 0.4
-                                                        },
-                                                        children: [
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: td,
-                                                                children: /*#__PURE__*/ _jsx("input", {
-                                                                    type: "checkbox",
-                                                                    checked: row.include,
-                                                                    onChange: ()=>setBulkMonthlyPreview((prev)=>({
-                                                                                ...prev,
-                                                                                rows: prev.rows.map((r, i)=>i === ri ? {
-                                                                                        ...r,
-                                                                                        include: !r.include
-                                                                                    } : r)
-                                                                            }))
-                                                                })
-                                                            }),
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
-                                                                    textAlign: "left",
-                                                                    fontWeight: 600
-                                                                },
-                                                                children: row.rawName
-                                                            }),
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
-                                                                    textAlign: "left"
-                                                                },
-                                                                children: /*#__PURE__*/ _jsxs("select", {
-                                                                    value: row.studentId || "",
-                                                                    onChange: (e)=>setBulkMonthlyPreview((prev)=>({
-                                                                                ...prev,
-                                                                                rows: prev.rows.map((r, i)=>i === ri ? {
-                                                                                        ...r,
-                                                                                        studentId: e.target.value || null
-                                                                                    } : r)
-                                                                            })),
-                                                                    style: {
-                                                                        ...inp,
-                                                                        padding: "2px 4px",
-                                                                        fontSize: 11,
-                                                                        minWidth: 0,
-                                                                        width: 150,
-                                                                        borderColor: row.studentId ? "#22c55e" : "#f59e0b",
-                                                                        background: row.studentId ? "#f0fdf4" : "#fefce8"
-                                                                    },
-                                                                    children: [
-                                                                        /*#__PURE__*/ _jsx("option", {
-                                                                            value: "",
-                                                                            children: "- not matched -"
-                                                                        }),
-                                                                        classStudents.map((s)=>/*#__PURE__*/ _jsx("option", {
-                                                                                value: s.id,
-                                                                                children: s.name
-                                                                            }, s.id))
-                                                                    ]
-                                                                })
-                                                            }),
-                                                            detected.map((sub)=>{
-                                                                const v = row.marks[sub];
-                                                                const subMax = isLower ? lowerSubjectMax(sub) : 100;
-                                                                return /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: v != null ? clampMark(v, subMax) : "-"
-                                                                }, sub);
-                                                            })
-                                                        ]
-                                                    }, row.id))
-                                            })
-                                        ]
-                                    })
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        display: "flex",
-                                        gap: 10,
-                                        alignItems: "center",
-                                        flexWrap: "wrap"
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ _jsxs("button", {
-                                            onClick: confirmBulkMonthlyMarks,
-                                            disabled: isBulkMonthLocked || !bulkMonthlyPreview.rows.some((r)=>r.include && r.studentId),
-                                            style: {
-                                                ...btnPrimary,
-                                                opacity: !isBulkMonthLocked && bulkMonthlyPreview.rows.some((r)=>r.include && r.studentId) ? 1 : 0.5
-                                            },
-                                            children: [
-                                                "💾 Save Marks for ",
-                                                bulkMonthlyPreview.rows.filter((r)=>r.include && r.studentId).length,
-                                                " Pupils - ",
-                                                bulkMonth
-                                            ]
-                                        }),
-                                        /*#__PURE__*/ _jsx("button", {
-                                            onClick: ()=>setBulkMonthlyPreview(null),
-                                            style: btnGhost,
-                                            children: "Clear"
-                                        }),
-                                        /*#__PURE__*/ _jsx("span", {
-                                            style: {
-                                                fontSize: 11,
-                                                color: "#6b7280"
-                                            },
-                                            children: "Unmatched rows will not be saved."
-                                        })
-                                    ]
-                                })
-                            ]
-                        });
-                    })()
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                ref: monthBlocksRef,
-                children: months.map((month)=>/*#__PURE__*/ _jsx(MonthBlock, {
-                        month: month,
-                        term: term,
-                        year: year,
-                        cls: cls,
-                        school: school,
-                        search: search,
-                        classStudents: classStudents,
-                        monthlyMarks: monthlyMarks,
-                        role: role,
-                        updateMonthlyMark: updateMonthlyMark,
-                        resetMonthlyMonth: resetMonthlyMonth,
-                        restoreMonthlyMonth: restoreMonthlyMonth,
-                        monthlyResetBackups: monthlyResetBackups,
-                        requestOrApplyMonthlyMark: handleMarkChange,
-                        bands: bands,
-                        divisions: divisions,
-                        tk: tk,
-                        lockedMonthly: lockedMonthly,
-                        lockMonthlyEntry: lockMonthlyEntry,
-                        unlockMonthlyEntry: unlockMonthlyEntry,
-                        changeRequests: changeRequests,
-                        requestUnlockMonthly: requestUnlockMonthly
-                    }, month))
-            }),
-            showTransfer && /*#__PURE__*/ _jsx(TransferResultModal, {
-                title: "Transfer Result — ".concat(cls),
-                note: "Copies every ".concat(cls, ' pupil\'s saved monthly-exam marks from the "From" month into the "To" month, overwriting anything already there. Works across different terms and years too — e.g. FEB into JUL.'),
-                fields: [
-                    {
-                        key: "term",
-                        label: "Term",
-                        options: TERMS
-                    },
-                    {
-                        key: "month",
-                        label: "Month",
-                        options: (v)=>TERM_MONTHS[v.term] || []
-                    },
-                    {
-                        key: "year",
-                        label: "Year",
-                        type: "text"
-                    }
-                ],
-                initialFrom: {
-                    term,
-                    month: months[0],
-                    year
-                },
-                initialTo: {
-                    term,
-                    month: months[0],
-                    year
-                },
-                onClose: ()=>setShowTransfer(false),
-                onConfirm: (from, to)=>{
-                    transferMonthlyMarks(cls, "".concat(from.term, "__").concat(from.year), from.month, "".concat(to.term, "__").concat(to.year), to.month);
-                    setShowTransfer(false);
-                    setPendingToast("".concat(cls, " marks transferred from ").concat(from.month, " ").concat(from.term, " ").concat(from.year, " to ").concat(to.month, " ").concat(to.term, " ").concat(to.year, "."));
-                    setTimeout(()=>setPendingToast(""), 4000);
-                }
-            })
-        ]
-    });
-}
-function MonthBlock(param) {
-    let { month, cls, classStudents, monthlyMarks, updateMonthlyMark, resetMonthlyMonth, restoreMonthlyMonth, monthlyResetBackups, requestOrApplyMonthlyMark, bands, divisions, tk, year, term, role, lockedMonthly, lockMonthlyEntry, unlockMonthlyEntry, changeRequests, requestUnlockMonthly, school, search } = param;
-    const isLower = LOWER_CLASSES.includes(cls);
-    const subjects = isLower ? LOWER_MONTHLY_SUBJECTS : MONTHLY_SUBJECTS;
-    const rows = useMemo(()=>classStudents.map((s)=>{
-            var _monthlyMarks_s_id_tk, _monthlyMarks_s_id;
-            const m = ((_monthlyMarks_s_id = monthlyMarks[s.id]) === null || _monthlyMarks_s_id === void 0 ? void 0 : (_monthlyMarks_s_id_tk = _monthlyMarks_s_id[tk]) === null || _monthlyMarks_s_id_tk === void 0 ? void 0 : _monthlyMarks_s_id_tk[month]) || {};
-            const perSub = subjects.map((sub)=>{
-                var _m_sub;
-                const mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk;
-                const isX = mk === undefined || mk === null;
-                const agg = !isLower && !isX ? aggOf(mk, bands) : undefined;
-                return {
-                    sub,
-                    mk,
-                    agg,
-                    isX
-                };
-            });
-            // X rule: any blank required paper → row is incomplete (aggregates + division = X)
-            const hasX = !isLower && perSub.some((p)=>p.isX);
-            const hasF9 = !isLower && perSub.some((p)=>p.agg === 9);
-            const totMk = perSub.reduce((a, p)=>{
-                var _p_mk;
-                return a + ((_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : 0);
-            }, 0);
-            const totAgg = isLower ? null : hasX ? "X" : perSub.reduce((a, p)=>{
-                var _p_agg;
-                return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-            }, 0);
-            const div = isLower ? null : hasX ? "X" : divisionOf(totAgg, 4, divisions, hasF9);
-            return {
-                s,
-                perSub,
-                totMk,
-                totAgg,
-                div,
-                hasX
-            };
-        }), [
-        classStudents,
-        monthlyMarks,
-        tk,
-        month,
-        bands,
-        divisions,
-        subjects,
-        isLower
-    ]);
-    const positions = useMemo(()=>rankWithTies(rows.map((r)=>r.totMk > 0 ? r.totMk : null), rows.map((r)=>typeof r.totAgg === "number" ? r.totAgg : null)), [
-        rows
-    ]);
-    const indexedRows = useMemo(()=>rows.map((r, i)=>({
-                ...r,
-                pos: positions[i]
-            })), [
-        rows,
-        positions
-    ]);
-    const sortedRows = useMemo(()=>{
-        return [
-            ...indexedRows
-        ].sort((a, b)=>{
-            if (a.pos === "-") return 1;
-            if (b.pos === "-") return -1;
-            return a.pos - b.pos;
-        });
-    }, [
-        indexedRows
-    ]);
-    const divCounts = useMemo(()=>{
-        if (isLower) return null;
-        const counts = {
-            I: 0,
-            II: 0,
-            III: 0,
-            IV: 0,
-            U: 0,
-            X: 0
-        };
-        sortedRows.forEach((r)=>{
-            const d = r.div;
-            if (d === "X") counts.X++;
-            else if (counts[d] !== undefined) counts[d]++;
-            else counts.U++;
-        });
-        return counts;
-    }, [
-        sortedRows,
-        isLower
-    ]);
-    // Save & lock: once clicked, this month's marks render read-only (see
-    // MarkInput) until an admin unlocks them again.
-    const lockKey = "".concat(cls, "__").concat(tk, "__").concat(month);
-    const isLocked = !!(lockedMonthly === null || lockedMonthly === void 0 ? void 0 : lockedMonthly[lockKey]);
-    const unlockRequestPending = useMemo(()=>(changeRequests || []).some((r)=>r.kind === "unlock_monthly" && r.cls === cls && r.tk === tk && r.month === month), [
-        changeRequests,
-        cls,
-        tk,
-        month
-    ]);
-    const handleSave = ()=>lockMonthlyEntry(cls, tk, month);
-    const handleUnlock = ()=>unlockMonthlyEntry(cls, tk, month);
-    const handleRequestUnlock = ()=>requestUnlockMonthly(cls, tk, month);
-    const handleReset = ()=>setConfirmDialog("reset");
-    const backupKey = "".concat(cls, "__").concat(tk, "__").concat(month);
-    const hasBackup = !!(monthlyResetBackups === null || monthlyResetBackups === void 0 ? void 0 : monthlyResetBackups[backupKey]);
-    const handleRestore = ()=>setConfirmDialog("restore");
-    const [sortByPos, setSortByPos] = useState(false);
-    const [confirmDialog, setConfirmDialog] = useState(null); // "reset" | "restore" | null
-    // Each month sheet keeps its own search box (seeded from the shared filter
-    // above, if any) so a pupil can be found directly on that month's table.
-    const [localSearch, setLocalSearch] = useState(search || "");
-    useEffect(()=>{
-        setLocalSearch(search || "");
-    }, [
-        search
-    ]);
-    const displayRows = useMemo(()=>{
-        const base = sortByPos ? sortedRows : indexedRows;
-        if (!localSearch || !localSearch.trim()) return base;
-        const q = localSearch.trim().toLowerCase();
-        return base.filter((r)=>r.s.name.toLowerCase().includes(q));
-    }, [
-        sortByPos,
-        sortedRows,
-        indexedRows,
-        localSearch
-    ]);
-    return /*#__PURE__*/ _jsxs("div", {
-        className: "month-block-sheet",
-        style: {
-            marginBottom: 24
-        },
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "#1e3a6e",
-                    color: "white",
-                    padding: "10px 16px",
-                    borderRadius: "8px 8px 0 0",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: 8
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8
-                        },
-                        children: [
-                            (school === null || school === void 0 ? void 0 : school.logo) && /*#__PURE__*/ _jsx("img", {
-                                src: school.logo,
-                                alt: "logo",
-                                style: {
-                                    width: 26,
-                                    height: 26,
-                                    objectFit: "contain",
-                                    flexShrink: 0
-                                }
-                            }),
-                            /*#__PURE__*/ _jsxs("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontSize: 14
-                                },
-                                children: [
-                                    (school === null || school === void 0 ? void 0 : school.name) ? "".concat(school.name, " — ") : "",
-                                    month,
-                                    " - ",
-                                    term,
-                                    " ",
-                                    year
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        className: "no-print",
-                        style: {
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8
-                        },
-                        children: [
-                            isLocked && /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    background: "#fee2e2",
-                                    color: "#991b1b",
-                                    borderRadius: 20,
-                                    padding: "3px 10px",
-                                    fontSize: 11,
-                                    fontWeight: 700
-                                },
-                                children: "🔒 Saved & Locked"
-                            }),
-                            isLocked ? role === "admin" ? /*#__PURE__*/ _jsx("button", {
-                                onClick: handleUnlock,
-                                style: {
-                                    ...btnWarning,
-                                    padding: "5px 12px",
-                                    fontSize: 11
-                                },
-                                children: "🔓 Unlock"
-                            }) : unlockRequestPending ? /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    background: "#fef3c7",
-                                    color: "#92400e",
-                                    borderRadius: 20,
-                                    padding: "3px 10px",
-                                    fontSize: 11,
-                                    fontWeight: 700
-                                },
-                                children: "⏳ Unlock Requested"
-                            }) : /*#__PURE__*/ _jsx("button", {
-                                onClick: handleRequestUnlock,
-                                style: {
-                                    ...btnWarning,
-                                    padding: "5px 12px",
-                                    fontSize: 11
-                                },
-                                children: "🔓 Request Unlock"
-                            }) : /*#__PURE__*/ _jsx("button", {
-                                onClick: handleSave,
-                                style: {
-                                    ...btnSuccess,
-                                    padding: "5px 12px",
-                                    fontSize: 11
-                                },
-                                children: "💾 Save & Lock"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setSortByPos((v)=>!v),
-                                style: {
-                                    ...sortByPos ? btnPrimary : btnGhost,
-                                    padding: "5px 10px",
-                                    fontSize: 11
-                                },
-                                title: "Toggle ordering between alphabetical and highest-to-lowest",
-                                children: sortByPos ? "🔤 A–Z" : "📊 Sort H→L"
-                            }),
-                            role === "admin" && /*#__PURE__*/ _jsx("button", {
-                                onClick: handleReset,
-                                style: {
-                                    padding: "5px 12px",
-                                    fontSize: 11,
-                                    background: "#fee2e2",
-                                    color: "#991b1b",
-                                    border: "none",
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    cursor: "pointer"
-                                },
-                                title: "Clear all ".concat(month, " marks for ").concat(cls, " back to blank"),
-                                children: "♻️ Reset"
-                            }),
-                            role === "admin" && hasBackup && /*#__PURE__*/ _jsx("button", {
-                                onClick: handleRestore,
-                                style: {
-                                    padding: "5px 12px",
-                                    fontSize: 11,
-                                    background: "#dbeafe",
-                                    color: "#1e40af",
-                                    border: "none",
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    cursor: "pointer"
-                                },
-                                title: "Bring back ".concat(month, " marks from before the last reset"),
-                                children: "⏪ Restore"
-                            }),
-                            /*#__PURE__*/ _jsxs("span", {
-                                style: {
-                                    fontSize: 12,
-                                    opacity: 0.8
-                                },
-                                children: [
-                                    cls,
-                                    " - ",
-                                    classStudents.length,
-                                    " STUDENTS"
-                                ]
-                            })
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    padding: "8px 16px",
-                    background: "#f1f5f9",
-                    borderBottom: "1px solid #e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap"
-                },
-                children: [
-                    /*#__PURE__*/ _jsx("label", {
-                        style: {
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: "#475569"
-                        },
-                        children: "🔍 Search Pupil"
-                    }),
-                    /*#__PURE__*/ _jsx("input", {
-                        value: localSearch,
-                        onChange: (e)=>setLocalSearch(e.target.value),
-                        style: {
-                            ...inp,
-                            width: 180,
-                            fontSize: 12,
-                            padding: "4px 8px"
-                        },
-                        placeholder: "Type a name..."
-                    }),
-                    localSearch && /*#__PURE__*/ _jsx("button", {
-                        onClick: ()=>setLocalSearch(""),
-                        style: {
-                            ...btnGhost,
-                            padding: "3px 10px",
-                            fontSize: 11
-                        },
-                        children: "✕ Clear"
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                style: {
-                    overflowX: "auto"
-                },
-                children: /*#__PURE__*/ _jsxs("table", {
-                    style: {
-                        width: "100%",
-                        fontSize: 12,
-                        minWidth: 600
-                    },
-                    children: [
-                        /*#__PURE__*/ _jsxs("thead", {
-                            children: [
-                                /*#__PURE__*/ _jsxs("tr", {
-                                    style: {
-                                        background: "#1e40af",
-                                        color: "white"
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: th,
-                                            rowSpan: 2,
-                                            children: "S/N"
-                                        }),
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: {
-                                                ...th,
-                                                textAlign: "left",
-                                                minWidth: 160
-                                            },
-                                            rowSpan: 2,
-                                            children: "NAME OF PUPIL"
-                                        }),
-                                        subjects.map((s)=>isLower ? /*#__PURE__*/ _jsxs("th", {
-                                                style: th,
-                                                rowSpan: 2,
-                                                children: [
-                                                    s,
-                                                    lowerSubjectMax(s) !== 100 ? " /".concat(lowerSubjectMax(s)) : ""
-                                                ]
-                                            }, s) : /*#__PURE__*/ _jsx("th", {
-                                                style: th,
-                                                colSpan: 2,
-                                                children: s
-                                            }, s)),
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: th,
-                                            rowSpan: 2,
-                                            children: "TOT MK"
-                                        }),
-                                        !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2,
-                                                    children: "AGG"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2,
-                                                    children: "DIV"
-                                                })
-                                            ]
-                                        }),
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: th,
-                                            rowSpan: 2,
-                                            children: "POS"
-                                        })
-                                    ]
-                                }),
-                                !isLower && /*#__PURE__*/ _jsx("tr", {
-                                    style: {
-                                        background: "#2563eb",
-                                        color: "white",
-                                        fontSize: 11
-                                    },
-                                    children: subjects.map((s)=>/*#__PURE__*/ _jsxs(React.Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#fef9c3",
-                                                        color: "#713f12"
-                                                    },
-                                                    children: month
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#fed7aa",
-                                                        color: "#7c2d12"
-                                                    },
-                                                    children: "AGG"
-                                                })
-                                            ]
-                                        }, s))
-                                })
-                            ]
-                        }),
-                        /*#__PURE__*/ _jsxs("tbody", {
-                            children: [
-                                displayRows.map((r, i)=>/*#__PURE__*/ _jsxs("tr", {
-                                        className: r.perSub.every((p)=>p.isX) ? "no-print" : "",
-                                        style: {
-                                            background: i % 2 === 0 ? "white" : "#f8fafc"
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: td,
-                                                children: i + 1
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 600,
-                                                    textAlign: "left"
-                                                },
-                                                children: r.s.name
-                                            }),
-                                            r.perSub.map((p)=>isLower ? /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: "#fefce8"
-                                                    },
-                                                    children: /*#__PURE__*/ _jsx(MarkInput, {
-                                                        value: p.mk,
-                                                        existingVal: p.mk,
-                                                        max: lowerSubjectMax(p.sub),
-                                                        style: markInput,
-                                                        locked: isLocked,
-                                                        onCommit: (newVal, existingVal)=>requestOrApplyMonthlyMark(r.s.id, r.s.name, tk, month, p.sub, "mk", newVal, existingVal)
-                                                    })
-                                                }, p.sub + "mk") : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#fefce8"
-                                                            },
-                                                            children: /*#__PURE__*/ _jsx(MarkInput, {
-                                                                value: p.mk,
-                                                                existingVal: p.mk,
-                                                                max: 100,
-                                                                style: markInput,
-                                                                locked: isLocked,
-                                                                onCommit: (newVal, existingVal)=>requestOrApplyMonthlyMark(r.s.id, r.s.name, tk, month, p.sub, "mk", newVal, existingVal)
-                                                            })
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#fff7ed",
-                                                                fontWeight: 600,
-                                                                color: p.isX ? "#dc2626" : "inherit"
-                                                            },
-                                                            children: p.isX ? "X" : p.mk !== undefined ? p.agg : "-"
-                                                        })
-                                                    ]
-                                                }, p.sub)),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    background: "#ede9fe"
-                                                },
-                                                children: r.totMk || "-"
-                                            }),
-                                            !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                children: [
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            background: "#ede9fe",
-                                                            color: r.hasX ? "#dc2626" : "inherit",
-                                                            fontWeight: r.hasX ? 700 : 400
-                                                        },
-                                                        children: r.hasX ? "X" : r.totAgg || "-"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            fontWeight: 700,
-                                                            color: r.hasX ? "#dc2626" : "#1e40af"
-                                                        },
-                                                        children: r.hasX ? "X" : r.totMk ? r.div : "-"
-                                                    })
-                                                ]
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td
-                                                },
-                                                children: r.pos !== "-" ? /*#__PURE__*/ _jsx(PositionBadge, {
-                                                    pos: r.pos,
-                                                    size: 13
-                                                }) : "-"
-                                            })
-                                        ]
-                                    }, r.s.id)),
-                                classStudents.length === 0 && /*#__PURE__*/ _jsx("tr", {
-                                    children: /*#__PURE__*/ _jsx("td", {
-                                        colSpan: 20,
-                                        style: {
-                                            padding: 16,
-                                            textAlign: "center",
-                                            color: "#9ca3af"
-                                        },
-                                        children: "No students."
-                                    })
-                                }),
-                                classStudents.length > 0 && displayRows.length === 0 && /*#__PURE__*/ _jsx("tr", {
-                                    children: /*#__PURE__*/ _jsxs("td", {
-                                        colSpan: 20,
-                                        style: {
-                                            padding: 16,
-                                            textAlign: "center",
-                                            color: "#9ca3af"
-                                        },
-                                        children: [
-                                            'No pupil matches "',
-                                            localSearch,
-                                            '".'
-                                        ]
-                                    })
-                                })
-                            ]
-                        })
-                    ]
-                })
-            }),
-            !isLower && divCounts && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    borderTop: "2px solid #e5e7eb",
-                    padding: "10px 16px",
-                    background: "#f8fafc"
-                },
-                children: [
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: "#0f766e",
-                            marginBottom: 8,
-                            textTransform: "uppercase",
-                            letterSpacing: 0.4
-                        },
-                        children: "General Performance Analysis"
-                    }),
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            overflowX: "auto"
-                        },
-                        children: /*#__PURE__*/ _jsxs("table", {
-                            style: {
-                                width: "100%",
-                                fontSize: 12
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsx("thead", {
-                                    children: /*#__PURE__*/ _jsx("tr", {
-                                        style: {
-                                            background: "#ccfbf1"
-                                        },
-                                        children: [
-                                            "No. of Pupils",
-                                            "Div I",
-                                            "Div II",
-                                            "Div III",
-                                            "Div IV",
-                                            "U",
-                                            "X"
-                                        ].map((h)=>/*#__PURE__*/ _jsx("th", {
-                                                style: {
-                                                    ...th,
-                                                    padding: "6px 10px",
-                                                    color: "#0f766e"
-                                                },
-                                                children: h
-                                            }, h))
-                                    })
-                                }),
-                                /*#__PURE__*/ _jsx("tbody", {
-                                    children: /*#__PURE__*/ _jsxs("tr", {
-                                        children: [
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700
-                                                },
-                                                children: classStudents.length
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    color: "#166534"
-                                                },
-                                                children: divCounts.I
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    color: "#1e40af"
-                                                },
-                                                children: divCounts.II
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    color: "#92400e"
-                                                },
-                                                children: divCounts.III
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    color: "#7c2d12"
-                                                },
-                                                children: divCounts.IV
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    color: "#6b7280"
-                                                },
-                                                children: divCounts.U
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 700,
-                                                    color: "#dc2626"
-                                                },
-                                                children: divCounts.X
-                                            })
-                                        ]
-                                    })
-                                })
-                            ]
-                        })
-                    })
-                ]
-            }),
-            confirmDialog && /*#__PURE__*/ _jsx(ConfirmModal, {
-                title: confirmDialog === "reset" ? "Clear ".concat(month, " Results") : "Restore ".concat(month, " Results"),
-                message: confirmDialog === "reset" ? "Are you sure you want to clear all ".concat(month, " ").concat(term, " ").concat(year, " marks for ").concat(cls, " back to blank?") : "Restore ".concat(month, " ").concat(term, " ").concat(year, " marks for ").concat(cls, " back to what they were before the last reset?"),
-                confirmLabel: confirmDialog === "reset" ? "Clear Results" : "Restore Results",
-                danger: confirmDialog === "reset",
-                onCancel: ()=>setConfirmDialog(null),
-                onConfirm: ()=>{
-                    if (confirmDialog === "reset") resetMonthlyMonth(cls, tk, month);
-                    else restoreMonthlyMonth(cls, tk, month);
-                    setConfirmDialog(null);
-                }
-            })
-        ]
-    });
-}
-// ─── GROUP WORK ──────────────────────────────────────────────────────────────
-function GroupWork(param) {
-    let { students, groupWork, setGroupWork, bands: defaultBands, specialBands, divisions, school, markEditing } = param;
-    var _groupWork_cls, _period_marks;
-    const [cls, setCls] = useState("P4");
-    const [term, setTerm] = useState("Term I");
-    const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
-    const [testNo, setTestNo] = useState(GROUP_TEST_OPTIONS[0]);
-    const [viewMode, setViewMode] = useState("single"); // single | analysis
-    const [showTransfer, setShowTransfer] = useState(false);
-    const [removeGroupId, setRemoveGroupId] = useState(null);
-    const [pdfBusy, setPdfBusy] = useState(false);
-    const [analysisPdfBusy, setAnalysisPdfBusy] = useState(false);
-    const cardRef = useRef(null);
-    const analysisCardRef = useRef(null);
-    const isLower = LOWER_CLASSES.includes(cls);
-    const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-    const tk = "".concat(term, "__").concat(year);
-    // Special Grading Scale override for the selected class, if any.
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, undefined, year), [
-        cls,
-        defaultBands,
-        specialBands,
-        year
-    ]);
-    const classStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
-        students,
-        cls
-    ]);
-    // Groups/rosters live at the class+term+year level; marks are scoped
-    // further by the selected Test No. (Group Test 1-5) within that period.
-    const period = (groupWork === null || groupWork === void 0 ? void 0 : (_groupWork_cls = groupWork[cls]) === null || _groupWork_cls === void 0 ? void 0 : _groupWork_cls[tk]) || {
-        groups: [],
-        marks: {}
-    };
-    const groups = period.groups || [];
-    const testMarks = ((_period_marks = period.marks) === null || _period_marks === void 0 ? void 0 : _period_marks[testNo]) || {};
-    const updatePeriod = useCallback((updater)=>{
-        markEditing();
-        setGroupWork((prev)=>{
-            const clsData = prev[cls] || {};
-            const cur = clsData[tk] || {
-                groups: [],
-                marks: {}
-            };
-            return {
-                ...prev,
-                [cls]: {
-                    ...clsData,
-                    [tk]: updater(cur)
-                }
-            };
-        });
-    }, [
-        cls,
-        tk,
-        markEditing,
-        setGroupWork
-    ]);
-    const addGroup = ()=>updatePeriod((cur)=>({
-                ...cur,
-                groups: [
-                    ...cur.groups || [],
-                    {
-                        id: "g".concat(Date.now()).concat(Math.random().toString(36).slice(2, 6)),
-                        name: (()=>{
-                            const n = (cur.groups || []).length + 1;
-                            const nick = GROUP_WORK_NICKNAMES[n - 1];
-                            return nick ? "Group ".concat(n, " (").concat(nick, ")") : "Group ".concat(n);
-                        })(),
-                        members: []
-                    }
-                ]
-            }));
-    const removeGroup = (gid)=>setRemoveGroupId(gid);
-    const confirmRemoveGroup = ()=>{
-        const gid = removeGroupId;
-        setRemoveGroupId(null);
-        updatePeriod((cur)=>({
-                groups: (cur.groups || []).filter((g)=>g.id !== gid),
-                marks: Object.fromEntries(Object.entries(cur.marks || {}).map((param)=>{
-                    let [tn, gm] = param;
-                    return [
-                        tn,
-                        Object.fromEntries(Object.entries(gm || {}).filter((param)=>{
-                            let [k] = param;
-                            return k !== gid;
-                        }))
-                    ];
-                }))
-            }));
-    };
-    const renameGroup = (gid, name)=>updatePeriod((cur)=>({
-                ...cur,
-                groups: (cur.groups || []).map((g)=>g.id === gid ? {
-                        ...g,
-                        name
-                    } : g)
-            }));
-    const toggleMember = (gid, studentId)=>updatePeriod((cur)=>({
-                ...cur,
-                groups: (cur.groups || []).map((g)=>{
-                    if (g.id !== gid) return g;
-                    const has = g.members.includes(studentId);
-                    return {
-                        ...g,
-                        members: has ? g.members.filter((m)=>m !== studentId) : [
-                            ...g.members,
-                            studentId
-                        ]
-                    };
-                })
-            }));
-    const setMark = (gid, sub, val)=>{
-        const clamped = clampMark(val, isLower ? lowerSubjectMax(sub) : 100);
-        updatePeriod((cur)=>({
-                ...cur,
-                marks: {
-                    ...cur.marks || {},
-                    [testNo]: {
-                        ...(cur.marks || {})[testNo] || {},
-                        [gid]: {
-                            ...((cur.marks || {})[testNo] || {})[gid] || {},
-                            [sub]: clamped
-                        }
-                    }
-                }
-            }));
-    };
-    // Copies one Test No.'s group marks from a source term/year into a
-    // destination term/year+test slot. If the destination period doesn't have
-    // its own groups set up yet, the source period's group roster is carried
-    // over too, so the copied marks (keyed by group id) line up correctly.
-    const transferGroupWork = useCallback((fromTk, fromTestNo, toTk, toTestNo)=>{
-        markEditing();
-        setGroupWork((prev)=>{
-            var _srcPeriod_marks;
-            const clsData = prev[cls] || {};
-            const srcPeriod = clsData[fromTk] || {
-                groups: [],
-                marks: {}
-            };
-            const srcMarks = ((_srcPeriod_marks = srcPeriod.marks) === null || _srcPeriod_marks === void 0 ? void 0 : _srcPeriod_marks[fromTestNo]) || {};
-            const destPeriod = clsData[toTk] || {
-                groups: [],
-                marks: {}
-            };
-            const destGroups = destPeriod.groups && destPeriod.groups.length > 0 ? destPeriod.groups : srcPeriod.groups;
-            const newPeriod = {
-                ...destPeriod,
-                groups: destGroups,
-                marks: {
-                    ...destPeriod.marks || {},
-                    [toTestNo]: srcMarks
-                }
-            };
-            return {
-                ...prev,
-                [cls]: {
-                    ...clsData,
-                    [toTk]: newPeriod
-                }
-            };
-        });
-    }, [
-        cls,
-        markEditing,
-        setGroupWork
-    ]);
-    const rows = useMemo(()=>groups.map((g)=>{
-            const m = testMarks[g.id] || {};
-            const perSub = subjects.map((sub)=>{
-                const mk = m[sub];
-                const isX = mk === undefined || mk === null;
-                const agg = !isLower && !isX ? aggOf(mk, bands) : undefined;
-                return {
-                    sub,
-                    mk,
-                    agg,
-                    isX
-                };
-            });
-            const hasX = !isLower && perSub.some((p)=>p.isX);
-            const hasF9 = !isLower && perSub.some((p)=>p.agg === 9);
-            const totMk = perSub.reduce((a, p)=>{
-                var _p_mk;
-                return a + ((_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : 0);
-            }, 0);
-            const totAgg = isLower ? null : hasX ? "X" : perSub.reduce((a, p)=>{
-                var _p_agg;
-                return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-            }, 0);
-            const div = isLower ? null : hasX ? "X" : divisionOf(totAgg, subjects.length, divisions, hasF9);
-            const memberNames = g.members.map((mid)=>{
-                var _classStudents_find;
-                return (_classStudents_find = classStudents.find((s)=>s.id === mid)) === null || _classStudents_find === void 0 ? void 0 : _classStudents_find.name;
-            }).filter(Boolean);
-            return {
-                g,
-                perSub,
-                totMk,
-                totAgg,
-                div,
-                hasX,
-                memberNames
-            };
-        }), [
-        groups,
-        testMarks,
-        subjects,
-        isLower,
-        bands,
-        divisions,
-        classStudents
-    ]);
-    const positions = useMemo(()=>rankWithTies(rows.map((r)=>r.totMk > 0 ? r.totMk : null), rows.map((r)=>typeof r.totAgg === "number" ? r.totAgg : null)), [
-        rows
-    ]);
-    const sortedRows = useMemo(()=>{
-        const indexed = rows.map((r, i)=>({
-                ...r,
-                pos: positions[i]
-            }));
-        return [
-            ...indexed
-        ].sort((a, b)=>{
-            if (a.pos === "-") return 1;
-            if (b.pos === "-") return -1;
-            return a.pos - b.pos;
-        });
-    }, [
-        rows,
-        positions
-    ]);
-    // General Group Performance Analysis: combines EVERY Group Test that has
-    // any marks entered for this class+term+year (not just the one currently
-    // selected above), so groups can be compared on their overall performance
-    // across the whole term rather than a single test at a time.
-    const analysisRows = useMemo(()=>groups.map((g)=>{
-            const perTest = GROUP_TEST_OPTIONS.map((tn)=>{
-                var _period_marks;
-                const m = (((_period_marks = period.marks) === null || _period_marks === void 0 ? void 0 : _period_marks[tn]) || {})[g.id];
-                const hasData = !!m && subjects.some((sub)=>m[sub] !== undefined && m[sub] !== null);
-                if (!hasData) return {
-                    testNo: tn,
-                    hasData: false,
-                    totMk: null,
-                    totAgg: null
-                };
-                const perSub = subjects.map((sub)=>{
-                    const mk = m[sub];
-                    const isX = mk === undefined || mk === null;
-                    const agg = !isLower && !isX ? aggOf(mk, bands) : undefined;
-                    return {
-                        mk,
-                        agg,
-                        isX
-                    };
-                });
-                const hasX = !isLower && perSub.some((p)=>p.isX);
-                const totMk = perSub.reduce((a, p)=>{
-                    var _p_mk;
-                    return a + ((_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : 0);
-                }, 0);
-                const totAgg = isLower || hasX ? null : perSub.reduce((a, p)=>{
-                    var _p_agg;
-                    return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-                }, 0);
-                return {
-                    testNo: tn,
-                    hasData: true,
-                    totMk,
-                    totAgg
-                };
-            });
-            const completed = perTest.filter((t)=>t.hasData);
-            const avgTotMk = completed.length ? completed.reduce((a, t)=>a + t.totMk, 0) / completed.length : 0;
-            const aggTests = completed.filter((t)=>typeof t.totAgg === "number");
-            const avgTotAgg = !isLower && aggTests.length ? aggTests.reduce((a, t)=>a + t.totAgg, 0) / aggTests.length : null;
-            const overallDiv = !isLower && avgTotAgg !== null ? divisionOf(Math.round(avgTotAgg), subjects.length, divisions) : null;
-            const memberNames = g.members.map((mid)=>{
-                var _classStudents_find;
-                return (_classStudents_find = classStudents.find((s)=>s.id === mid)) === null || _classStudents_find === void 0 ? void 0 : _classStudents_find.name;
-            }).filter(Boolean);
-            return {
-                g,
-                perTest,
-                testsCompleted: completed.length,
-                avgTotMk,
-                avgTotAgg,
-                overallDiv,
-                memberNames
-            };
-        }), [
-        groups,
-        period,
-        subjects,
-        isLower,
-        bands,
-        divisions,
-        classStudents
-    ]);
-    const analysisPositions = useMemo(()=>rankWithTies(analysisRows.map((r)=>r.avgTotMk > 0 ? r.avgTotMk : null), analysisRows.map((r)=>typeof r.avgTotAgg === "number" ? r.avgTotAgg : null)), [
-        analysisRows
-    ]);
-    const sortedAnalysisRows = useMemo(()=>{
-        const indexed = analysisRows.map((r, i)=>({
-                ...r,
-                pos: analysisPositions[i]
-            }));
-        return [
-            ...indexed
-        ].sort((a, b)=>{
-            if (a.pos === "-") return 1;
-            if (b.pos === "-") return -1;
-            return a.pos - b.pos;
-        });
-    }, [
-        analysisRows,
-        analysisPositions
-    ]);
-    return /*#__PURE__*/ _jsxs("div", {
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 8,
-                    marginBottom: 12
-                },
-                children: [
-                    /*#__PURE__*/ _jsx("button", {
-                        onClick: ()=>setViewMode("single"),
-                        style: viewMode === "single" ? btnPrimary : btnGhost,
-                        children: "📝 Single Test"
-                    }),
-                    /*#__PURE__*/ _jsx("button", {
-                        onClick: ()=>setViewMode("analysis"),
-                        style: viewMode === "analysis" ? btnPrimary : btnGhost,
-                        children: "📊 General Performance Analysis"
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Class",
-                                value: cls,
-                                onChange: setCls,
-                                opts: ALL_CLASSES
-                            }),
-                            viewMode === "single" && /*#__PURE__*/ _jsx(Sel, {
-                                label: "Test No.",
-                                value: testNo,
-                                onChange: setTestNo,
-                                opts: GROUP_TEST_OPTIONS
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: setTerm,
-                                opts: TERMS
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Year"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        value: year,
-                                        onChange: (e)=>setYear(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: addGroup,
-                                style: btnPrimary,
-                                children: "+ Add Group"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setShowTransfer(true),
-                                style: btnGhost,
-                                title: "Copy ".concat(cls, "'s saved group-work results from one test/term/year into another"),
-                                children: "🔀 Transfer Result"
-                            }),
-                            viewMode === "single" ? /*#__PURE__*/ _jsxs(_Fragment, {
-                                children: [
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: ()=>exportGroupWorkWord({
-                                                school,
-                                                cls,
-                                                term,
-                                                year,
-                                                testNo,
-                                                isLower,
-                                                subjects,
-                                                sortedRows
-                                            }),
-                                        style: btnWord,
-                                        children: "📄 Download Word"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        disabled: pdfBusy,
-                                        onClick: async ()=>{
-                                            setPdfBusy(true);
-                                            try {
-                                                await downloadNodesAsPdf([
-                                                    cardRef.current
-                                                ], "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_").concat(safeFileName(testNo), ".pdf"), "landscape");
-                                            } finally{
-                                                setPdfBusy(false);
-                                            }
-                                        },
-                                        style: pdfBusy ? btnPdfBusy : btnPdf,
-                                        children: pdfBusy ? "⏳ Generating..." : "📕 Download PDF"
-                                    })
-                                ]
-                            }) : /*#__PURE__*/ _jsxs(_Fragment, {
-                                children: [
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: ()=>exportGroupWorkAnalysisWord({
-                                                school,
-                                                cls,
-                                                term,
-                                                year,
-                                                isLower,
-                                                subjects,
-                                                sortedAnalysisRows
-                                            }),
-                                        style: btnWord,
-                                        children: "📄 Download Word"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        disabled: analysisPdfBusy,
-                                        onClick: async ()=>{
-                                            setAnalysisPdfBusy(true);
-                                            try {
-                                                await downloadNodesAsPdf([
-                                                    analysisCardRef.current
-                                                ], "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_General_Group_Analysis.pdf"), "landscape");
-                                            } finally{
-                                                setAnalysisPdfBusy(false);
-                                            }
-                                        },
-                                        style: analysisPdfBusy ? btnPdfBusy : btnPdf,
-                                        children: analysisPdfBusy ? "⏳ Generating..." : "📕 Download PDF"
-                                    })
-                                ]
-                            })
-                        ]
-                    })
-                ]
-            }),
-            groups.length === 0 ? /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1.5px dashed #d1d5db",
-                    padding: "40px 20px",
-                    textAlign: "center",
-                    color: "#9ca3af"
-                },
-                children: [
-                    "No groups set up yet for ",
-                    cls,
-                    " — ",
-                    term,
-                    " ",
-                    year,
-                    ".",
-                    /*#__PURE__*/ _jsx("br", {}),
-                    /*#__PURE__*/ _jsx("button", {
-                        onClick: addGroup,
-                        style: {
-                            ...btnPrimary,
-                            marginTop: 12
-                        },
-                        children: "+ Add Group"
-                    })
-                ]
-            }) : viewMode === "single" ? /*#__PURE__*/ _jsxs("div", {
-                ref: cardRef,
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    overflow: "hidden",
-                    marginBottom: 24
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            background: "#1e3a6e",
-                            color: "white",
-                            padding: "12px 16px",
-                            textAlign: "center"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontWeight: 800,
-                                    fontSize: 16
-                                },
-                                children: school.name
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    fontSize: 12,
-                                    opacity: 0.9,
-                                    marginTop: 2
-                                },
-                                children: [
-                                    "GROUP TEST RESULTS ",
-                                    term.toUpperCase(),
-                                    ", ",
-                                    year,
-                                    " — ",
-                                    cls,
-                                    " — ",
-                                    toUpper(testNo)
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            overflowX: "auto"
-                        },
-                        children: /*#__PURE__*/ _jsxs("table", {
-                            style: {
-                                width: "100%",
-                                fontSize: 12,
-                                minWidth: 800
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsxs("thead", {
-                                    children: [
-                                        /*#__PURE__*/ _jsxs("tr", {
-                                            style: {
-                                                background: "#1e40af",
-                                                color: "white"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2,
-                                                    children: "GROUP"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        textAlign: "left",
-                                                        minWidth: 180
-                                                    },
-                                                    rowSpan: 2,
-                                                    children: "MEMBERS"
-                                                }),
-                                                subjects.map((s)=>/*#__PURE__*/ _jsxs("th", {
-                                                        style: th,
-                                                        colSpan: isLower ? 1 : 2,
-                                                        children: [
-                                                            s,
-                                                            isLower && lowerSubjectMax(s) !== 100 ? " /".concat(lowerSubjectMax(s)) : ""
-                                                        ]
-                                                    }, s)),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2,
-                                                    children: "TOT MARK"
-                                                }),
-                                                !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: th,
-                                                            rowSpan: 2,
-                                                            children: "TOT AGG"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: th,
-                                                            rowSpan: 2,
-                                                            children: "DIV"
-                                                        })
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2,
-                                                    children: "POS"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    rowSpan: 2
-                                                })
-                                            ]
-                                        }),
-                                        !isLower && /*#__PURE__*/ _jsx("tr", {
-                                            style: {
-                                                background: "#2563eb",
-                                                color: "white",
-                                                fontSize: 11
-                                            },
-                                            children: subjects.map((s)=>/*#__PURE__*/ _jsxs(React.Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                background: "#fef9c3",
-                                                                color: "#713f12"
-                                                            },
-                                                            children: "MK"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                background: "#fed7aa",
-                                                                color: "#7c2d12"
-                                                            },
-                                                            children: "AGG"
-                                                        })
-                                                    ]
-                                                }, s))
-                                        })
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsx("tbody", {
-                                    children: sortedRows.map((r, i)=>/*#__PURE__*/ _jsxs("tr", {
-                                            style: {
-                                                background: i % 2 === 0 ? "white" : "#eff6ff"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        fontWeight: 700
-                                                    },
-                                                    children: /*#__PURE__*/ _jsx("input", {
-                                                        className: "no-print-hide-border",
-                                                        value: r.g.name,
-                                                        onChange: (e)=>renameGroup(r.g.id, e.target.value),
-                                                        style: {
-                                                            ...inp,
-                                                            width: 110,
-                                                            fontWeight: 700,
-                                                            padding: "4px 6px",
-                                                            fontSize: 12,
-                                                            textAlign: "center"
-                                                        }
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        textAlign: "left"
-                                                    },
-                                                    children: /*#__PURE__*/ _jsx(GroupMembersPicker, {
-                                                        group: r.g,
-                                                        classStudents: classStudents,
-                                                        onToggle: (sid)=>toggleMember(r.g.id, sid)
-                                                    })
-                                                }),
-                                                r.perSub.map((p)=>{
-                                                    var _p_mk, _p_mk1;
-                                                    return isLower ? /*#__PURE__*/ _jsx("td", {
-                                                        style: td,
-                                                        children: /*#__PURE__*/ _jsx("input", {
-                                                            type: "number",
-                                                            value: (_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : "",
-                                                            onChange: (e)=>setMark(r.g.id, p.sub, e.target.value),
-                                                            style: {
-                                                                ...inp,
-                                                                width: 56,
-                                                                padding: "4px 6px",
-                                                                fontSize: 12,
-                                                                textAlign: "center"
-                                                            }
-                                                        })
-                                                    }, p.sub) : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                                        children: [
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
-                                                                    background: "#fefce8"
-                                                                },
-                                                                children: /*#__PURE__*/ _jsx("input", {
-                                                                    type: "number",
-                                                                    value: (_p_mk1 = p.mk) !== null && _p_mk1 !== void 0 ? _p_mk1 : "",
-                                                                    onChange: (e)=>setMark(r.g.id, p.sub, e.target.value),
-                                                                    style: {
-                                                                        ...inp,
-                                                                        width: 52,
-                                                                        padding: "4px 6px",
-                                                                        fontSize: 12,
-                                                                        textAlign: "center"
-                                                                    }
-                                                                })
-                                                            }),
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
-                                                                    background: "#fff7ed"
-                                                                },
-                                                                children: p.isX ? "X" : p.mk !== undefined ? p.agg : "-"
-                                                            })
-                                                        ]
-                                                    }, p.sub);
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        fontWeight: 700,
-                                                        background: "#ede9fe"
-                                                    },
-                                                    children: r.totMk || "-"
-                                                }),
-                                                !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#ede9fe",
-                                                                color: r.hasX ? "#dc2626" : "inherit",
-                                                                fontWeight: r.hasX ? 700 : 400
-                                                            },
-                                                            children: r.hasX ? "X" : r.totAgg || "-"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 700,
-                                                                color: r.hasX ? "#dc2626" : "#1e40af"
-                                                            },
-                                                            children: r.hasX ? "X" : r.totMk ? r.div : "-"
-                                                        })
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: r.pos !== "-" ? /*#__PURE__*/ _jsx(PositionBadge, {
-                                                        pos: r.pos,
-                                                        size: 13
-                                                    }) : "-"
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    className: "no-print",
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("button", {
-                                                        onClick: ()=>removeGroup(r.g.id),
-                                                        style: {
-                                                            ...btnDanger,
-                                                            padding: "3px 8px",
-                                                            fontSize: 11
-                                                        },
-                                                        children: "✕"
-                                                    })
-                                                })
-                                            ]
-                                        }, r.g.id))
-                                })
-                            ]
-                        })
-                    })
-                ]
-            }) : /*#__PURE__*/ _jsxs("div", {
-                ref: analysisCardRef,
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    overflow: "hidden",
-                    marginBottom: 24
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            background: "#1e3a6e",
-                            color: "white",
-                            padding: "12px 16px",
-                            textAlign: "center"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontWeight: 800,
-                                    fontSize: 16
-                                },
-                                children: school.name
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    fontSize: 12,
-                                    opacity: 0.9,
-                                    marginTop: 2
-                                },
-                                children: [
-                                    "GENERAL GROUP PERFORMANCE ANALYSIS — ",
-                                    term.toUpperCase(),
-                                    ", ",
-                                    year,
-                                    " — ",
-                                    cls
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontSize: 11,
-                                    opacity: 0.8,
-                                    marginTop: 2
-                                },
-                                children: "Combines every Group Test with marks entered this term"
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            overflowX: "auto"
-                        },
-                        children: /*#__PURE__*/ _jsxs("table", {
-                            style: {
-                                width: "100%",
-                                fontSize: 12,
-                                minWidth: 900
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsx("thead", {
-                                    children: /*#__PURE__*/ _jsxs("tr", {
-                                        style: {
-                                            background: "#1e40af",
-                                            color: "white"
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: th,
-                                                children: "GROUP"
-                                            }),
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: {
-                                                    ...th,
-                                                    textAlign: "left",
-                                                    minWidth: 180
-                                                },
-                                                children: "MEMBERS"
-                                            }),
-                                            GROUP_TEST_OPTIONS.map((tn)=>/*#__PURE__*/ _jsx("th", {
-                                                    style: th,
-                                                    children: tn.replace("Group Test ", "GT")
-                                                }, tn)),
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: th,
-                                                children: "TESTS DONE"
-                                            }),
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: th,
-                                                children: "AVG TOT MK"
-                                            }),
-                                            !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                children: [
-                                                    /*#__PURE__*/ _jsx("th", {
-                                                        style: th,
-                                                        children: "AVG TOT AGG"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("th", {
-                                                        style: th,
-                                                        children: "OVERALL DIV"
-                                                    })
-                                                ]
-                                            }),
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: th,
-                                                children: "OVERALL POS"
-                                            })
-                                        ]
-                                    })
-                                }),
-                                /*#__PURE__*/ _jsx("tbody", {
-                                    children: sortedAnalysisRows.map((r, i)=>/*#__PURE__*/ _jsxs("tr", {
-                                            style: {
-                                                background: i % 2 === 0 ? "white" : "#eff6ff"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        fontWeight: 700
-                                                    },
-                                                    children: r.g.name
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        textAlign: "left"
-                                                    },
-                                                    children: r.memberNames.join(", ") || "-"
-                                                }),
-                                                r.perTest.map((t)=>/*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            color: t.hasData ? "#111827" : "#9ca3af"
-                                                        },
-                                                        children: t.hasData ? t.totMk : "-"
-                                                    }, t.testNo)),
-                                                /*#__PURE__*/ _jsxs("td", {
-                                                    style: {
-                                                        ...td,
-                                                        fontWeight: 700
-                                                    },
-                                                    children: [
-                                                        r.testsCompleted,
-                                                        "/",
-                                                        GROUP_TEST_OPTIONS.length
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        fontWeight: 700,
-                                                        background: "#ede9fe"
-                                                    },
-                                                    children: r.avgTotMk > 0 ? r.avgTotMk.toFixed(1) : "-"
-                                                }),
-                                                !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#ede9fe"
-                                                            },
-                                                            children: r.avgTotAgg !== null ? r.avgTotAgg.toFixed(1) : "-"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 700,
-                                                                color: "#1e40af"
-                                                            },
-                                                            children: r.overallDiv || "-"
-                                                        })
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: r.pos !== "-" ? /*#__PURE__*/ _jsx(PositionBadge, {
-                                                        pos: r.pos,
-                                                        size: 13
-                                                    }) : "-"
-                                                })
-                                            ]
-                                        }, r.g.id))
-                                })
-                            ]
-                        })
-                    })
-                ]
-            }),
-            showTransfer && /*#__PURE__*/ _jsx(TransferResultModal, {
-                title: "Transfer Result — ".concat(cls),
-                note: "Copies every ".concat(cls, ' group\'s saved marks for the "From" test/term/year into the "To" test/term/year, overwriting anything already there. If the destination term/year has no groups set up yet, the source\'s group roster is copied over too.'),
-                fields: [
-                    {
-                        key: "testNo",
-                        label: "Test No.",
-                        options: GROUP_TEST_OPTIONS
-                    },
-                    {
-                        key: "term",
-                        label: "Term",
-                        options: TERMS
-                    },
-                    {
-                        key: "year",
-                        label: "Year",
-                        type: "text"
-                    }
-                ],
-                initialFrom: {
-                    testNo,
-                    term,
-                    year
-                },
-                initialTo: {
-                    testNo,
-                    term,
-                    year
-                },
-                onClose: ()=>setShowTransfer(false),
-                onConfirm: (from, to)=>{
-                    transferGroupWork("".concat(from.term, "__").concat(from.year), from.testNo, "".concat(to.term, "__").concat(to.year), to.testNo);
-                    setShowTransfer(false);
-                }
-            }),
-            removeGroupId && /*#__PURE__*/ _jsx(ConfirmModal, {
-                title: "Remove Group",
-                message: "Remove this group and its marks for this term? This can't be undone.",
-                confirmLabel: "Remove Group",
-                onCancel: ()=>setRemoveGroupId(null),
-                onConfirm: confirmRemoveGroup
-            })
-        ]
-    });
-}
-// Lets a teacher tick which pupils (from the selected class's roster) belong
-// to a group, instead of typing names by hand -- shows the group's current
-// member names with a small popover checklist to add/remove.
-function GroupMembersPicker(param) {
-    let { group, classStudents, onToggle } = param;
-    const [open, setOpen] = useState(false);
-    return /*#__PURE__*/ _jsxs("div", {
-        style: {
-            position: "relative"
-        },
-        children: [
-            /*#__PURE__*/ _jsx("div", {
-                onClick: ()=>setOpen((o)=>!o),
-                style: {
-                    cursor: "pointer",
-                    fontSize: 12,
-                    lineHeight: 1.6,
-                    minHeight: 20,
-                    border: "1px dashed #d1d5db",
-                    borderRadius: 6,
-                    padding: "4px 8px"
-                },
-                children: group.members.length ? group.members.map((mid, i)=>{
-                    var _classStudents_find;
-                    return /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            i + 1,
-                            ". ",
-                            ((_classStudents_find = classStudents.find((s)=>s.id === mid)) === null || _classStudents_find === void 0 ? void 0 : _classStudents_find.name) || "(removed pupil)"
-                        ]
-                    }, mid);
-                }) : /*#__PURE__*/ _jsx("span", {
-                    style: {
-                        color: "#9ca3af",
-                        fontStyle: "italic"
-                    },
-                    children: "Click to add members…"
-                })
-            }),
-            open && /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    position: "absolute",
-                    zIndex: 20,
-                    top: "100%",
-                    left: 0,
-                    background: "white",
-                    border: "1.5px solid #d1d5db",
-                    borderRadius: 8,
-                    boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
-                    padding: 8,
-                    minWidth: 220,
-                    maxHeight: 260,
-                    overflowY: "auto"
-                },
-                children: [
-                    classStudents.map((s)=>/*#__PURE__*/ _jsxs("label", {
-                            style: {
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                fontSize: 12,
-                                padding: "4px 6px",
-                                cursor: "pointer",
-                                borderRadius: 6
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsx("input", {
-                                    type: "checkbox",
-                                    checked: group.members.includes(s.id),
-                                    onChange: ()=>onToggle(s.id)
-                                }),
-                                s.name
-                            ]
-                        }, s.id)),
-                    /*#__PURE__*/ _jsx("button", {
-                        onClick: ()=>setOpen(false),
-                        style: {
-                            ...btnGhost,
-                            width: "100%",
-                            marginTop: 6,
-                            padding: "5px 0",
-                            fontSize: 12
-                        },
-                        children: "Done"
-                    })
-                ]
-            })
-        ]
-    });
-}
-// ─── EXAM TIMETABLE ──────────────────────────────────────────────────────────
-function ExamTimetable(param) {
-    let { examTimetable, setExamTimetable, school, markEditing } = param;
-    var _examTimetable_section;
-    const [section, setSection] = useState("upper"); // upper | lower
-    const [term, setTerm] = useState(TERMS[0]);
-    const [pdfBusy, setPdfBusy] = useState(false);
-    const cardRef = useRef(null);
-    const classesForSection = section === "upper" ? [
-        "P4",
-        "P5",
-        "P6",
-        "P7"
-    ] : [
-        "P1",
-        "P2",
-        "P3"
+// ─── SLIPS (BOT / Mid Term result slips) ────────────────────────────────────
+// Prints one compact slip per pupil for whichever assessment is selected --
+// spans all three sections the same way AssessmentEntry's data entry does.
+// Slips pulls from the exact same BOT/Mid Term records AssessmentEntry
+// writes; Report Cards never read "BOT", only "Mid Term", so nothing
+// entered here for BOT can ever show up on a report card.
+function Slips(param) {
+    let { students, termMarks, nurseryMarks, bands: defaultBands, specialBands, school } = param;
+    const allClasses = [
+        ...NURSERY_CLASSES,
+        ...ALL_CLASSES
     ];
-    const subjectsForSection = section === "upper" ? UPPER_SUBJECTS : EXAM_TIMETABLE_LOWER_SUBJECTS;
-    const sectionData = (examTimetable === null || examTimetable === void 0 ? void 0 : (_examTimetable_section = examTimetable[section]) === null || _examTimetable_section === void 0 ? void 0 : _examTimetable_section[term]) || {
-        rows: [],
-        preparedBy: ""
-    };
-    const rows = sectionData.rows || [];
-    const updateSection = useCallback((updater)=>{
-        markEditing();
-        setExamTimetable((prev)=>{
-            const sectionBucket = prev[section] || {};
-            const cur = sectionBucket[term] || {
-                rows: [],
-                preparedBy: ""
-            };
-            return {
-                ...prev,
-                [section]: {
-                    ...sectionBucket,
-                    [term]: updater(cur)
-                }
-            };
-        });
-    }, [
-        section,
-        term,
-        markEditing,
-        setExamTimetable
-    ]);
-    const blankRow = function() {
-        let overrides = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-        return {
-            id: "et".concat(Date.now()).concat(Math.random().toString(36).slice(2, 6)),
-            date: "",
-            time: "",
-            exam: EXAM_TIMETABLE_TYPES[0],
-            cls: classesForSection[0],
-            subject: subjectsForSection[0],
-            venue: EXAM_TIMETABLE_VENUES[0],
-            invigilators: [],
-            ...overrides
-        };
-    };
-    const addRow = ()=>updateSection((cur)=>({
-                ...cur,
-                rows: [
-                    ...cur.rows || [],
-                    blankRow()
-                ]
-            }));
-    // Convenience: since one exam session (same date/time/exam) usually covers
-    // several classes at once -- exactly like the school's own paper
-    // timetable -- this copies the date/time/exam off the last row so adding
-    // the next class doesn't mean re-typing them.
-    const addClassToSameSession = ()=>updateSection((cur)=>{
-            const last = (cur.rows || [])[cur.rows.length - 1];
-            return {
-                ...cur,
-                rows: [
-                    ...cur.rows || [],
-                    blankRow(last ? {
-                        date: last.date,
-                        time: last.time,
-                        exam: last.exam
-                    } : {})
-                ]
-            };
-        });
-    const removeRow = (id)=>updateSection((cur)=>({
-                ...cur,
-                rows: (cur.rows || []).filter((r)=>r.id !== id)
-            }));
-    const updateRow = (id, field, val)=>updateSection((cur)=>({
-                ...cur,
-                rows: (cur.rows || []).map((r)=>r.id === id ? {
-                        ...r,
-                        [field]: val
-                    } : r)
-            }));
-    const toggleInvigilator = (id, name)=>updateSection((cur)=>({
-                ...cur,
-                rows: (cur.rows || []).map((r)=>{
-                    if (r.id !== id) return r;
-                    const has = (r.invigilators || []).includes(name);
-                    return {
-                        ...r,
-                        invigilators: has ? r.invigilators.filter((n)=>n !== name) : [
-                            ...r.invigilators || [],
-                            name
-                        ]
-                    };
-                })
-            }));
-    const setPreparedBy = (val)=>updateSection((cur)=>({
-                ...cur,
-                preparedBy: val
-            }));
-    const setNotes = (val)=>updateSection((cur)=>({
-                ...cur,
-                notes: val
-            }));
-    return /*#__PURE__*/ _jsxs("div", {
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "flex-end",
-                            flexWrap: "wrap"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setSection("upper"),
-                                style: section === "upper" ? btnPrimary : btnGhost,
-                                children: "Upper Primary (P4–P7)"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>setSection("lower"),
-                                style: section === "lower" ? btnPrimary : btnGhost,
-                                children: "Lower Primary (P1–P3)"
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: setTerm,
-                                opts: TERMS
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: addRow,
-                                style: btnPrimary,
-                                children: "+ Add Session"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: addClassToSameSession,
-                                disabled: rows.length === 0,
-                                style: {
-                                    ...btnGhost,
-                                    opacity: rows.length === 0 ? 0.5 : 1
-                                },
-                                children: "+ Add Class (Same Session)"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>exportExamTimetableWord({
-                                        school,
-                                        section,
-                                        term,
-                                        rows,
-                                        preparedBy: sectionData.preparedBy,
-                                        notes: sectionData.notes
-                                    }),
-                                style: btnWord,
-                                children: "📄 Download Word"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                disabled: pdfBusy,
-                                onClick: async ()=>{
-                                    setPdfBusy(true);
-                                    try {
-                                        await downloadNodesAsPdf([
-                                            cardRef.current
-                                        ], "".concat(section === "upper" ? "Upper" : "Lower", "_Primary_Exam_Timetable_").concat(safeFileName(term), ".pdf"), "landscape");
-                                    } finally{
-                                        setPdfBusy(false);
-                                    }
-                                },
-                                style: pdfBusy ? btnPdfBusy : btnPdf,
-                                children: pdfBusy ? "⏳ Generating..." : "📕 Download PDF"
-                            })
-                        ]
-                    })
-                ]
-            }),
-            rows.length === 0 ? /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1.5px dashed #d1d5db",
-                    padding: "40px 20px",
-                    textAlign: "center",
-                    color: "#9ca3af"
-                },
-                children: [
-                    "No exam sessions added yet for ",
-                    section === "upper" ? "Upper" : "Lower",
-                    " Primary — ",
-                    term,
-                    ".",
-                    /*#__PURE__*/ _jsx("br", {}),
-                    /*#__PURE__*/ _jsx("button", {
-                        onClick: addRow,
-                        style: {
-                            ...btnPrimary,
-                            marginTop: 12
-                        },
-                        children: "+ Add Session"
-                    })
-                ]
-            }) : /*#__PURE__*/ _jsxs("div", {
-                ref: cardRef,
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    overflow: "hidden",
-                    marginBottom: 16
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            background: "#1e3a6e",
-                            color: "white",
-                            padding: "14px 16px",
-                            textAlign: "center"
-                        },
-                        children: [
-                            school.logo && /*#__PURE__*/ _jsx("img", {
-                                src: school.logo,
-                                alt: "logo",
-                                style: {
-                                    width: 40,
-                                    height: 40,
-                                    objectFit: "contain",
-                                    margin: "0 auto 6px",
-                                    display: "block"
-                                }
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontWeight: 800,
-                                    fontSize: 16
-                                },
-                                children: school.name
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    fontSize: 13,
-                                    opacity: 0.9,
-                                    marginTop: 2,
-                                    fontWeight: 700
-                                },
-                                children: [
-                                    section === "upper" ? "UPPER" : "LOWER",
-                                    " PRIMARY EXAM TIMETABLE — ",
-                                    term.toUpperCase()
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            overflowX: "auto"
-                        },
-                        children: /*#__PURE__*/ _jsxs("table", {
-                            style: {
-                                width: "100%",
-                                fontSize: 12,
-                                minWidth: 900
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsx("thead", {
-                                    children: /*#__PURE__*/ _jsx("tr", {
-                                        style: {
-                                            background: "#1e40af",
-                                            color: "white"
-                                        },
-                                        children: [
-                                            "DATE",
-                                            "TIME",
-                                            "EXAM",
-                                            "CLASS",
-                                            "SUBJECT",
-                                            "VENUE",
-                                            "INVIGILATOR(S)",
-                                            ""
-                                        ].map((h)=>/*#__PURE__*/ _jsx("th", {
-                                                style: th,
-                                                children: h
-                                            }, h))
-                                    })
-                                }),
-                                /*#__PURE__*/ _jsx("tbody", {
-                                    children: rows.map((r, i)=>/*#__PURE__*/ _jsxs("tr", {
-                                            style: {
-                                                background: i % 2 === 0 ? "white" : "#eff6ff"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("input", {
-                                                        value: r.date,
-                                                        onChange: (e)=>updateRow(r.id, "date", e.target.value),
-                                                        placeholder: "e.g. Mon 27/08/2026",
-                                                        style: {
-                                                            ...inp,
-                                                            width: 120,
-                                                            padding: "4px 6px",
-                                                            fontSize: 12
-                                                        }
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("input", {
-                                                        value: r.time,
-                                                        onChange: (e)=>updateRow(r.id, "time", e.target.value),
-                                                        placeholder: "e.g. 8:00-10:30am",
-                                                        style: {
-                                                            ...inp,
-                                                            width: 110,
-                                                            padding: "4px 6px",
-                                                            fontSize: 12
-                                                        }
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("select", {
-                                                        value: r.exam,
-                                                        onChange: (e)=>updateRow(r.id, "exam", e.target.value),
-                                                        style: {
-                                                            ...inp,
-                                                            padding: "4px 6px",
-                                                            fontSize: 12
-                                                        },
-                                                        children: EXAM_TIMETABLE_TYPES.map((x)=>/*#__PURE__*/ _jsx("option", {
-                                                                children: x
-                                                            }, x))
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("select", {
-                                                        value: r.cls,
-                                                        onChange: (e)=>updateRow(r.id, "cls", e.target.value),
-                                                        style: {
-                                                            ...inp,
-                                                            padding: "4px 6px",
-                                                            fontSize: 12
-                                                        },
-                                                        children: classesForSection.map((c)=>/*#__PURE__*/ _jsx("option", {
-                                                                children: c
-                                                            }, c))
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("select", {
-                                                        value: r.subject,
-                                                        onChange: (e)=>updateRow(r.id, "subject", e.target.value),
-                                                        style: {
-                                                            ...inp,
-                                                            padding: "4px 6px",
-                                                            fontSize: 12
-                                                        },
-                                                        children: subjectsForSection.map((s)=>/*#__PURE__*/ _jsx("option", {
-                                                                children: s
-                                                            }, s))
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("select", {
-                                                        value: r.venue,
-                                                        onChange: (e)=>updateRow(r.id, "venue", e.target.value),
-                                                        style: {
-                                                            ...inp,
-                                                            padding: "4px 6px",
-                                                            fontSize: 12
-                                                        },
-                                                        children: EXAM_TIMETABLE_VENUES.map((v)=>/*#__PURE__*/ _jsx("option", {
-                                                                children: v
-                                                            }, v))
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        textAlign: "left",
-                                                        minWidth: 180
-                                                    },
-                                                    children: /*#__PURE__*/ _jsx(InvigilatorsPicker, {
-                                                        row: r,
-                                                        onToggle: (name)=>toggleInvigilator(r.id, name)
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    className: "no-print",
-                                                    style: td,
-                                                    children: /*#__PURE__*/ _jsx("button", {
-                                                        onClick: ()=>removeRow(r.id),
-                                                        style: {
-                                                            ...btnDanger,
-                                                            padding: "3px 8px",
-                                                            fontSize: 11
-                                                        },
-                                                        children: "✕"
-                                                    })
-                                                })
-                                            ]
-                                        }, r.id))
-                                })
-                            ]
-                        })
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            padding: "16px 20px",
-                            borderTop: "1px solid #e5e7eb"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("label", {
-                                style: lbl,
-                                children: "Notes (e.g. reminders about dues, reporting time, requirements)"
-                            }),
-                            /*#__PURE__*/ _jsx("textarea", {
-                                value: sectionData.notes || "",
-                                onChange: (e)=>setNotes(e.target.value),
-                                placeholder: "e.g. All school dues must be cleared before sitting exams.\nPupils should be seated 15 minutes before each exam begins.",
-                                rows: 3,
-                                style: {
-                                    ...inp,
-                                    width: "100%",
-                                    maxWidth: 600,
-                                    resize: "vertical",
-                                    fontFamily: "inherit"
-                                }
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            padding: "0 20px 16px",
-                            borderTop: sectionData.notes ? "none" : "1px solid #e5e7eb",
-                            paddingTop: sectionData.notes ? 0 : 16
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("label", {
-                                style: lbl,
-                                children: "Prepared By"
-                            }),
-                            /*#__PURE__*/ _jsx("input", {
-                                value: sectionData.preparedBy || "",
-                                onChange: (e)=>setPreparedBy(e.target.value),
-                                placeholder: "Type the name/title of who prepared this timetable",
-                                style: {
-                                    ...inp,
-                                    maxWidth: 360
-                                }
-                            })
-                        ]
-                    })
-                ]
-            })
-        ]
-    });
-}
-// Small multi-select popover for the fixed list of invigilators, matching
-// the same click-to-open checklist pattern as GroupMembersPicker above.
-function InvigilatorsPicker(param) {
-    let { row, onToggle } = param;
-    const [open, setOpen] = useState(false);
-    const invigilators = row.invigilators || [];
-    return /*#__PURE__*/ _jsxs("div", {
-        style: {
-            position: "relative"
-        },
-        children: [
-            /*#__PURE__*/ _jsx("div", {
-                onClick: ()=>setOpen((o)=>!o),
-                style: {
-                    cursor: "pointer",
-                    fontSize: 12,
-                    lineHeight: 1.6,
-                    minHeight: 20,
-                    border: "1px dashed #d1d5db",
-                    borderRadius: 6,
-                    padding: "4px 8px"
-                },
-                children: invigilators.length ? invigilators.join(", ") : /*#__PURE__*/ _jsx("span", {
-                    style: {
-                        color: "#9ca3af",
-                        fontStyle: "italic"
-                    },
-                    children: "Click to select…"
-                })
-            }),
-            open && /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    position: "absolute",
-                    zIndex: 20,
-                    top: "100%",
-                    left: 0,
-                    background: "white",
-                    border: "1.5px solid #d1d5db",
-                    borderRadius: 8,
-                    boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
-                    padding: 8,
-                    minWidth: 230,
-                    maxHeight: 260,
-                    overflowY: "auto"
-                },
-                children: [
-                    EXAM_TIMETABLE_INVIGILATORS.map((name)=>/*#__PURE__*/ _jsxs("label", {
-                            style: {
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                fontSize: 12,
-                                padding: "4px 6px",
-                                cursor: "pointer",
-                                borderRadius: 6
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsx("input", {
-                                    type: "checkbox",
-                                    checked: invigilators.includes(name),
-                                    onChange: ()=>onToggle(name)
-                                }),
-                                name
-                            ]
-                        }, name)),
-                    /*#__PURE__*/ _jsx("button", {
-                        onClick: ()=>setOpen(false),
-                        style: {
-                            ...btnGhost,
-                            width: "100%",
-                            marginTop: 6,
-                            padding: "5px 0",
-                            fontSize: 12
-                        },
-                        children: "Done"
-                    })
-                ]
-            })
-        ]
-    });
-}
-// ─── MONTHLY REPORT CARDS ────────────────────────────────────────────────────
-function MonthlyCards(param) {
-    let { students, monthlyMarks, bands: defaultBands, specialBands, divisions, school } = param;
-    const [cls, setCls] = useState("P4");
+    const [cls, setCls] = useState(allClasses[0]);
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
+    const [assessment, setAssessment] = useState("BOT");
     const [search, setSearch] = useState("");
+    const isNursery = NURSERY_CLASSES.includes(cls);
     const isLower = LOWER_CLASSES.includes(cls);
-    const subjects = isLower ? LOWER_MONTHLY_SUBJECTS : MONTHLY_SUBJECTS;
-    // Special Grading Scale override for the selected class, if any.
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "Monthly Exams", year), [
+    const subjects = isNursery ? NURSERY_SUBJECTS : isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
+    const tk = "".concat(term, "__").concat(year);
+    const bands = useMemo(()=>isNursery ? null : bandsForClass(cls, defaultBands, specialBands, assessment, year), [
+        isNursery,
         cls,
         defaultBands,
         specialBands,
+        assessment,
         year
     ]);
-    const tk = "".concat(term, "__").concat(year);
-    const months = TERM_MONTHS[term] || [];
     const classStudents = useMemo(()=>students.filter((s)=>s.className === cls && s.name.toLowerCase().includes(search.toLowerCase())).sort((a, b)=>a.name.localeCompare(b.name)), [
         students,
         cls,
         search
     ]);
-    const allClassStudents = useMemo(()=>students.filter((s)=>s.className === cls), [
-        students,
-        cls
-    ]);
-    const allMonthPositions = useMemo(()=>{
-        const result = {};
-        months.forEach((month)=>{
-            const allRows = allClassStudents.map((s)=>{
-                var _monthlyMarks_s_id_tk, _monthlyMarks_s_id;
-                const m = ((_monthlyMarks_s_id = monthlyMarks[s.id]) === null || _monthlyMarks_s_id === void 0 ? void 0 : (_monthlyMarks_s_id_tk = _monthlyMarks_s_id[tk]) === null || _monthlyMarks_s_id_tk === void 0 ? void 0 : _monthlyMarks_s_id_tk[month]) || {};
-                const totMk = subjects.reduce((a, sub)=>{
-                    var _m_sub;
-                    var _m_sub_mk;
-                    return a + ((_m_sub_mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk) !== null && _m_sub_mk !== void 0 ? _m_sub_mk : 0);
-                }, 0);
-                let totAgg = null;
-                if (!isLower) {
-                    const perSub = subjects.map((sub)=>{
-                        var _m_sub;
-                        const mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk;
-                        const isX = mk === undefined || mk === null;
-                        return {
-                            mk,
-                            isX,
-                            agg: isX ? undefined : aggOf(mk, bands)
-                        };
-                    });
-                    const hasX = perSub.some((p)=>p.isX);
-                    totAgg = hasX ? null : perSub.reduce((a, p)=>{
-                        var _p_agg;
-                        return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-                    }, 0);
-                }
-                return {
-                    id: s.id,
-                    totMk,
-                    totAgg
-                };
-            });
-            const ranks = rankWithTies(allRows.map((r)=>r.totMk > 0 ? r.totMk : null), allRows.map((r)=>typeof r.totAgg === "number" ? r.totAgg : null));
-            result[month] = {};
-            allRows.forEach((r, i)=>{
-                result[month][r.id] = ranks[i];
-            });
-        });
-        return result;
-    }, [
-        allClassStudents,
-        monthlyMarks,
-        tk,
-        months,
-        subjects,
-        isLower,
-        bands
-    ]);
-    const cardData = useMemo(()=>classStudents.map((s)=>{
-            const monthData = months.map((month)=>{
-                var _monthlyMarks_s_id_tk, _monthlyMarks_s_id, _allMonthPositions_month;
-                const m = ((_monthlyMarks_s_id = monthlyMarks[s.id]) === null || _monthlyMarks_s_id === void 0 ? void 0 : (_monthlyMarks_s_id_tk = _monthlyMarks_s_id[tk]) === null || _monthlyMarks_s_id_tk === void 0 ? void 0 : _monthlyMarks_s_id_tk[month]) || {};
-                const perSub = subjects.map((sub)=>{
-                    var _m_sub;
-                    const mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk;
-                    const isX = mk === undefined || mk === null;
-                    const agg = !isLower && !isX ? aggOf(mk, bands) : undefined;
-                    return {
+    const slips = useMemo(()=>classStudents.map((s)=>{
+            if (isNursery) {
+                const m = nurseryMarks[s.id]?.[tk]?.[assessment] || {};
+                const perSub = subjects.map((sub)=>({
                         sub,
-                        mk,
-                        agg,
-                        isX
-                    };
-                });
-                // hasX only meaningful once at least one mark exists for the month
-                const anyEntered = perSub.some((p)=>!p.isX);
-                const hasX = !isLower && anyEntered && perSub.some((p)=>p.isX);
-                const hasF9 = !isLower && anyEntered && perSub.some((p)=>p.agg === 9);
-                const totMk = perSub.reduce((a, p)=>{
-                    var _p_mk;
-                    return a + ((_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : 0);
-                }, 0);
-                const totAgg = isLower ? null : hasX ? "X" : perSub.reduce((a, p)=>{
-                    var _p_agg;
-                    return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-                }, 0);
-                const div = !isLower && !hasX && totAgg !== null ? divisionOf(totAgg, 4, divisions, hasF9) : hasX ? "X" : null;
-                const pos = (_allMonthPositions_month = allMonthPositions[month]) === null || _allMonthPositions_month === void 0 ? void 0 : _allMonthPositions_month[s.id];
+                        mark: m[sub]?.mark,
+                        comment: m[sub]?.comment || "",
+                        band: nurseryColorForMark(m[sub]?.mark)
+                    }));
+                const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
                 return {
-                    month,
+                    s,
                     perSub,
-                    totMk,
-                    totAgg,
-                    div,
-                    pos,
-                    hasX
+                    total
+                };
+            }
+            const m = termMarks[s.id]?.[tk]?.[assessment] || {};
+            const perSub = subjects.map((sub)=>{
+                const mark = m[sub];
+                return {
+                    sub,
+                    mark,
+                    grade: typeof mark === "number" ? gradeLabel(mark, bands) : undefined
                 };
             });
+            const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
             return {
                 s,
-                monthData
+                perSub,
+                total
             };
-        }).filter((param)=>{
-            let { monthData } = param;
-            return monthData.some((md)=>md.perSub.some((p)=>!p.isX));
         }), [
         classStudents,
-        months,
-        monthlyMarks,
+        isNursery,
+        nurseryMarks,
+        termMarks,
         tk,
+        assessment,
         subjects,
-        bands,
-        divisions,
-        isLower,
-        allMonthPositions
-    ]);
-    return /*#__PURE__*/ _jsxs("div", {
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Class",
-                                value: cls,
-                                onChange: (v)=>setCls(v),
-                                opts: ALL_CLASSES
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: (v)=>setTerm(v),
-                                opts: TERMS
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Year"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        value: year,
-                                        onChange: (e)=>setYear(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Search Pupil"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        value: search,
-                                        onChange: (e)=>setSearch(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 160
-                                        },
-                                        placeholder: "Filter by name..."
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>exportMonthlyCardsWord({
-                                        school,
-                                        cls,
-                                        term,
-                                        year,
-                                        isLower,
-                                        subjects,
-                                        cardData,
-                                        totalInClass: allClassStudents.length
-                                    }),
-                                style: btnWord,
-                                children: "📄 Download Word"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>window.print(),
-                                style: btnPrimary,
-                                children: "🖨️ Print All Cards"
-                            })
-                        ]
-                    })
-                ]
-            }),
-            classStudents.length === 0 && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    padding: 40,
-                    textAlign: "center",
-                    color: "#9ca3af",
-                    border: "1px solid #e5e7eb"
-                },
-                children: [
-                    "No students in ",
-                    cls,
-                    "."
-                ]
-            }),
-            classStudents.length > 0 && cardData.length === 0 && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "#fffbeb",
-                    borderRadius: 12,
-                    padding: 24,
-                    textAlign: "center",
-                    color: "#92400e",
-                    border: "1px solid #fde68a",
-                    marginBottom: 16
-                },
-                children: [
-                    "No ",
-                    cls,
-                    " learners have any monthly marks recorded yet for ",
-                    term,
-                    " ",
-                    year,
-                    "."
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                style: {
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 24
-                },
-                children: cardData.map((param)=>{
-                    let { s, monthData } = param;
-                    return /*#__PURE__*/ _jsx(TermlyMonthlyCard, {
-                        school: school,
-                        student: s,
-                        monthData: monthData,
-                        term: term,
-                        year: year,
-                        cls: cls,
-                        isLower: isLower,
-                        subjects: subjects,
-                        totalInClass: allClassStudents.length
-                    }, s.id);
-                })
-            })
-        ]
-    });
-}
-function TermlyMonthlyCard(param) {
-    let { school, student, monthData, term, year, cls, isLower, subjects, totalInClass } = param;
-    const s = student;
-    const comments = monthlyCardAutoComments(monthData, isLower, "".concat(s.id, "-").concat(term, "-").concat(year, "-monthly"));
-    return /*#__PURE__*/ _jsxs("div", {
-        className: "page-break",
-        style: {
-            background: "white",
-            border: "2px solid #1e3a6e",
-            borderRadius: 10,
-            overflow: "hidden",
-            maxWidth: 900,
-            margin: "0 auto",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-            pageBreakAfter: "always"
-        },
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "linear-gradient(135deg,#1e3a6e 0%,#1e40af 100%)",
-                    color: "white",
-                    padding: "12px 20px",
-                    textAlign: "center"
-                },
-                children: [
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            fontWeight: 800,
-                            fontSize: 18,
-                            letterSpacing: 1
-                        },
-                        children: school.name
-                    }),
-                    school.motto && /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            fontSize: 11,
-                            opacity: 0.75,
-                            fontStyle: "italic",
-                            marginTop: 1
-                        },
-                        children: [
-                            '"',
-                            school.motto,
-                            '"'
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            fontSize: 11,
-                            opacity: 0.9,
-                            marginTop: 2
-                        },
-                        children: [
-                            school.poBox,
-                            school.email ? " - ".concat(school.email) : ""
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            marginTop: 8,
-                            display: "inline-block",
-                            background: "rgba(255,255,255,0.18)",
-                            borderRadius: 20,
-                            padding: "3px 18px",
-                            fontSize: 12,
-                            fontWeight: 700,
-                            letterSpacing: 0.5
-                        },
-                        children: [
-                            "MONTHLY TESTS REPORT CARD - ",
-                            term.toUpperCase(),
-                            " ",
-                            year
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "#fefce8",
-                    borderBottom: "2px solid #fde68a",
-                    padding: "8px 16px",
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr",
-                    gap: 6,
-                    fontSize: 13
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "NAME:"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 800,
-                                    fontStyle: "italic"
-                                },
-                                children: s.name
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "CLASS:"
-                            }),
-                            " ",
-                            cls
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "YEAR:"
-                            }),
-                            " ",
-                            year
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                style: {
-                    overflowX: "auto"
-                },
-                children: /*#__PURE__*/ _jsxs("table", {
-                    style: {
-                        width: "100%",
-                        fontSize: 12,
-                        borderCollapse: "collapse"
-                    },
-                    children: [
-                        /*#__PURE__*/ _jsxs("thead", {
-                            children: [
-                                /*#__PURE__*/ _jsxs("tr", {
-                                    style: {
-                                        background: "#1e3a6e",
-                                        color: "white"
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ _jsxs("th", {
-                                            style: {
-                                                ...th,
-                                                color: "white",
-                                                background: "#1e3a6e",
-                                                textAlign: "left",
-                                                minWidth: 100,
-                                                verticalAlign: "middle",
-                                                fontSize: 11
-                                            },
-                                            rowSpan: 2,
-                                            children: [
-                                                "MONTHLY",
-                                                /*#__PURE__*/ _jsx("br", {}),
-                                                "TESTS"
-                                            ]
-                                        }),
-                                        subjects.map((sub)=>/*#__PURE__*/ _jsxs("th", {
-                                                style: {
-                                                    ...th,
-                                                    color: "white",
-                                                    background: "#1e3a6e"
-                                                },
-                                                colSpan: isLower ? 1 : 2,
-                                                children: [
-                                                    sub,
-                                                    isLower && lowerSubjectMax(sub) !== 100 ? " /".concat(lowerSubjectMax(sub)) : ""
-                                                ]
-                                            }, sub)),
-                                        /*#__PURE__*/ _jsxs("th", {
-                                            style: {
-                                                ...th,
-                                                color: "white",
-                                                background: "#1e3a6e",
-                                                verticalAlign: "middle",
-                                                fontSize: 11,
-                                                minWidth: 52
-                                            },
-                                            rowSpan: 2,
-                                            children: [
-                                                "TOT",
-                                                /*#__PURE__*/ _jsx("br", {}),
-                                                "MK"
-                                            ]
-                                        }),
-                                        !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsxs("th", {
-                                                    style: {
-                                                        ...th,
-                                                        color: "white",
-                                                        background: "#1e3a6e",
-                                                        verticalAlign: "middle",
-                                                        fontSize: 11,
-                                                        minWidth: 52
-                                                    },
-                                                    rowSpan: 2,
-                                                    children: [
-                                                        "TOT",
-                                                        /*#__PURE__*/ _jsx("br", {}),
-                                                        "AGG"
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        color: "white",
-                                                        background: "#1e3a6e",
-                                                        verticalAlign: "middle",
-                                                        fontSize: 11,
-                                                        minWidth: 40
-                                                    },
-                                                    rowSpan: 2,
-                                                    children: "DIV"
-                                                })
-                                            ]
-                                        }),
-                                        /*#__PURE__*/ _jsx("th", {
-                                            style: {
-                                                ...th,
-                                                color: "white",
-                                                background: "#1e3a6e",
-                                                verticalAlign: "middle",
-                                                fontSize: 11,
-                                                minWidth: 40
-                                            },
-                                            rowSpan: 2,
-                                            children: "POS"
-                                        })
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsx("tr", {
-                                    style: {
-                                        background: "#2563eb",
-                                        color: "white"
-                                    },
-                                    children: subjects.map((sub)=>isLower ? /*#__PURE__*/ _jsx("th", {
-                                            style: {
-                                                ...th,
-                                                background: "#3b82f6",
-                                                color: "white",
-                                                fontSize: 10
-                                            },
-                                            children: "MK"
-                                        }, sub + "mk") : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#3b82f6",
-                                                        color: "white",
-                                                        fontSize: 10
-                                                    },
-                                                    children: "MK"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        background: "#60a5fa",
-                                                        color: "white",
-                                                        fontSize: 10
-                                                    },
-                                                    children: "AGG"
-                                                })
-                                            ]
-                                        }, sub))
-                                })
-                            ]
-                        }),
-                        /*#__PURE__*/ _jsx("tbody", {
-                            children: monthData.map((param, mIdx)=>{
-                                let { month, perSub, totMk, totAgg, div, pos, hasX } = param;
-                                const rowBg = mIdx % 2 === 0 ? "#ffffff" : "#f8fafc";
-                                const monthLabelBg = mIdx % 2 === 0 ? "#dbeafe" : "#eff6ff";
-                                return /*#__PURE__*/ _jsxs("tr", {
-                                    style: {
-                                        background: rowBg
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: {
-                                                ...td,
-                                                fontWeight: 800,
-                                                fontSize: 13,
-                                                background: monthLabelBg,
-                                                color: "#1e3a6e",
-                                                textAlign: "left",
-                                                paddingLeft: 10,
-                                                borderRight: "2px solid #93c5fd"
-                                            },
-                                            children: month
-                                        }),
-                                        perSub.map((p)=>isLower ? /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    background: rowBg,
-                                                    fontWeight: p.mk !== undefined ? 600 : 400,
-                                                    color: p.mk !== undefined ? "#1f2937" : "#9ca3af"
-                                                },
-                                                children: p.mk !== undefined ? padMark(p.mk) : "-"
-                                            }, p.sub + "mk") : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                                children: [
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            background: rowBg,
-                                                            fontWeight: p.mk !== undefined ? 600 : 400,
-                                                            color: p.mk !== undefined ? "#1f2937" : "#9ca3af"
-                                                        },
-                                                        children: p.mk !== undefined ? padMark(p.mk) : "-"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            background: mIdx % 2 === 0 ? "#fff7ed" : "#fef3c7",
-                                                            fontWeight: p.isX || p.agg !== undefined ? 700 : 400,
-                                                            color: p.isX ? "#dc2626" : p.agg !== undefined ? "#92400e" : "#9ca3af",
-                                                            fontSize: 11
-                                                        },
-                                                        children: hasX && p.isX ? "X" : p.agg !== undefined ? p.agg : "-"
-                                                    })
-                                                ]
-                                            }, p.sub)),
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: {
-                                                ...td,
-                                                fontWeight: 700,
-                                                background: mIdx % 2 === 0 ? "#ede9fe" : "#f5f3ff",
-                                                color: "#4c1d95",
-                                                fontSize: 13
-                                            },
-                                            children: totMk > 0 ? padTotMk(totMk) : "-"
-                                        }),
-                                        !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: mIdx % 2 === 0 ? "#ede9fe" : "#f5f3ff",
-                                                        fontWeight: 700,
-                                                        color: hasX ? "#dc2626" : "#4c1d95"
-                                                    },
-                                                    children: hasX ? "X" : totAgg > 0 ? totAgg : "-"
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        fontWeight: 700,
-                                                        color: hasX ? "#dc2626" : "#1e40af"
-                                                    },
-                                                    children: hasX ? "X" : totMk > 0 ? div : "-"
-                                                })
-                                            ]
-                                        }),
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: {
-                                                ...td,
-                                                fontSize: 13
-                                            },
-                                            children: pos !== "-" && pos ? /*#__PURE__*/ _jsx(PositionBadge, {
-                                                pos: pos,
-                                                size: 13
-                                            }) : "-"
-                                        })
-                                    ]
-                                }, month);
-                            })
-                        }),
-                        /*#__PURE__*/ _jsx("tfoot", {
-                            children: /*#__PURE__*/ _jsx("tr", {
-                                style: {
-                                    background: "#f1f5f9"
-                                },
-                                children: /*#__PURE__*/ _jsxs("td", {
-                                    style: {
-                                        ...td,
-                                        textAlign: "left",
-                                        paddingLeft: 10,
-                                        fontWeight: 600,
-                                        color: "#6b7280",
-                                        fontSize: 11
-                                    },
-                                    colSpan: isLower ? subjects.length + 2 : subjects.length * 2 + 4,
-                                    children: [
-                                        "Total pupils in class: ",
-                                        /*#__PURE__*/ _jsx("b", {
-                                            children: totalInClass
-                                        })
-                                    ]
-                                })
-                            })
-                        })
-                    ]
-                })
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    borderTop: "2px solid #e5e7eb",
-                    padding: "10px 16px",
-                    background: "#f8fafc",
-                    fontSize: 13,
-                    lineHeight: 2
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Class Teacher's Comment:"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    color: "#1d4ed8"
-                                },
-                                children: comments.teacher || ".............................................................................."
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Sign:"
-                            }),
-                            " ......................"
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Head Teacher's Comment:"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic",
-                                    color: "#dc2626"
-                                },
-                                children: comments.head || ".............................................................................."
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Sign:"
-                            }),
-                            " ......................"
-                        ]
-                    })
-                ]
-            })
-        ]
-    });
-}
-// ─── MONTHLY SLIPS ───────────────────────────────────────────────────────────
-// A pocket-sized version of the Monthly Card -- same school header, pupil
-// info, and full months/subjects table, just without the two comment lines,
-// printed at an exact 9cm x 6.3cm so many can be cut out per pupil per page.
-function MonthlySlips(param) {
-    let { students, monthlyMarks, bands: defaultBands, specialBands, divisions, school } = param;
-    const [cls, setCls] = useState("P4");
-    const [term, setTerm] = useState("Term I");
-    const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
-    const [search, setSearch] = useState("");
-    const [pdfBusy, setPdfBusy] = useState(false);
-    const pagesWrapRef = useRef(null);
-    const isLower = LOWER_CLASSES.includes(cls);
-    const subjects = isLower ? LOWER_MONTHLY_SUBJECTS : MONTHLY_SUBJECTS;
-    // Special Grading Scale override for the selected class, if any.
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "Monthly Exams", year), [
-        cls,
-        defaultBands,
-        specialBands,
-        year
-    ]);
-    const tk = "".concat(term, "__").concat(year);
-    const months = TERM_MONTHS[term] || [];
-    const classStudents = useMemo(()=>students.filter((s)=>s.className === cls && s.name.toLowerCase().includes(search.toLowerCase())).sort((a, b)=>a.name.localeCompare(b.name)), [
-        students,
-        cls,
-        search
-    ]);
-    const allClassStudents = useMemo(()=>students.filter((s)=>s.className === cls), [
-        students,
-        cls
-    ]);
-    // Identical computation to Monthly Cards (same source data, same months/
-    // subjects/positions) so the slip's numbers always match the full card.
-    const allMonthPositions = useMemo(()=>{
-        const result = {};
-        months.forEach((month)=>{
-            const allRows = allClassStudents.map((s)=>{
-                var _monthlyMarks_s_id_tk, _monthlyMarks_s_id;
-                const m = ((_monthlyMarks_s_id = monthlyMarks[s.id]) === null || _monthlyMarks_s_id === void 0 ? void 0 : (_monthlyMarks_s_id_tk = _monthlyMarks_s_id[tk]) === null || _monthlyMarks_s_id_tk === void 0 ? void 0 : _monthlyMarks_s_id_tk[month]) || {};
-                const totMk = subjects.reduce((a, sub)=>{
-                    var _m_sub;
-                    var _m_sub_mk;
-                    return a + ((_m_sub_mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk) !== null && _m_sub_mk !== void 0 ? _m_sub_mk : 0);
-                }, 0);
-                let totAgg = null;
-                if (!isLower) {
-                    const perSub = subjects.map((sub)=>{
-                        var _m_sub;
-                        const mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk;
-                        const isX = mk === undefined || mk === null;
-                        return {
-                            mk,
-                            isX,
-                            agg: isX ? undefined : aggOf(mk, bands)
-                        };
-                    });
-                    const hasX = perSub.some((p)=>p.isX);
-                    totAgg = hasX ? null : perSub.reduce((a, p)=>{
-                        var _p_agg;
-                        return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-                    }, 0);
-                }
-                return {
-                    id: s.id,
-                    totMk,
-                    totAgg
-                };
-            });
-            const ranks = rankWithTies(allRows.map((r)=>r.totMk > 0 ? r.totMk : null), allRows.map((r)=>typeof r.totAgg === "number" ? r.totAgg : null));
-            result[month] = {};
-            allRows.forEach((r, i)=>{
-                result[month][r.id] = ranks[i];
-            });
-        });
-        return result;
-    }, [
-        allClassStudents,
-        monthlyMarks,
-        tk,
-        months,
-        subjects,
-        isLower,
         bands
     ]);
-    const cardData = useMemo(()=>classStudents.map((s)=>{
-            const monthData = months.map((month)=>{
-                var _monthlyMarks_s_id_tk, _monthlyMarks_s_id, _allMonthPositions_month;
-                const m = ((_monthlyMarks_s_id = monthlyMarks[s.id]) === null || _monthlyMarks_s_id === void 0 ? void 0 : (_monthlyMarks_s_id_tk = _monthlyMarks_s_id[tk]) === null || _monthlyMarks_s_id_tk === void 0 ? void 0 : _monthlyMarks_s_id_tk[month]) || {};
-                const perSub = subjects.map((sub)=>{
-                    var _m_sub;
-                    const mk = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mk;
-                    const isX = mk === undefined || mk === null;
-                    const agg = !isLower && !isX ? aggOf(mk, bands) : undefined;
-                    return {
-                        sub,
-                        mk,
-                        agg,
-                        isX
-                    };
-                });
-                const anyEntered = perSub.some((p)=>!p.isX);
-                const hasX = !isLower && anyEntered && perSub.some((p)=>p.isX);
-                const hasF9 = !isLower && anyEntered && perSub.some((p)=>p.agg === 9);
-                const totMk = perSub.reduce((a, p)=>{
-                    var _p_mk;
-                    return a + ((_p_mk = p.mk) !== null && _p_mk !== void 0 ? _p_mk : 0);
-                }, 0);
-                const totAgg = isLower ? null : hasX ? "X" : perSub.reduce((a, p)=>{
-                    var _p_agg;
-                    return a + ((_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : 0);
-                }, 0);
-                const div = !isLower && !hasX && totAgg !== null ? divisionOf(totAgg, 4, divisions, hasF9) : hasX ? "X" : null;
-                const pos = (_allMonthPositions_month = allMonthPositions[month]) === null || _allMonthPositions_month === void 0 ? void 0 : _allMonthPositions_month[s.id];
-                return {
-                    month,
-                    perSub,
-                    totMk,
-                    totAgg,
-                    div,
-                    pos,
-                    hasX
-                };
-            });
-            return {
-                s,
-                monthData
-            };
-        }).filter((param)=>{
-            let { monthData } = param;
-            return monthData.some((md)=>md.perSub.some((p)=>!p.isX));
-        }), [
-        classStudents,
-        months,
-        monthlyMarks,
-        tk,
-        subjects,
-        bands,
-        divisions,
-        isLower,
-        allMonthPositions
-    ]);
-    // Split into pages of 9 (3x3) so print and PDF download both produce
-    // exactly the same fixed layout: one landscape A4 sheet per 9 pupils.
-    const slipPages = useMemo(()=>{
-        const pages = [];
-        for(let i = 0; i < cardData.length; i += 9)pages.push(cardData.slice(i, i + 9));
-        return pages;
-    }, [
-        cardData
-    ]);
-    return /*#__PURE__*/ _jsxs("div", {
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Class",
-                                value: cls,
-                                onChange: (v)=>setCls(v),
-                                opts: ALL_CLASSES
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: (v)=>setTerm(v),
-                                opts: TERMS
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Year"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        value: year,
-                                        onChange: (e)=>setYear(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Search Pupil"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        value: search,
-                                        onChange: (e)=>setSearch(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 160
-                                        },
-                                        placeholder: "Filter by name..."
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                disabled: pdfBusy,
-                                onClick: async ()=>{
-                                    setPdfBusy(true);
-                                    try {
-                                        var _pagesWrapRef_current;
-                                        const pageNodes = Array.from(((_pagesWrapRef_current = pagesWrapRef.current) === null || _pagesWrapRef_current === void 0 ? void 0 : _pagesWrapRef_current.querySelectorAll(".monthly-slip-page")) || []);
-                                        await downloadNodesAsPdf(pageNodes, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Monthly_Slips.pdf"), "landscape");
-                                    } finally{
-                                        setPdfBusy(false);
-                                    }
-                                },
-                                style: pdfBusy ? btnPdfBusy : btnPdf,
-                                children: pdfBusy ? "⏳ Generating..." : "📕 Download PDF"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>window.print(),
-                                style: btnPrimary,
-                                children: "🖨️ Print All Slips"
-                            })
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                className: "no-print",
-                style: {
-                    fontSize: 12,
-                    color: "#6b7280",
-                    marginBottom: 14
-                },
-                children: "Each slip is exactly 9cm x 6.3cm -- the same months/subjects/marks as the Monthly Card, just without the comment lines. 9 slips (3x3) print per landscape A4 page, ready to cut out."
-            }),
-            classStudents.length === 0 && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    padding: 40,
-                    textAlign: "center",
-                    color: "#9ca3af",
-                    border: "1px solid #e5e7eb"
-                },
-                children: [
-                    "No students in ",
-                    cls,
-                    "."
-                ]
-            }),
-            classStudents.length > 0 && cardData.length === 0 && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "#fffbeb",
-                    borderRadius: 12,
-                    padding: 24,
-                    textAlign: "center",
-                    color: "#92400e",
-                    border: "1px solid #fde68a",
-                    marginBottom: 16
-                },
-                children: [
-                    "No ",
-                    cls,
-                    " learners have any monthly marks recorded yet for ",
-                    term,
-                    " ",
-                    year,
-                    "."
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                ref: pagesWrapRef,
-                children: slipPages.map((pageItems, pIdx)=>/*#__PURE__*/ _jsx("div", {
-                        className: "monthly-slip-page",
-                        children: pageItems.map((param)=>{
-                            let { s, monthData } = param;
-                            return /*#__PURE__*/ _jsx(MonthlySlip, {
-                                school: school,
-                                student: s,
-                                monthData: monthData,
-                                term: term,
-                                year: year,
-                                cls: cls,
-                                isLower: isLower,
-                                subjects: subjects
-                            }, s.id);
-                        })
-                    }, pIdx))
-            })
-        ]
-    });
+    return <div className="p-4">
+            <h2 className="text-xl font-bold mb-4 print:hidden">Slips</h2>
+            <div className="flex flex-wrap gap-3 mb-4 items-end print:hidden">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Class</label>
+                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
+                        {allClasses.map((c)=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Term</label>
+                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
+                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Year</label>
+                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Assessment</label>
+                    <select className="border rounded px-2 py-1" value={assessment} onChange={(e)=>setAssessment(e.target.value)}>
+                        {MIDTERM_ASSESSMENTS.map((a)=><option key={a} value={a}>{a}</option>)}
+                    </select>
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                    <label className="block text-sm font-medium mb-1">Search</label>
+                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
+                </div>
+                <button className="bg-blue-600 text-white rounded px-4 py-2" onClick={()=>window.print()}>Print</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:block">
+                {slips.map((sl)=><div key={sl.s.id} className="border-2 border-gray-300 rounded p-3 bg-white print:break-inside-avoid print:mb-4">
+                        <div className="flex items-center justify-between mb-1">
+                            <img src={RAVEN_BADGE} alt="Raven Junior School badge" className="w-10 h-10 object-contain" />
+                            <div className="text-center flex-1">
+                                <div className="font-bold text-sm">{RAVEN_SCHOOL_NAME}</div>
+                                <div className="text-[10px] italic">"{RAVEN_SCHOOL_MOTTO}"</div>
+                                <div className="text-[10px]">{assessment} Result Slip</div>
+                            </div>
+                        </div>
+                        <div className="text-xs mb-1"><span className="font-semibold">Name: </span>{sl.s.name}&nbsp;&nbsp;<span className="font-semibold">Class: </span>{cls}</div>
+                        <div className="text-xs mb-1"><span className="font-semibold">Term: </span>{term}&nbsp;&nbsp;<span className="font-semibold">Year: </span>{year}</div>
+                        <table className="w-full text-[10px] border-collapse border">
+                            <thead>
+                                <tr>
+                                    <th className="border p-0.5">Subject</th>
+                                    <th className="border p-0.5">Mark</th>
+                                    <th className="border p-0.5">{isNursery ? "Comment" : "Grade"}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sl.perSub.map((p)=><tr key={p.sub}>
+                                        <td className="border p-0.5">{p.sub}</td>
+                                        <td className="border p-0.5 text-center">{p.mark === undefined ? "-" : p.mark}</td>
+                                        <td className="border p-0.5 text-center" style={isNursery && p.band ? {
+                                            backgroundColor: p.band.color,
+                                            color: "white",
+                                            WebkitPrintColorAdjust: "exact",
+                                            printColorAdjust: "exact"
+                                        } : undefined}>{isNursery ? p.band ? p.band.label : "" : p.grade || "-"}</td>
+                                    </tr>)}
+                                <tr>
+                                    <td className="border p-0.5 font-semibold">TOTAL</td>
+                                    <td className="border p-0.5 text-center font-semibold">{sl.total || "-"}</td>
+                                    <td className="border p-0.5"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>)}
+            </div>
+        </div>;
 }
-// Short labels for the slip's subject-header row -- the full subject names
-// (especially "READING"/"WRITING"/"LIT I"/"LIT II") are too wide to fit
-// across a 8cm-wide card alongside every other column, so the slip shows a
-// compact code here while every number underneath is still looked up from
-// the real subject key, so the data itself is unaffected.
-const SLIP_SUBJECT_LABEL = {
-    "LIT I": "L1",
-    "LIT II": "L2",
-    "READING": "RD",
-    "WRITING": "WR",
-    "MATHS": "MTH"
-};
-const slipSubjectLabel = (sub)=>SLIP_SUBJECT_LABEL[sub] || sub;
-function MonthlySlip(param) {
-    let { school, student, monthData, term, year, cls, isLower, subjects } = param;
-    const s = student;
-    // The outer box is a fixed 9cm × 6.3cm flex column. Unlike an earlier
-    // version of this component, the marks table below does NOT use
-    // `display:flex` on a <table> (mixing flex and table display types) --
-    // that hybrid is a known category of browser print-rendering bug, and is
-    // exactly what was causing some slips to render as a blank card (header
-    // only, no table at all) when several copies of this component repeat on
-    // the same printed/PDF page. Every dimension here is a fixed cm value
-    // instead, computed to add up to exactly 6.3cm top to bottom, so there's
-    // nothing for the layout engine to have to resolve dynamically at print
-    // time.
-    const headerH = 1.0, nameStripH = 0.5; // cm
-    const tableH = 6.3 - headerH - nameStripH; // 4.8cm
-    const theadRow1H = 0.55, theadRow2H = 0.45; // cm
-    const bodyRowH = (tableH - theadRow1H - theadRow2H) / Math.max(1, monthData.length); // cm, evenly split
-    return /*#__PURE__*/ _jsxs("div", {
-        className: "monthly-slip",
-        style: {
-            width: "9cm",
-            height: "6.3cm",
-            overflow: "hidden",
-            background: "white",
-            border: "1px solid #1e3a6e",
-            borderRadius: 4,
-            display: "flex",
-            flexDirection: "column"
-        },
-        children: [
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    flexShrink: 0,
-                    height: "".concat(headerH, "cm"),
-                    boxSizing: "border-box",
-                    background: "linear-gradient(135deg,#1e3a6e 0%,#1e40af 100%)",
-                    color: "white",
-                    padding: "2px 8px",
-                    textAlign: "center"
-                },
-                children: [
-                    /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            fontWeight: 800,
-                            fontSize: 11,
-                            letterSpacing: 0.3,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            lineHeight: 1.2
-                        },
-                        children: school.name
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "inline-block",
-                            background: "rgba(255,255,255,0.18)",
-                            borderRadius: 6,
-                            padding: "0 6px",
-                            fontSize: 7.5,
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                            lineHeight: 1.5
-                        },
-                        children: [
-                            "MONTHLY TESTS — ",
-                            term.toUpperCase(),
-                            " ",
-                            year
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    flexShrink: 0,
-                    height: "".concat(nameStripH, "cm"),
-                    boxSizing: "border-box",
-                    background: "#fefce8",
-                    borderBottom: "1px solid #fde68a",
-                    padding: "1px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("span", {
-                        style: {
-                            flexShrink: 1,
-                            minWidth: 0,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            fontSize: 10
-                        },
-                        children: [
-                            "NAME: ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 800,
-                                    fontStyle: "italic",
-                                    fontSize: 12
-                                },
-                                children: s.name
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("span", {
-                        style: {
-                            flexShrink: 0,
-                            fontSize: 10
-                        },
-                        children: [
-                            "CLASS: ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic"
-                                },
-                                children: cls
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("span", {
-                        style: {
-                            flexShrink: 0,
-                            fontSize: 10
-                        },
-                        children: [
-                            "YR: ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic"
-                                },
-                                children: year
-                            })
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("table", {
-                style: {
-                    flexShrink: 0,
-                    height: "".concat(tableH, "cm"),
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    tableLayout: "fixed"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("colgroup", {
-                        children: [
-                            /*#__PURE__*/ _jsx("col", {
-                                style: {
-                                    width: "17%"
-                                }
-                            }),
-                            subjects.map((sub)=>isLower ? /*#__PURE__*/ _jsx("col", {
-                                    style: {
-                                        width: "".concat(52 / subjects.length, "%")
-                                    }
-                                }, sub) : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                    children: [
-                                        /*#__PURE__*/ _jsx("col", {
-                                            style: {
-                                                width: "".concat(44 / subjects.length, "%")
-                                            }
-                                        }),
-                                        /*#__PURE__*/ _jsx("col", {
-                                            style: {
-                                                width: "".concat(44 / subjects.length, "%")
-                                            }
-                                        })
-                                    ]
-                                }, sub)),
-                            /*#__PURE__*/ _jsx("col", {
-                                style: {
-                                    width: "8%"
-                                }
-                            }),
-                            !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                children: [
-                                    /*#__PURE__*/ _jsx("col", {
-                                        style: {
-                                            width: "7%"
-                                        }
-                                    }),
-                                    /*#__PURE__*/ _jsx("col", {
-                                        style: {
-                                            width: "7%"
-                                        }
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsx("col", {
-                                style: {
-                                    width: "11%"
-                                }
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("thead", {
-                        children: [
-                            /*#__PURE__*/ _jsxs("tr", {
-                                style: {
-                                    background: "#1e3a6e",
-                                    color: "white",
-                                    height: "".concat(theadRow1H, "cm")
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: {
-                                            ...td,
-                                            color: "white",
-                                            background: "#1e3a6e",
-                                            textAlign: "left",
-                                            verticalAlign: "middle",
-                                            fontSize: 8,
-                                            padding: "1px 2px",
-                                            lineHeight: 1
-                                        },
-                                        rowSpan: 2,
-                                        children: "MTH"
-                                    }),
-                                    subjects.map((sub)=>/*#__PURE__*/ _jsxs("th", {
-                                            style: {
-                                                ...td,
-                                                color: "white",
-                                                background: "#1e3a6e",
-                                                fontSize: 9,
-                                                padding: "1px 2px",
-                                                lineHeight: 1,
-                                                verticalAlign: "middle"
-                                            },
-                                            colSpan: isLower ? 1 : 2,
-                                            children: [
-                                                slipSubjectLabel(sub),
-                                                isLower && lowerSubjectMax(sub) !== 100 ? /*#__PURE__*/ _jsxs("span", {
-                                                    style: {
-                                                        fontSize: 6
-                                                    },
-                                                    children: [
-                                                        "/",
-                                                        lowerSubjectMax(sub)
-                                                    ]
-                                                }) : ""
-                                            ]
-                                        }, sub)),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: {
-                                            ...td,
-                                            color: "white",
-                                            background: "#1e3a6e",
-                                            verticalAlign: "middle",
-                                            fontSize: 8,
-                                            padding: "1px 2px",
-                                            lineHeight: 1
-                                        },
-                                        rowSpan: 2,
-                                        children: "TOT"
-                                    }),
-                                    !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                        children: [
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: {
-                                                    ...td,
-                                                    color: "white",
-                                                    background: "#1e3a6e",
-                                                    verticalAlign: "middle",
-                                                    fontSize: 8,
-                                                    padding: "1px 2px",
-                                                    lineHeight: 1
-                                                },
-                                                rowSpan: 2,
-                                                children: "AGG"
-                                            }),
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: {
-                                                    ...td,
-                                                    color: "white",
-                                                    background: "#1e3a6e",
-                                                    verticalAlign: "middle",
-                                                    fontSize: 8,
-                                                    padding: "1px 2px",
-                                                    lineHeight: 1
-                                                },
-                                                rowSpan: 2,
-                                                children: "DIV"
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: {
-                                            ...td,
-                                            color: "white",
-                                            background: "#1e3a6e",
-                                            verticalAlign: "middle",
-                                            fontSize: 8,
-                                            padding: "1px 2px",
-                                            lineHeight: 1
-                                        },
-                                        rowSpan: 2,
-                                        children: "POS"
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsx("tr", {
-                                style: {
-                                    background: "#2563eb",
-                                    color: "white",
-                                    height: "".concat(theadRow2H, "cm")
-                                },
-                                children: subjects.map((sub)=>isLower ? /*#__PURE__*/ _jsx("th", {
-                                        style: {
-                                            ...td,
-                                            background: "#3b82f6",
-                                            color: "white",
-                                            fontSize: 7,
-                                            padding: "1px 2px"
-                                        },
-                                        children: "MK"
-                                    }, sub + "mk") : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                        children: [
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: {
-                                                    ...td,
-                                                    background: "#3b82f6",
-                                                    color: "white",
-                                                    fontSize: 7,
-                                                    padding: "1px 2px"
-                                                },
-                                                children: "MK"
-                                            }),
-                                            /*#__PURE__*/ _jsx("th", {
-                                                style: {
-                                                    ...td,
-                                                    background: "#60a5fa",
-                                                    color: "white",
-                                                    fontSize: 7,
-                                                    padding: "1px 2px"
-                                                },
-                                                children: "AG"
-                                            })
-                                        ]
-                                    }, sub))
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsx("tbody", {
-                        children: monthData.map((param, mIdx)=>{
-                            let { month, perSub, totMk, totAgg, div, pos, hasX } = param;
-                            const rowBg = mIdx % 2 === 0 ? "#ffffff" : "#f0f4ff";
-                            return /*#__PURE__*/ _jsxs("tr", {
-                                style: {
-                                    background: rowBg,
-                                    height: "".concat(bodyRowH, "cm")
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("td", {
-                                        style: {
-                                            ...td,
-                                            fontWeight: 800,
-                                            fontSize: 8,
-                                            background: mIdx % 2 === 0 ? "#dbeafe" : "#bfdbfe",
-                                            color: "#1e3a6e",
-                                            textAlign: "left",
-                                            padding: "0 2px",
-                                            verticalAlign: "middle",
-                                            whiteSpace: "nowrap",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis"
-                                        },
-                                        children: month
-                                    }),
-                                    perSub.map((p)=>isLower ? /*#__PURE__*/ _jsx("td", {
-                                            style: {
-                                                ...td,
-                                                background: rowBg,
-                                                fontWeight: p.mk !== undefined ? 800 : 400,
-                                                color: p.mk !== undefined ? "#111827" : "#9ca3af",
-                                                fontSize: 12,
-                                                padding: "0 2px",
-                                                verticalAlign: "middle"
-                                            },
-                                            children: p.mk !== undefined ? padMark(p.mk) : "-"
-                                        }, p.sub + "mk") : /*#__PURE__*/ _jsxs(React.Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: rowBg,
-                                                        fontWeight: p.mk !== undefined ? 800 : 400,
-                                                        color: p.mk !== undefined ? "#111827" : "#9ca3af",
-                                                        fontSize: 12,
-                                                        padding: "0 2px",
-                                                        verticalAlign: "middle"
-                                                    },
-                                                    children: p.mk !== undefined ? padMark(p.mk) : "-"
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: mIdx % 2 === 0 ? "#fff7ed" : "#fef3c7",
-                                                        fontWeight: p.isX || p.agg !== undefined ? 800 : 400,
-                                                        color: p.isX ? "#dc2626" : p.agg !== undefined ? "#92400e" : "#9ca3af",
-                                                        fontSize: 12,
-                                                        padding: "0 2px",
-                                                        verticalAlign: "middle"
-                                                    },
-                                                    children: hasX && p.isX ? "X" : p.agg !== undefined ? p.agg : "-"
-                                                })
-                                            ]
-                                        }, p.sub)),
-                                    /*#__PURE__*/ _jsx("td", {
-                                        style: {
-                                            ...td,
-                                            fontWeight: 800,
-                                            background: mIdx % 2 === 0 ? "#ede9fe" : "#ddd6fe",
-                                            color: "#111827",
-                                            fontSize: 10,
-                                            padding: "0 2px",
-                                            verticalAlign: "middle"
-                                        },
-                                        children: totMk > 0 ? padTotMk(totMk) : "-"
-                                    }),
-                                    !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                        children: [
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    background: mIdx % 2 === 0 ? "#fff7ed" : "#fef3c7",
-                                                    fontWeight: 800,
-                                                    color: hasX ? "#dc2626" : "#92400e",
-                                                    fontSize: 10,
-                                                    padding: "0 2px",
-                                                    verticalAlign: "middle"
-                                                },
-                                                children: hasX ? "X" : totAgg > 0 ? totAgg : "-"
-                                            }),
-                                            /*#__PURE__*/ _jsx("td", {
-                                                style: {
-                                                    ...td,
-                                                    fontWeight: 800,
-                                                    color: hasX ? "#dc2626" : "#1e40af",
-                                                    fontSize: 12,
-                                                    padding: "0 2px",
-                                                    verticalAlign: "middle"
-                                                },
-                                                children: hasX ? "X" : totMk > 0 ? div : "-"
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ _jsx("td", {
-                                        style: {
-                                            ...td,
-                                            padding: "0 1px",
-                                            verticalAlign: "middle"
-                                        },
-                                        children: /*#__PURE__*/ _jsx(PositionBadge, {
-                                            pos: pos,
-                                            color: "#1e3a6e",
-                                            size: 9
-                                        })
-                                    })
-                                ]
-                            }, month);
-                        })
-                    })
-                ]
-            })
-        ]
-    });
-}
-// ─── PLE INFO ────────────────────────────────────────────────────────────────
-const PLE_SUBJECTS = [
-    "ENG",
-    "SCI",
-    "SST",
-    "MTC"
-]; // UNEB column order
-// Best-effort extraction of PLE fields from OCR'd/pasted text of a result
-// slip (e.g. a printed PLE Recommendation certificate or a UNEB results
-// notice). This is intentionally forgiving about layout since OCR text
-// rarely lines up into neat columns -- it just looks for recognizable
-// labels anywhere in the text. The caller always shows the result back to
-// the person to check/edit before it's applied to a pupil's record.
 function parsePleSlipText(text) {
     const norm = text.replace(/\r/g, "");
     const out = {
@@ -17719,6 +12099,15 @@ function parsePleSlipText(text) {
     if (vals.every((v)=>!isNaN(v) && v > 0)) out.totalAgg = String(vals.reduce((a, b)=>a + b, 0));
     return out;
 }
+// Subject codes on the PLE result sheet (UNEB order). Previously referenced by
+// PLE Info, the Dashboard and the slip scanner but never declared, which made
+// PLE Info fail as soon as it rendered.
+const PLE_SUBJECTS = [
+    "ENG",
+    "SCI",
+    "SST",
+    "MTC"
+];
 const PLE_SUBJECT_LABELS = {
     ENG: "English",
     SCI: "Science",
@@ -18275,7 +12664,7 @@ function PleCertificateDesign2(param) {
             height: "297mm",
             boxSizing: "border-box",
             background: "white",
-            fontFamily: "'Segoe UI',system-ui,sans-serif",
+            fontFamily: RAVEN_HEADING_FONT,
             overflow: "hidden",
             position: "relative",
             display: "flex",
@@ -20419,8 +14808,8 @@ const CERT_DESIGNS = [
     }
 ];
 function PleInfo(param) {
-    let { students, setStudents, school, markEditing, municipalPerf, setMunicipalPerf } = param;
-    var _municipalPerf_mpExamType, _CERT_DESIGNS_find, _p7Students_find, _p7Students_find1, _pleData_selectedStudent, _pleData_selectedStudent1;
+    let { students, setStudents, school, markEditing, bands, specialBands, divisions, role } = param;
+    var _CERT_DESIGNS_find, _p7Students_find, _p7Students_find1, _pleData_selectedStudent, _pleData_selectedStudent1;
     const [tab, setTab] = useState("records");
     const [pleData, setPleData] = useState({});
     const [pleDataLoaded, setPleDataLoaded] = useState(false);
@@ -20507,151 +14896,9 @@ function PleInfo(param) {
     const [toDelete, setToDelete] = useState([]); // ids to delete from unmatched after confirm
     const [ocrStudentId, setOcrStudentId] = useState("");
     const [ocrParsed, setOcrParsed] = useState(null); // {indexNo, results, lin, cocurricular, leadership, conduct, totalAgg}
-    const [mpExamType, setMpExamType] = useState("PLE");
-    const [mpYear, setMpYear] = useState(school.year || String(new Date().getFullYear()));
-    const [mpFilter, setMpFilter] = useState("general"); // general | private | government
-    const [mpPdfBusy, setMpPdfBusy] = useState(false);
     const [pleShowResults, setPleShowResults] = useState(true);
     const [plePdfBusy, setPlePdfBusy] = useState(false);
     const pleRecordsRef = useRef(null);
-    const mpCardRef = useRef(null);
-    const mpRecord = (municipalPerf === null || municipalPerf === void 0 ? void 0 : (_municipalPerf_mpExamType = municipalPerf[mpExamType]) === null || _municipalPerf_mpExamType === void 0 ? void 0 : _municipalPerf_mpExamType[mpYear]) || {
-        schools: [],
-        inspector: ""
-    };
-    const mpAllSchools = mpRecord.schools || [];
-    const updateMpRecord = useCallback((updater)=>{
-        markEditing();
-        setMunicipalPerf((prev)=>{
-            const examData = prev[mpExamType] || {};
-            const cur = examData[mpYear] || {
-                schools: [],
-                inspector: ""
-            };
-            return {
-                ...prev,
-                [mpExamType]: {
-                    ...examData,
-                    [mpYear]: updater(cur)
-                }
-            };
-        });
-    }, [
-        mpExamType,
-        mpYear,
-        markEditing,
-        setMunicipalPerf
-    ]);
-    const mpAddSchool = ()=>updateMpRecord((cur)=>({
-                ...cur,
-                schools: [
-                    ...cur.schools || [],
-                    {
-                        id: "sch".concat(Date.now()).concat(Math.random().toString(36).slice(2, 6)),
-                        name: "",
-                        funding: "Private",
-                        div1: 0,
-                        div2: 0,
-                        div3: 0,
-                        div4: 0,
-                        divU: 0,
-                        absent: 0,
-                        bestAgg: ""
-                    }
-                ]
-            }));
-    const mpRemoveSchool = (id)=>updateMpRecord((cur)=>({
-                ...cur,
-                schools: (cur.schools || []).filter((s)=>s.id !== id)
-            }));
-    const mpUpdateSchool = (id, field, val)=>updateMpRecord((cur)=>({
-                ...cur,
-                schools: (cur.schools || []).map((s)=>s.id === id ? {
-                        ...s,
-                        [field]: val
-                    } : s)
-            }));
-    const mpSetInspector = (val)=>updateMpRecord((cur)=>({
-                ...cur,
-                inspector: val
-            }));
-    const mpFilterLabel = mpFilter === "private" ? "Private" : mpFilter === "government" ? "Government" : "General";
-    const mpFilteredSchools = mpAllSchools.filter((s)=>mpFilter === "general" || (s.funding || "Private").toLowerCase() === mpFilter);
-    // IMPORTANT: rows stay in whatever order the schools are stored in --
-    // deliberately NOT re-sorted on every render. This used to sort by
-    // Average Division live, which meant a row could jump to a new position
-    // the instant a teacher typed a single digit into a Div field (its
-    // avgDiv changed, so it re-ranked mid-keystroke). Losing that row from
-    // under the cursor mid-type is what made entered results look like they
-    // "disappeared" -- the digit was typed into a cell that had just moved.
-    // Ranking is now a deliberate, explicit action (see mpRankNow / the
-    // "Rank" button below) instead of something that happens silently while
-    // someone is still entering data.
-    const mpRows = useMemo(()=>mpFilteredSchools.map(computeMunicipalRow), [
-        mpFilteredSchools
-    ]);
-    // Explicit ranking mechanism: sorts the stored schools list itself by
-    // Average Division ascending (lower = better; schools with no data yet
-    // sink to the bottom) and PERSISTS that as the new order. This runs when
-    // the "Rank" button is clicked, and also automatically the instant any
-    // download (Word/PDF/Excel) is triggered -- so downloads always come out
-    // ranked even if nobody clicked "Rank" first -- but it never runs on its
-    // own while someone is just typing into a Div field.
-    const mpRankSchools = (schools)=>{
-        const rank = (s)=>{
-            const a = computeMunicipalRow(s).avgDiv;
-            return a === null ? Infinity : a;
-        };
-        return [
-            ...schools || []
-        ].sort((a, b)=>rank(a) - rank(b));
-    };
-    const mpRankNow = ()=>updateMpRecord((cur)=>({
-                ...cur,
-                schools: mpRankSchools(cur.schools)
-            }));
-    // Computes ranked rows synchronously for the CURRENT data, for use inside
-    // a download handler. Doesn't wait on React state/re-render timing, so
-    // Word/Excel always export the correct rank order immediately -- it also
-    // calls mpRankNow() alongside it so the on-screen table (and, in turn,
-    // the PDF screenshot of that table) settles into the same ranked order.
-    const mpGetRankedRowsForDownload = ()=>{
-        const filtered = mpRankSchools(mpAllSchools).filter((s)=>mpFilter === "general" || (s.funding || "Private").toLowerCase() === mpFilter);
-        return filtered.map(computeMunicipalRow);
-    };
-    // Waits for the next two animation frames -- i.e. until the browser has
-    // actually painted -- so a PDF screenshot taken right after mpRankNow()
-    // captures the newly-ranked table instead of the frame before it reordered.
-    const waitForPaint = ()=>new Promise((resolve)=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    const [analyserCounts, setAnalyserCounts] = useState(null); // {I,II,III,IV,U}
-    const [analyserMeta, setAnalyserMeta] = useState(null); // {matchedRows, skippedRows}
-    const [analyserSchoolName, setAnalyserSchoolName] = useState("");
-    const applyAnalyserToMunicipal = ()=>{
-        if (!analyserCounts) return;
-        markEditing();
-        updateMpRecord((cur)=>({
-                ...cur,
-                schools: [
-                    ...cur.schools || [],
-                    {
-                        id: "sch".concat(Date.now()).concat(Math.random().toString(36).slice(2, 6)),
-                        name: analyserSchoolName || "",
-                        funding: "Private",
-                        div1: analyserCounts.I,
-                        div2: analyserCounts.II,
-                        div3: analyserCounts.III,
-                        div4: analyserCounts.IV,
-                        divU: analyserCounts.U,
-                        absent: 0,
-                        bestAgg: ""
-                    }
-                ]
-            }));
-        setAnalyserCounts(null);
-        setAnalyserMeta(null);
-        setAnalyserSchoolName("");
-        setTab("municipal");
-    };
     const certRef = useRef(null);
     const allCertsRef = useRef(null);
     const p7Students = students.filter((s)=>s.className === "P7" || s.className === "Completed");
@@ -20749,7 +14996,7 @@ function PleInfo(param) {
                 return "<td>".concat(pleShowResults ? escapeHtml(((_rec_results = rec.results) === null || _rec_results === void 0 ? void 0 : _rec_results[sub]) || "") : "", "</td>");
             }).join(""), "\n        <td>").concat(pleShowResults ? escapeHtml(rec.totalAgg || "") : "", "</td>\n        <td>").concat(pleShowResults ? escapeHtml(rec.division || "") : "", "</td>\n        <td>").concat(escapeHtml(rec.conduct || ""), "</td><td>").concat(escapeHtml(rec.cocurricular || ""), "</td><td>").concat(escapeHtml(rec.leadership || ""), "</td>\n      </tr>");
         }).join("");
-        const body = '\n      <div class="title">'.concat(escapeHtml(school.name), '</div>\n      <div class="subtitle">PLE RESULTS ').concat(pleShowResults ? "" : "— BLANK MARK SHEET", " — ").concat(escapeHtml(String(year)), "</div>\n      <table>\n        <thead><tr>").concat(plePrintHeaders.map((h)=>"<th>".concat(escapeHtml(h), "</th>")).join(""), "</tr></thead>\n        <tbody>").concat(rowsHtml, "</tbody>\n      </table>");
+        const body = examHeadingHtml("PLE RESULTS ".concat(pleShowResults ? "" : "— BLANK MARK SHEET", " — ").concat(String(year))).concat("\n      <table>\n        <thead><tr>").concat(plePrintHeaders.map((h)=>"<th>".concat(escapeHtml(h), "</th>")).join(""), "</tr></thead>\n        <tbody>").concat(rowsHtml, "</tbody>\n      </table>");
         downloadWordHtml("PLE Results ".concat(year), body, "PLE_Results_".concat(year).concat(pleShowResults ? "" : "_Blank", ".doc"), {
             pageSize: "297mm 210mm"
         });
@@ -21068,20 +15315,16 @@ function PleInfo(param) {
                         "📋 PLE Results"
                     ],
                     [
+                        "preple",
+                        "📝 PRE-PLE"
+                    ],
+                    [
                         "certificates",
                         "🏅 Certificates"
                     ],
                     [
                         "analysis",
                         "📊 Analysis"
-                    ],
-                    [
-                        "municipal",
-                        "🏛️ Municipal Performance"
-                    ],
-                    [
-                        "analyser",
-                        "🔍 Result Analyser"
                     ]
                 ].map((param)=>{
                     let [t, label] = param;
@@ -21747,6 +15990,14 @@ function PleInfo(param) {
                                     overflow: "hidden"
                                 },
                                 children: [
+                                    /*#__PURE__*/ _jsx("div", {
+                                        style: {
+                                            padding: "14px 16px 4px"
+                                        },
+                                        children: /*#__PURE__*/ _jsx(ExamHeading, {
+                                            subtitle: "".concat("PLE Results ", pleShowResults ? "" : "— Blank Mark Sheet — ", year)
+                                        })
+                                    }),
                                     /*#__PURE__*/ _jsxs("div", {
                                         style: {
                                             display: "grid",
@@ -21785,7 +16036,7 @@ function PleInfo(param) {
                                                         children: [
                                                             school.emis || "010999",
                                                             " - ",
-                                                            school.name
+                                                            RAVEN_SCHOOL_NAME
                                                         ]
                                                     })
                                                 ]
@@ -22329,7 +16580,7 @@ function PleInfo(param) {
                                     "📊 PLE ",
                                     year,
                                     " — ",
-                                    school.name,
+                                    RAVEN_SCHOOL_NAME,
                                     " Performance Summary"
                                 ]
                             }),
@@ -22635,772 +16886,17 @@ function PleInfo(param) {
                             })()
                         ]
                     }),
-                    tab === "municipal" && /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontSize: 14,
-                                    fontWeight: 700,
-                                    color: "#1e3a6e",
-                                    marginBottom: 4
-                                },
-                                children: "🏛️ Municipal Performance"
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontSize: 12,
-                                    color: "#6b7280",
-                                    marginBottom: 16
-                                },
-                                children: "A district-wide ranking of schools by average division — prepared and entered manually (like the Municipal Council's own analysis sheet), independent of this school's own pupil records."
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    display: "flex",
-                                    gap: 12,
-                                    alignItems: "flex-end",
-                                    flexWrap: "wrap",
-                                    marginBottom: 16
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx(Sel, {
-                                        label: "Exam",
-                                        value: mpExamType,
-                                        onChange: setMpExamType,
-                                        opts: MUNICIPAL_EXAM_TYPES
-                                    }),
-                                    /*#__PURE__*/ _jsxs("div", {
-                                        children: [
-                                            /*#__PURE__*/ _jsx("label", {
-                                                style: lbl,
-                                                children: "Year"
-                                            }),
-                                            /*#__PURE__*/ _jsx("input", {
-                                                type: "number",
-                                                value: mpYear,
-                                                onChange: (e)=>setMpYear(e.target.value),
-                                                style: {
-                                                    ...inp,
-                                                    width: 100
-                                                }
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ _jsx(Sel, {
-                                        label: "Schools Shown",
-                                        value: mpFilter === "general" ? "General" : mpFilter === "private" ? "Private Only" : "Government Only",
-                                        onChange: (v)=>setMpFilter(v === "General" ? "general" : v === "Private Only" ? "private" : "government"),
-                                        opts: [
-                                            "General",
-                                            "Private Only",
-                                            "Government Only"
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: mpAddSchool,
-                                        style: btnPrimary,
-                                        children: "+ Add School"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: mpRankNow,
-                                        title: "Sorts the table by Average Division, lowest (best) to highest -- runs only when you click it, so it never disturbs you while entering data.",
-                                        style: btnPrimary,
-                                        children: "🏆 Rank (Lowest → Highest)"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: ()=>{
-                                            mpRankNow();
-                                            exportMunicipalPerfWord({
-                                                school,
-                                                examType: mpExamType,
-                                                year: mpYear,
-                                                fundingLabel: mpFilterLabel,
-                                                rows: mpGetRankedRowsForDownload(),
-                                                inspector: mpRecord.inspector
-                                            });
-                                        },
-                                        style: btnWord,
-                                        children: "📄 Download Word"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: ()=>{
-                                            mpRankNow();
-                                            exportMunicipalPerfExcel({
-                                                school,
-                                                examType: mpExamType,
-                                                year: mpYear,
-                                                fundingLabel: mpFilterLabel,
-                                                rows: mpGetRankedRowsForDownload(),
-                                                inspector: mpRecord.inspector
-                                            });
-                                        },
-                                        style: btnExcel,
-                                        children: "📊 Download Excel"
-                                    }),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        disabled: mpPdfBusy,
-                                        onClick: async ()=>{
-                                            setMpPdfBusy(true);
-                                            try {
-                                                mpRankNow();
-                                                await waitForPaint(); // let the table finish re-rendering in ranked order before we screenshot it
-                                                await downloadNodesAsPdf([
-                                                    mpCardRef.current
-                                                ], "".concat(safeFileName(mpExamType), "_").concat(mpYear, "_Municipal_Performance_").concat(safeFileName(mpFilterLabel), ".pdf"), "landscape");
-                                            } finally{
-                                                setMpPdfBusy(false);
-                                            }
-                                        },
-                                        style: mpPdfBusy ? btnPdfBusy : btnPdf,
-                                        children: mpPdfBusy ? "⏳ Generating..." : "📕 Download PDF"
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    fontSize: 11,
-                                    color: "#9ca3af",
-                                    marginTop: -10,
-                                    marginBottom: 16
-                                },
-                                children: [
-                                    "Schools stay in the order you enter them until you download or click ",
-                                    /*#__PURE__*/ _jsx("b", {
-                                        children: "Rank"
-                                    }),
-                                    " -- the table won't reorder itself while you're typing."
-                                ]
-                            }),
-                            mpAllSchools.length === 0 ? /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    background: "white",
-                                    borderRadius: 12,
-                                    border: "1.5px dashed #d1d5db",
-                                    padding: "40px 20px",
-                                    textAlign: "center",
-                                    color: "#9ca3af"
-                                },
-                                children: [
-                                    "No schools added yet for ",
-                                    mpExamType,
-                                    " ",
-                                    mpYear,
-                                    ".",
-                                    /*#__PURE__*/ _jsx("br", {}),
-                                    /*#__PURE__*/ _jsx("button", {
-                                        onClick: mpAddSchool,
-                                        style: {
-                                            ...btnPrimary,
-                                            marginTop: 12
-                                        },
-                                        children: "+ Add School"
-                                    })
-                                ]
-                            }) : /*#__PURE__*/ _jsxs("div", {
-                                ref: mpCardRef,
-                                style: {
-                                    background: "white",
-                                    borderRadius: 12,
-                                    border: "1px solid #e5e7eb",
-                                    overflow: "hidden",
-                                    marginBottom: 16
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsxs("div", {
-                                        style: {
-                                            background: "#1e3a6e",
-                                            color: "white",
-                                            padding: "14px 16px",
-                                            textAlign: "center"
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("div", {
-                                                style: {
-                                                    fontWeight: 800,
-                                                    fontSize: 15
-                                                },
-                                                children: "TORORO MUNICIPAL COUNCIL"
-                                            }),
-                                            /*#__PURE__*/ _jsx("div", {
-                                                style: {
-                                                    fontSize: 12,
-                                                    opacity: 0.9,
-                                                    marginTop: 2
-                                                },
-                                                children: "EDUCATION DEPARTMENT"
-                                            }),
-                                            /*#__PURE__*/ _jsxs("div", {
-                                                style: {
-                                                    fontSize: 12,
-                                                    opacity: 0.9,
-                                                    marginTop: 4,
-                                                    fontWeight: 600
-                                                },
-                                                children: [
-                                                    mpYear,
-                                                    " ",
-                                                    toUpper(mpExamType),
-                                                    " ANALYSIS AND OVERALL RANKING OF ",
-                                                    mpFilterLabel.toUpperCase(),
-                                                    " SCHOOLS BASED ON AVERAGE DIVISION"
-                                                ]
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ _jsx("div", {
-                                        style: {
-                                            overflowX: "auto"
-                                        },
-                                        children: /*#__PURE__*/ _jsxs("table", {
-                                            style: {
-                                                width: "100%",
-                                                fontSize: 12,
-                                                minWidth: 1100
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ _jsx("thead", {
-                                                    children: /*#__PURE__*/ _jsx("tr", {
-                                                        style: {
-                                                            background: "#1e40af",
-                                                            color: "white"
-                                                        },
-                                                        children: [
-                                                            "S/N",
-                                                            "CENTRE NAME",
-                                                            "FUNDING",
-                                                            "DIV 1",
-                                                            "DIV 1 %",
-                                                            "DIV 2",
-                                                            "DIV 2 %",
-                                                            "DIV 3",
-                                                            "DIV 3 %",
-                                                            "DIV 4",
-                                                            "DIV 4 %",
-                                                            "DIV U",
-                                                            "DIV U %",
-                                                            "ABSENT",
-                                                            "TOTAL",
-                                                            "CUM. DIV.",
-                                                            "BEST AGG.",
-                                                            "AVERAGE DIVISION",
-                                                            ""
-                                                        ].map((h)=>/*#__PURE__*/ _jsx("th", {
-                                                                style: th,
-                                                                children: h
-                                                            }, h))
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("tbody", {
-                                                    children: mpRows.map((r, i)=>/*#__PURE__*/ {
-                                                        var _r_s_absent;
-                                                        return _jsxs("tr", {
-                                                            style: {
-                                                                background: i % 2 === 0 ? "white" : "#eff6ff"
-                                                            },
-                                                            children: [
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: i + 1
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        textAlign: "left"
-                                                                    },
-                                                                    children: /*#__PURE__*/ _jsx("input", {
-                                                                        value: r.s.name,
-                                                                        onChange: (e)=>mpUpdateSchool(r.s.id, "name", e.target.value),
-                                                                        placeholder: "School name",
-                                                                        style: {
-                                                                            ...inp,
-                                                                            width: 170,
-                                                                            padding: "4px 6px",
-                                                                            fontSize: 12
-                                                                        }
-                                                                    })
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: /*#__PURE__*/ _jsxs("select", {
-                                                                        value: r.s.funding || "Private",
-                                                                        onChange: (e)=>mpUpdateSchool(r.s.id, "funding", e.target.value),
-                                                                        style: {
-                                                                            ...inp,
-                                                                            padding: "4px 6px",
-                                                                            fontSize: 12
-                                                                        },
-                                                                        children: [
-                                                                            /*#__PURE__*/ _jsx("option", {
-                                                                                children: "Private"
-                                                                            }),
-                                                                            /*#__PURE__*/ _jsx("option", {
-                                                                                children: "Government"
-                                                                            })
-                                                                        ]
-                                                                    })
-                                                                }),
-                                                                [
-                                                                    "div1",
-                                                                    "div2",
-                                                                    "div3",
-                                                                    "div4",
-                                                                    "divU"
-                                                                ].map((f, fi)=>/*#__PURE__*/ {
-                                                                    var _r_s_f;
-                                                                    return _jsxs(React.Fragment, {
-                                                                        children: [
-                                                                            /*#__PURE__*/ _jsx("td", {
-                                                                                style: td,
-                                                                                children: /*#__PURE__*/ _jsx("input", {
-                                                                                    type: "number",
-                                                                                    value: (_r_s_f = r.s[f]) !== null && _r_s_f !== void 0 ? _r_s_f : 0,
-                                                                                    onChange: (e)=>mpUpdateSchool(r.s.id, f, e.target.value === "" ? 0 : Number(e.target.value)),
-                                                                                    style: {
-                                                                                        ...inp,
-                                                                                        width: 52,
-                                                                                        padding: "4px 6px",
-                                                                                        fontSize: 12,
-                                                                                        textAlign: "center"
-                                                                                    }
-                                                                                })
-                                                                            }),
-                                                                            /*#__PURE__*/ _jsxs("td", {
-                                                                                style: {
-                                                                                    ...td,
-                                                                                    color: "#6b7280"
-                                                                                },
-                                                                                children: [
-                                                                                    [
-                                                                                        r.pct1,
-                                                                                        r.pct2,
-                                                                                        r.pct3,
-                                                                                        r.pct4,
-                                                                                        r.pctU
-                                                                                    ][fi],
-                                                                                    "%"
-                                                                                ]
-                                                                            })
-                                                                        ]
-                                                                    }, f);
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: /*#__PURE__*/ _jsx("input", {
-                                                                        type: "number",
-                                                                        value: (_r_s_absent = r.s.absent) !== null && _r_s_absent !== void 0 ? _r_s_absent : 0,
-                                                                        onChange: (e)=>mpUpdateSchool(r.s.id, "absent", e.target.value === "" ? 0 : Number(e.target.value)),
-                                                                        style: {
-                                                                            ...inp,
-                                                                            width: 52,
-                                                                            padding: "4px 6px",
-                                                                            fontSize: 12,
-                                                                            textAlign: "center"
-                                                                        }
-                                                                    })
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        fontWeight: 700
-                                                                    },
-                                                                    children: r.total
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: r.cumDiv
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: /*#__PURE__*/ _jsx("input", {
-                                                                        value: r.s.bestAgg || "",
-                                                                        onChange: (e)=>mpUpdateSchool(r.s.id, "bestAgg", e.target.value),
-                                                                        style: {
-                                                                            ...inp,
-                                                                            width: 44,
-                                                                            padding: "4px 6px",
-                                                                            fontSize: 12,
-                                                                            textAlign: "center"
-                                                                        }
-                                                                    })
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        fontWeight: 700,
-                                                                        color: "#1e40af"
-                                                                    },
-                                                                    children: r.avgDiv !== null ? r.avgDiv.toFixed(4) : "-"
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    className: "no-print",
-                                                                    style: td,
-                                                                    children: /*#__PURE__*/ _jsx("button", {
-                                                                        onClick: ()=>mpRemoveSchool(r.s.id),
-                                                                        style: {
-                                                                            ...btnDanger,
-                                                                            padding: "3px 8px",
-                                                                            fontSize: 11
-                                                                        },
-                                                                        children: "✕"
-                                                                    })
-                                                                })
-                                                            ]
-                                                        }, r.s.id);
-                                                    })
-                                                }),
-                                                /*#__PURE__*/ _jsx("tfoot", {
-                                                    children: (()=>{
-                                                        const t = computeMunicipalTotals(mpRows);
-                                                        return /*#__PURE__*/ _jsxs("tr", {
-                                                            style: {
-                                                                background: "#dbeafe",
-                                                                fontWeight: 800
-                                                            },
-                                                            children: [
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    colSpan: 3,
-                                                                    children: "TOTAL"
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.div1
-                                                                }),
-                                                                /*#__PURE__*/ _jsxs("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        color: "#374151"
-                                                                    },
-                                                                    children: [
-                                                                        t.pct1,
-                                                                        "%"
-                                                                    ]
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.div2
-                                                                }),
-                                                                /*#__PURE__*/ _jsxs("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        color: "#374151"
-                                                                    },
-                                                                    children: [
-                                                                        t.pct2,
-                                                                        "%"
-                                                                    ]
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.div3
-                                                                }),
-                                                                /*#__PURE__*/ _jsxs("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        color: "#374151"
-                                                                    },
-                                                                    children: [
-                                                                        t.pct3,
-                                                                        "%"
-                                                                    ]
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.div4
-                                                                }),
-                                                                /*#__PURE__*/ _jsxs("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        color: "#374151"
-                                                                    },
-                                                                    children: [
-                                                                        t.pct4,
-                                                                        "%"
-                                                                    ]
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.divU
-                                                                }),
-                                                                /*#__PURE__*/ _jsxs("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        color: "#374151"
-                                                                    },
-                                                                    children: [
-                                                                        t.pctU,
-                                                                        "%"
-                                                                    ]
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.absent
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.total
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: t.cumDiv
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: td,
-                                                                    children: "-"
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        color: "#1e40af"
-                                                                    },
-                                                                    children: t.avgDiv !== null ? t.avgDiv.toFixed(4) : "-"
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    className: "no-print",
-                                                                    style: td
-                                                                })
-                                                            ]
-                                                        });
-                                                    })()
-                                                })
-                                            ]
-                                        })
-                                    }),
-                                    /*#__PURE__*/ _jsxs("div", {
-                                        style: {
-                                            padding: "16px 20px",
-                                            borderTop: "1px solid #e5e7eb"
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsx("label", {
-                                                style: lbl,
-                                                children: "Prepared By (Inspector's Name)"
-                                            }),
-                                            /*#__PURE__*/ _jsx("input", {
-                                                value: mpRecord.inspector || "",
-                                                onChange: (e)=>mpSetInspector(e.target.value),
-                                                placeholder: "Type the inspector's full name and title",
-                                                style: {
-                                                    ...inp,
-                                                    maxWidth: 360
-                                                }
-                                            })
-                                        ]
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    tab === "analyser" && /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontSize: 14,
-                                    fontWeight: 700,
-                                    color: "#1e3a6e",
-                                    marginBottom: 4
-                                },
-                                children: "🔍 Result Analyser"
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontSize: 12,
-                                    color: "#6b7280",
-                                    marginBottom: 16
-                                },
-                                children: "Photograph a printed Result Sheet and this will count up how many pupils fall in each division (I, II, III, IV, U) — handy for quickly summarizing a class's or another school's result sheet without counting by hand."
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    background: "#faf5ff",
-                                    border: "1px solid #e9d5ff",
-                                    borderRadius: 10,
-                                    padding: 16,
-                                    marginBottom: 16
-                                },
-                                children: /*#__PURE__*/ _jsx(OcrScanButton, {
-                                    label: "📷 Scan Result Sheet (one or more pages)",
-                                    allowMultiple: true,
-                                    instructions: "Recognized text below is just the raw OCR output — the division tally appears underneath once you click Use This Text.",
-                                    onUseText: (text)=>{
-                                        const { counts, matchedRows, skippedRows } = analyzeResultSheetText(text);
-                                        setAnalyserCounts(counts);
-                                        setAnalyserMeta({
-                                            matchedRows,
-                                            skippedRows
-                                        });
-                                    }
-                                })
-                            }),
-                            analyserCounts && /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    background: "white",
-                                    border: "1.5px solid #d8b4fe",
-                                    borderRadius: 10,
-                                    padding: 18
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsxs("div", {
-                                        style: {
-                                            fontSize: 12,
-                                            color: "#6b21a8",
-                                            marginBottom: 14
-                                        },
-                                        children: [
-                                            "Recognized ",
-                                            /*#__PURE__*/ _jsx("b", {
-                                                children: analyserMeta.matchedRows
-                                            }),
-                                            " pupil row",
-                                            analyserMeta.matchedRows === 1 ? "" : "s",
-                                            " with a readable division",
-                                            analyserMeta.skippedRows > 0 && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                children: [
-                                                    " (",
-                                                    analyserMeta.skippedRows,
-                                                    " row",
-                                                    analyserMeta.skippedRows === 1 ? "" : "s",
-                                                    " couldn't be read — check the counts below and adjust if needed)"
-                                                ]
-                                            }),
-                                            ". Roman numerals are an easy thing for OCR to misread, so please double-check these counts before using them."
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ _jsx("div", {
-                                        style: {
-                                            display: "grid",
-                                            gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))",
-                                            gap: 12,
-                                            marginBottom: 16
-                                        },
-                                        children: [
-                                            [
-                                                "I",
-                                                "Division I",
-                                                "#15803d",
-                                                "#dcfce7"
-                                            ],
-                                            [
-                                                "II",
-                                                "Division II",
-                                                "#1e40af",
-                                                "#dbeafe"
-                                            ],
-                                            [
-                                                "III",
-                                                "Division III",
-                                                "#d97706",
-                                                "#fef9c3"
-                                            ],
-                                            [
-                                                "IV",
-                                                "Division IV",
-                                                "#ea580c",
-                                                "#ffedd5"
-                                            ],
-                                            [
-                                                "U",
-                                                "Division U",
-                                                "#dc2626",
-                                                "#fee2e2"
-                                            ]
-                                        ].map((param)=>{
-                                            let [key, label, color, bg] = param;
-                                            const total = Object.values(analyserCounts).reduce((a, b)=>a + b, 0);
-                                            const pct = total > 0 ? Math.round(analyserCounts[key] / total * 100) : 0;
-                                            return /*#__PURE__*/ _jsxs("div", {
-                                                style: {
-                                                    background: bg,
-                                                    borderRadius: 10,
-                                                    padding: "12px 10px",
-                                                    textAlign: "center",
-                                                    border: "2px solid ".concat(color, "22")
-                                                },
-                                                children: [
-                                                    /*#__PURE__*/ _jsx("input", {
-                                                        type: "number",
-                                                        min: 0,
-                                                        value: analyserCounts[key],
-                                                        onChange: (e)=>setAnalyserCounts((prev)=>({
-                                                                    ...prev,
-                                                                    [key]: e.target.value === "" ? 0 : Number(e.target.value)
-                                                                })),
-                                                        style: {
-                                                            width: "100%",
-                                                            textAlign: "center",
-                                                            fontSize: 24,
-                                                            fontWeight: 900,
-                                                            color,
-                                                            border: "none",
-                                                            background: "transparent"
-                                                        }
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("div", {
-                                                        style: {
-                                                            fontSize: 11,
-                                                            fontWeight: 700,
-                                                            color: "#374151"
-                                                        },
-                                                        children: label
-                                                    }),
-                                                    /*#__PURE__*/ _jsxs("div", {
-                                                        style: {
-                                                            fontSize: 10,
-                                                            color: "#6b7280"
-                                                        },
-                                                        children: [
-                                                            pct,
-                                                            "%"
-                                                        ]
-                                                    })
-                                                ]
-                                            }, key);
-                                        })
-                                    }),
-                                    /*#__PURE__*/ _jsxs("div", {
-                                        style: {
-                                            display: "flex",
-                                            gap: 10,
-                                            alignItems: "flex-end",
-                                            flexWrap: "wrap"
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsxs("div", {
-                                                children: [
-                                                    /*#__PURE__*/ _jsx("label", {
-                                                        style: lbl,
-                                                        children: "School Name (optional — for Municipal Performance)"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("input", {
-                                                        value: analyserSchoolName,
-                                                        onChange: (e)=>setAnalyserSchoolName(e.target.value),
-                                                        placeholder: "e.g. ST. KIZITO'S P/S",
-                                                        style: {
-                                                            ...inp,
-                                                            minWidth: 220
-                                                        }
-                                                    })
-                                                ]
-                                            }),
-                                            /*#__PURE__*/ _jsx("button", {
-                                                onClick: applyAnalyserToMunicipal,
-                                                style: btnPrimary,
-                                                children: "➕ Add as a School in Municipal Performance"
-                                            }),
-                                            /*#__PURE__*/ _jsx("button", {
-                                                onClick: ()=>{
-                                                    setAnalyserCounts(null);
-                                                    setAnalyserMeta(null);
-                                                    setAnalyserSchoolName("");
-                                                },
-                                                style: btnGhost,
-                                                children: "Discard"
-                                            })
-                                        ]
-                                    })
-                                ]
-                            })
-                        ]
+                    tab === "preple" && /*#__PURE__*/ _jsx(MockInfo, {
+                        students: students,
+                        school: school,
+                        bands: bands,
+                        specialBands: specialBands,
+                        divisions: divisions,
+                        markEditing: markEditing,
+                        role: role,
+                        examOptions: PRE_PLE_TYPES,
+                        examLabel: "Pre-PLE",
+                        resultsLabel: "Pre-PLE"
                     })
                 ]
             })
@@ -23419,11 +16915,12 @@ function ResultSheets(param) {
     const isLower = LOWER_CLASSES.includes(cls);
     const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
     // Special Grading Scale override for the selected class, if any.
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "End of Term", year), [
+    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "End of Term", year, term), [
         cls,
         defaultBands,
         specialBands,
-        year
+        year,
+        term
     ]);
     const tk = "".concat(term, "__").concat(year);
     const classStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
@@ -23431,30 +16928,27 @@ function ResultSheets(param) {
         cls
     ]);
     const rows = useMemo(()=>classStudents.map((s)=>{
-            var _termMarks_s_id;
-            const m = ((_termMarks_s_id = termMarks[s.id]) === null || _termMarks_s_id === void 0 ? void 0 : _termMarks_s_id[tk]) || {};
+            var _termMarks_s_id, _termMarks_s_id_tk;
+            // Raven has no CA/Exam split -- one mark per subject, out of 100,
+            // stored under the "End of Term" period (see updateTermMark).
+            // Matches how MarkEntry and the End of Term Performance report
+            // card table both read the same data.
+            const m = ((_termMarks_s_id = termMarks[s.id]) === null || _termMarks_s_id === void 0 ? void 0 : (_termMarks_s_id_tk = _termMarks_s_id[tk]) === null || _termMarks_s_id_tk === void 0 ? void 0 : _termMarks_s_id_tk["End of Term"]) || {};
             const perSub = subjects.map((sub)=>{
-                var _m_sub, _m_sub1;
-                const ca = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.ca, exam = (_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.exam;
-                const isX = isLower ? exam === undefined || exam === null : (ca === undefined || ca === null) && (exam === undefined || exam === null);
+                const mark = m[sub];
+                const isX = typeof mark !== "number";
                 if (isX) return {
                     sub,
-                    ca,
-                    exam,
-                    av: undefined,
+                    mark: undefined,
                     agg: undefined,
                     isX: true,
                     gradeLabel: "X"
                 };
-                const hasBoth = typeof ca === "number" && typeof exam === "number";
-                const av = hasBoth ? Math.round((ca + exam) / 2) : typeof exam === "number" ? exam : typeof ca === "number" ? ca : undefined;
-                const agg = av !== undefined ? aggOf(av, bands) : undefined;
-                const gl = av !== undefined ? gradeLabel(av, bands) : undefined;
+                const agg = aggOf(mark, bands);
+                const gl = gradeLabel(mark, bands);
                 return {
                     sub,
-                    ca,
-                    exam,
-                    av,
+                    mark,
                     agg,
                     isX: false,
                     gradeLabel: gl
@@ -23463,8 +16957,8 @@ function ResultSheets(param) {
             const hasX = perSub.some((p)=>p.isX);
             const hasF9 = !isLower && perSub.some((p)=>p.agg === 9);
             const totMk = perSub.reduce((a, p)=>{
-                var _p_av;
-                return a + ((_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : 0);
+                var _p_mark;
+                return a + ((_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : 0);
             }, 0);
             const totAgg = hasX ? "X" : perSub.reduce((a, p)=>a + (p.agg || 0), 0);
             const div = hasX ? "X" : typeof totAgg === "number" ? divisionOf(totAgg, isLower ? 5 : 4, divisions, hasF9) : "X";
@@ -23709,14 +17203,16 @@ function ResultSheets(param) {
                             gap: 10
                         },
                         children: [
-                            school.logo && /*#__PURE__*/ _jsx("img", {
-                                src: school.logo,
-                                alt: "logo",
+                            /*#__PURE__*/ _jsx("img", {
+                                src: RAVEN_BADGE,
+                                alt: "Raven Junior School badge",
                                 style: {
-                                    width: 36,
-                                    height: 36,
+                                    width: 44,
+                                    height: 44,
                                     objectFit: "contain",
-                                    flexShrink: 0
+                                    flexShrink: 0,
+                                    background: "white",
+                                    borderRadius: 6
                                 }
                             }),
                             /*#__PURE__*/ _jsxs("div", {
@@ -23726,7 +17222,7 @@ function ResultSheets(param) {
                                             fontWeight: 800,
                                             fontSize: 16
                                         },
-                                        children: school.name
+                                        children: RAVEN_SCHOOL_NAME
                                     }),
                                     /*#__PURE__*/ _jsxs("div", {
                                         style: {
@@ -23735,8 +17231,9 @@ function ResultSheets(param) {
                                             marginTop: 2
                                         },
                                         children: [
-                                            school.poBox,
-                                            " | END OF ",
+                                            "\"",
+                                            RAVEN_SCHOOL_MOTTO,
+                                            "\" | END OF ",
                                             term.toUpperCase(),
                                             " ",
                                             year,
@@ -23782,36 +17279,28 @@ function ResultSheets(param) {
                                                     rowSpan: 2,
                                                     children: "NAME OF PUPIL"
                                                 }),
-                                                isLower ? subjects.map((s)=>/*#__PURE__*/ _jsxs("th", {
+                                                subjects.map((s)=>/*#__PURE__*/ _jsxs("th", {
                                                         style: th,
-                                                        rowSpan: 2,
+                                                        colSpan: 2,
                                                         children: [
                                                             s,
-                                                            lowerSubjectMax(s) !== 100 ? " /".concat(lowerSubjectMax(s)) : ""
+                                                            isLower && lowerSubjectMax(s) !== 100 ? " /".concat(lowerSubjectMax(s)) : ""
                                                         ]
-                                                    }, s)) : subjects.map((s)=>/*#__PURE__*/ _jsx("th", {
-                                                        style: th,
-                                                        colSpan: 4,
-                                                        children: s
                                                     }, s)),
                                                 /*#__PURE__*/ _jsx("th", {
                                                     style: th,
                                                     rowSpan: 2,
                                                     children: "TOT MK"
                                                 }),
-                                                !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: th,
-                                                            rowSpan: 2,
-                                                            children: "TOT AGG"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: th,
-                                                            rowSpan: 2,
-                                                            children: "DIV"
-                                                        })
-                                                    ]
+                                                /*#__PURE__*/ _jsx("th", {
+                                                    style: th,
+                                                    rowSpan: 2,
+                                                    children: "TOT AGG"
+                                                }),
+                                                /*#__PURE__*/ _jsx("th", {
+                                                    style: th,
+                                                    rowSpan: 2,
+                                                    children: "DIV"
                                                 }),
                                                 /*#__PURE__*/ _jsx("th", {
                                                     style: th,
@@ -23820,7 +17309,7 @@ function ResultSheets(param) {
                                                 })
                                             ]
                                         }),
-                                        !isLower && /*#__PURE__*/ _jsx("tr", {
+                                        /*#__PURE__*/ _jsx("tr", {
                                             style: {
                                                 background: "#2563eb",
                                                 color: "white",
@@ -23831,26 +17320,10 @@ function ResultSheets(param) {
                                                         /*#__PURE__*/ _jsx("th", {
                                                             style: {
                                                                 ...th,
-                                                                background: "#fef9c3",
-                                                                color: "#713f12"
-                                                            },
-                                                            children: "CA"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
                                                                 background: "#dcfce7",
                                                                 color: "#14532d"
                                                             },
-                                                            children: "EX"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                background: "#dbeafe",
-                                                                color: "#1e3a6e"
-                                                            },
-                                                            children: "AV"
+                                                            children: "SCORE"
                                                         }),
                                                         /*#__PURE__*/ _jsx("th", {
                                                             style: {
@@ -23858,7 +17331,7 @@ function ResultSheets(param) {
                                                                 background: "#fed7aa",
                                                                 color: "#7c2d12"
                                                             },
-                                                            children: "AG"
+                                                            children: "AGG"
                                                         })
                                                     ]
                                                 }, s))
@@ -23883,44 +17356,23 @@ function ResultSheets(param) {
                                                     },
                                                     children: r.s.name
                                                 }),
-                                                isLower ? r.perSub.map((p)=>/*#__PURE__*/ {
-                                                    var _p_av;
-                                                    return _jsx("td", {
-                                                        style: td,
-                                                        children: p.isX ? "X" : (_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : "-"
-                                                    }, p.sub);
-                                                }) : r.perSub.map((p)=>/*#__PURE__*/ {
-                                                    var _p_ca, _p_exam, _p_av;
+                                                r.perSub.map((p)=>/*#__PURE__*/ {
+                                                    var _p_mark, _p_agg;
                                                     return _jsxs(React.Fragment, {
                                                         children: [
                                                             /*#__PURE__*/ _jsx("td", {
                                                                 style: {
                                                                     ...td,
-                                                                    background: "#fefce8"
-                                                                },
-                                                                children: p.isX ? "X" : (_p_ca = p.ca) !== null && _p_ca !== void 0 ? _p_ca : "-"
-                                                            }),
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
                                                                     background: "#f0fdf4"
                                                                 },
-                                                                children: p.isX ? "X" : (_p_exam = p.exam) !== null && _p_exam !== void 0 ? _p_exam : "-"
-                                                            }),
-                                                            /*#__PURE__*/ _jsx("td", {
-                                                                style: {
-                                                                    ...td,
-                                                                    background: "#eff6ff",
-                                                                    fontWeight: 600
-                                                                },
-                                                                children: p.isX ? "X" : (_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : "-"
+                                                                children: p.isX ? "X" : (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-"
                                                             }),
                                                             /*#__PURE__*/ _jsx("td", {
                                                                 style: {
                                                                     ...td,
                                                                     background: "#fff7ed"
                                                                 },
-                                                                children: p.isX ? "X" : p.av !== undefined ? p.agg : "-"
+                                                                children: p.isX ? "X" : (_p_agg = p.agg) !== null && _p_agg !== void 0 ? _p_agg : "-"
                                                             })
                                                         ]
                                                     }, p.sub);
@@ -23933,26 +17385,22 @@ function ResultSheets(param) {
                                                     },
                                                     children: padTotMk(r.totMk) || "-"
                                                 }),
-                                                !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                background: "#ede9fe",
-                                                                color: r.hasX ? "#dc2626" : "inherit",
-                                                                fontWeight: r.hasX ? 700 : 400
-                                                            },
-                                                            children: r.hasX ? "X" : r.totAgg || "-"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 700,
-                                                                color: r.hasX ? "#dc2626" : "#1e40af"
-                                                            },
-                                                            children: r.hasX ? "X" : r.totMk ? r.div : "-"
-                                                        })
-                                                    ]
+                                                /*#__PURE__*/ _jsx("td", {
+                                                    style: {
+                                                        ...td,
+                                                        background: "#ede9fe",
+                                                        color: r.hasX ? "#dc2626" : "inherit",
+                                                        fontWeight: r.hasX ? 700 : 400
+                                                    },
+                                                    children: r.hasX ? "X" : r.totAgg || "-"
+                                                }),
+                                                /*#__PURE__*/ _jsx("td", {
+                                                    style: {
+                                                        ...td,
+                                                        fontWeight: 700,
+                                                        color: r.hasX ? "#dc2626" : "#1e40af"
+                                                    },
+                                                    children: r.hasX ? "X" : r.totMk ? r.div : "-"
                                                 }),
                                                 /*#__PURE__*/ _jsx("td", {
                                                     style: {
@@ -23974,7 +17422,7 @@ function ResultSheets(param) {
                                             fontSize: 12
                                         },
                                         children: /*#__PURE__*/ _jsxs("td", {
-                                            colSpan: isLower ? subjects.length + 4 : subjects.length * 4 + 6,
+                                            colSpan: subjects.length * 2 + 6,
                                             style: {
                                                 ...td,
                                                 textAlign: "left",
@@ -24308,1115 +17756,378 @@ function ResultSheets(param) {
         ]
     });
 }
-// ─── REPORT CARDS ────────────────────────────────────────────────────────────
+// ─── REPORT CARDS ──────────────────────────────────────────────────────────
+// Raven has no CA/Exam split (see updateTermMark above) and prints Mid Term
+// and End of Term as two tables on ONE card, rather than a separate Monthly
+// Cards printout -- built directly from the two photographed templates.
+// Upper Primary (P4-P7) shows a per-subject AGG code in the Mid Term table;
+// Lower Primary (P1-P3) doesn't -- that's not an oversight, it matches what
+// the two paper templates actually show.
 function ReportCards(param) {
-    let { students, termMarks, bands: defaultBands, specialBands, divisions, school, initials } = param;
+    let { students, termMarks, bands: defaultBands, specialBands, divisions, school, reportsData, setReportsData, markEditing } = param;
     const [cls, setCls] = useState("P5");
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
     const [search, setSearch] = useState("");
-    const [pdfBusy, setPdfBusy] = useState(false);
-    const cardListRef = useRef(null);
     const isLower = LOWER_CLASSES.includes(cls);
     const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
-    // P7's Term II report cards use Municipal Mock results in place of the
-    // regular End-of-Term "Exam Entry" marks -- same swap Dashboard and
-    // Reports already make for P7's performance charts/analysis.
-    const usesMunicipalMock = cls === "P7" && term === "Term II";
+    const tk = `${term}__${year}`;
+    const midBands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "Mid Term", year), [
+        cls,
+        defaultBands,
+        specialBands,
+        year
+    ]);
+    // ── Which exam is the end-of-term result ──
+    // Mock-store exams (District Mock, Special Mock, Pre-Mocks, Pre-PLEs, Other
+    // Exams) live in mkis_mock_marks, so they are loaded here read-only.
     const [mockMarksData, setMockMarksData] = useState({});
+    const [mockLoaded, setMockLoaded] = useState(false);
     useEffect(()=>{
         let alive = true;
         loadShared("mkis_mock_marks", {}).then((m)=>{
-            if (alive) setMockMarksData(m || {});
+            if (!alive) return;
+            setMockMarksData(m || {});
+            setMockLoaded(true);
         });
         const id = setInterval(()=>{
             loadShared("mkis_mock_marks", undefined).then((m)=>{
                 if (alive && m !== undefined) setMockMarksData(m);
             });
-        }, 6000);
+        }, 8000);
         return ()=>{
             alive = false;
             clearInterval(id);
         };
     }, []);
-    // Special Grading Scale override for the selected class, if any -- reads
-    // the "Municipal Mock" scale (instead of "End of Term") whenever this
-    // page is showing P7 Term II Mock results, so grading matches what was
-    // configured for the Mock exam itself.
-    const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, usesMunicipalMock ? "Municipal Mock" : "End of Term", year), [
+    // P7's Term II exams (BOT / Mid Term excluded) that have marks. The chooser
+    // below only appears for P7 in Term II, and only when there is more than one.
+    // Every other class and term keeps using Mark Entry, exactly as before.
+    const chooserApplies = hasExamChoice(cls, term); // P7 + Term II only
+    const doneExams = useMemo(()=>chooserApplies ? examsDoneForClass(students, cls, term, year, termMarks, mockMarksData) : [], [
+        chooserApplies,
+        students,
+        cls,
+        term,
+        year,
+        termMarks,
+        mockMarksData
+    ]);
+    const savedExam = chooserApplies ? getExamChoice(reportsData, cls, term, year) : null;
+    const defaultExam = doneExams.length && !doneExams.includes(END_EXAM_MARK_ENTRY) ? doneExams[0] : END_EXAM_MARK_ENTRY;
+    // A saved pick is trusted while mock marks are still loading, and after that
+    // only while that exam still has marks; otherwise fall back to the default.
+    const endExam = savedExam && savedExam !== END_EXAM_PLE && (!mockLoaded || doneExams.includes(savedExam)) ? savedExam : defaultExam;
+    const chooseEndExam = (id)=>{
+        markEditing && markEditing();
+        setReportsData((prev)=>({
+                ...prev,
+                [EXAM_CHOICES_KEY]: {
+                    ...(prev?.[EXAM_CHOICES_KEY] || {}),
+                    [examChoiceKey(cls, term, year)]: id
+                }
+            }));
+    };
+    const endBands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, endExam, year, term), [
         cls,
         defaultBands,
         specialBands,
+        endExam,
         year,
-        usesMunicipalMock
+        term
     ]);
-    const tk = "".concat(term, "__").concat(year);
-    const mk = "Municipal Mock__".concat(year);
     const classStudents = useMemo(()=>students.filter((s)=>s.className === cls && s.name.toLowerCase().includes(search.toLowerCase())).sort((a, b)=>a.name.localeCompare(b.name)), [
         students,
         cls,
         search
     ]);
-    const rows = useMemo(()=>classStudents.map((s)=>{
-            var _termMarks_s_id, _mockMarksData_s_id;
-            const m = usesMunicipalMock ? {} : ((_termMarks_s_id = termMarks[s.id]) === null || _termMarks_s_id === void 0 ? void 0 : _termMarks_s_id[tk]) || {};
-            const mockM = usesMunicipalMock ? ((_mockMarksData_s_id = mockMarksData[s.id]) === null || _mockMarksData_s_id === void 0 ? void 0 : _mockMarksData_s_id[mk]) || {} : {};
-            const perSub = subjects.map((sub)=>{
-                var _m_sub, _m_sub1;
-                const ca = usesMunicipalMock ? undefined : (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.ca;
-                const exam = usesMunicipalMock ? mockM[sub] : (_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.exam;
-                const isX = isLower ? exam === undefined || exam === null : (ca === undefined || ca === null) && (exam === undefined || exam === null);
-                if (isX) return {
-                    sub,
-                    ca,
-                    exam,
-                    av: undefined,
-                    agg: undefined,
-                    isX: true
-                };
-                const hasBoth = typeof ca === "number" && typeof exam === "number";
-                const av = hasBoth ? Math.round((ca + exam) / 2) : typeof exam === "number" ? exam : typeof ca === "number" ? ca : undefined;
-                const agg = av !== undefined ? aggOf(av, bands) : undefined;
-                return {
-                    sub,
-                    ca,
-                    exam,
-                    av,
-                    agg,
-                    isX: false
-                };
-            });
-            const hasX = perSub.some((p)=>p.isX);
-            const hasF9 = !isLower && perSub.some((p)=>p.agg === 9);
-            const totMk = perSub.reduce((a, p)=>{
-                var _p_av;
-                return a + ((_p_av = p.av) !== null && _p_av !== void 0 ? _p_av : 0);
-            }, 0);
-            const totAgg = hasX ? "X" : perSub.reduce((a, p)=>a + (p.agg || 0), 0);
-            const div = hasX ? "X" : typeof totAgg === "number" ? divisionOf(totAgg, isLower ? 5 : 4, divisions, hasF9) : "X";
-            return {
-                s,
-                perSub,
-                totMk,
-                totAgg,
-                div,
-                hasX
-            };
-        }).filter((r)=>r.perSub.some((p)=>!p.isX)), [
-        classStudents,
-        termMarks,
-        tk,
-        subjects,
-        bands,
-        divisions,
-        isLower,
-        usesMunicipalMock,
-        mockMarksData,
-        mk
-    ]);
-    const allClassStudents = useMemo(()=>students.filter((s)=>s.className === cls), [
+    // classSize is the paper card's "TOTAL IN CLASS" field -- how many
+    // pupils are in this class, not any individual pupil's own total.
+    const classSize = useMemo(()=>students.filter((s)=>s.className === cls).length, [
         students,
         cls
     ]);
-    // Count of learners in the class who actually have results recorded for
-    // this term/year (independent of the name-search filter above), so the
-    // "OUT OF ..." figure on each card reflects who was actually assessed
-    // rather than everyone on the class roster.
-    const studentsWithResultsCount = useMemo(()=>{
-        return allClassStudents.filter((s)=>{
-            var _termMarks_s_id, _mockMarksData_s_id;
-            const m = usesMunicipalMock ? {} : ((_termMarks_s_id = termMarks[s.id]) === null || _termMarks_s_id === void 0 ? void 0 : _termMarks_s_id[tk]) || {};
-            const mockM = usesMunicipalMock ? ((_mockMarksData_s_id = mockMarksData[s.id]) === null || _mockMarksData_s_id === void 0 ? void 0 : _mockMarksData_s_id[mk]) || {} : {};
-            return subjects.some((sub)=>{
-                var _m_sub, _m_sub1;
-                const ca = usesMunicipalMock ? undefined : (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.ca;
-                const exam = usesMunicipalMock ? mockM[sub] : (_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.exam;
-                const isX = isLower ? exam === undefined || exam === null : (ca === undefined || ca === null) && (exam === undefined || exam === null);
-                return !isX;
-            });
-        }).length;
-    }, [
-        allClassStudents,
-        termMarks,
-        tk,
-        subjects,
-        isLower,
-        usesMunicipalMock,
-        mockMarksData,
-        mk
-    ]);
-    const allPositions = useMemo(()=>{
-        const pm = {};
-        const allRows = allClassStudents.map((s)=>{
-            var _termMarks_s_id, _mockMarksData_s_id;
-            const m = usesMunicipalMock ? {} : ((_termMarks_s_id = termMarks[s.id]) === null || _termMarks_s_id === void 0 ? void 0 : _termMarks_s_id[tk]) || {};
-            const mockM = usesMunicipalMock ? ((_mockMarksData_s_id = mockMarksData[s.id]) === null || _mockMarksData_s_id === void 0 ? void 0 : _mockMarksData_s_id[mk]) || {} : {};
-            let totMk = 0;
-            let totAgg = 0;
-            let hasX = false;
-            subjects.forEach((sub)=>{
-                var _m_sub, _m_sub1;
-                const ca = usesMunicipalMock ? undefined : (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.ca;
-                const exam = usesMunicipalMock ? mockM[sub] : (_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.exam;
-                const isX = isLower ? exam === undefined || exam === null : (ca === undefined || ca === null) && (exam === undefined || exam === null);
-                if (isX) {
-                    hasX = true;
-                    return;
-                }
-                const hasBoth = typeof ca === "number" && typeof exam === "number";
-                const av = hasBoth ? Math.round((ca + exam) / 2) : typeof exam === "number" ? exam : typeof ca === "number" ? ca : undefined;
-                totMk += av !== null && av !== void 0 ? av : 0;
-                if (!isLower && av !== undefined) totAgg += aggOf(av, bands);
-            });
+    const buildPeriod = (m, periodBands)=>{
+        const perSub = subjects.map((sub)=>{
+            const mark = m?.[sub];
+            const hasMark = typeof mark === "number";
             return {
-                id: s.id,
-                totMk,
-                totAgg: isLower || hasX ? null : totAgg
+                sub,
+                mark,
+                agg: hasMark ? aggOf(mark, periodBands) : undefined,
+                grade: hasMark ? gradeLabel(mark, periodBands) : undefined
             };
         });
-        const ranks = rankWithTies(allRows.map((r)=>r.totMk > 0 ? r.totMk : null), allRows.map((r)=>typeof r.totAgg === "number" ? r.totAgg : null));
-        allRows.forEach((r, i)=>{
-            pm[r.id] = ranks[i];
-        });
-        return pm;
-    }, [
-        allClassStudents,
+        const hasAll = perSub.every((p)=>typeof p.mark === "number");
+        const hasF9 = perSub.some((p)=>p.agg === 9);
+        const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+        const totalAgg = hasAll ? perSub.reduce((a, p)=>a + (p.agg || 0), 0) : undefined;
+        const div = totalAgg !== undefined ? divisionOf(totalAgg, subjects.length, divisions, hasF9) : "-";
+        return {
+            perSub,
+            total,
+            totalAgg,
+            div
+        };
+    };
+    // Lower Primary Mid Term table: LIT I and LIT II are entered and shown
+    // as two separate subjects (so both marks count toward TOT MARK), but
+    // for grading purposes the division only looks at four subjects --
+    // ENG, MATHS, "Literacy" (LIT I + LIT II averaged), and RE. So the AGG
+    // shown after LIT II, and the AGG that feeds TOT AGG/DIV, is the
+    // average of the LIT I and LIT II aggregates, not two separate AGGs.
+    // LOWER_MIDTERM_ORDER / UPPER_MIDTERM_ORDER / upperSubjectLabel are
+    // shared module-level constants (defined near LOWER_SUBJECTS/
+    // UPPER_SUBJECTS above) so Mark Entry prints/enters subjects in the
+    // same order these report card tables use.
+    const buildLowerMidPeriod = (m, periodBands)=>{
+        const getSub = (sub)=>{
+            const mark = m?.[sub];
+            const hasMark = typeof mark === "number";
+            return {
+                sub,
+                mark,
+                agg: hasMark ? aggOf(mark, periodBands) : undefined
+            };
+        };
+        const eng = getSub("ENG");
+        const maths = getSub("MATHS");
+        const litI = getSub("LIT I");
+        const litII = getSub("LIT II");
+        const re = getSub("RE");
+        const litAgg = typeof litI.agg === "number" && typeof litII.agg === "number" ? Math.round((litI.agg + litII.agg) / 2) : undefined;
+        const total = [
+            eng.mark,
+            maths.mark,
+            litI.mark,
+            litII.mark,
+            re.mark
+        ].reduce((a, v)=>a + (typeof v === "number" ? v : 0), 0);
+        const aggParts = [
+            eng.agg,
+            maths.agg,
+            litAgg,
+            re.agg
+        ];
+        const hasAllAgg = aggParts.every((a)=>typeof a === "number");
+        const hasF9 = aggParts.some((a)=>a === 9);
+        const totalAgg = hasAllAgg ? aggParts.reduce((a, v)=>a + v, 0) : undefined;
+        const div = totalAgg !== undefined ? divisionOf(totalAgg, 4, divisions, hasF9) : "-";
+        return {
+            eng,
+            maths,
+            litI,
+            litII,
+            re,
+            litAgg,
+            total,
+            totalAgg,
+            div
+        };
+    };
+    const cards = useMemo(()=>classStudents.map((s)=>{
+            const mid = buildPeriod(termMarks[s.id]?.[tk]?.["Mid Term"], midBands);
+            const end = buildPeriod(examMarksFor(s.id, endExam, term, year, termMarks, mockMarksData), endBands);
+            const midLower = isLower ? buildLowerMidPeriod(termMarks[s.id]?.[tk]?.["Mid Term"], midBands) : null;
+            return {
+                s,
+                mid,
+                end,
+                midLower
+            };
+        }), [
+        classStudents,
         termMarks,
         tk,
-        subjects,
-        isLower,
-        bands,
-        usesMunicipalMock,
+        midBands,
+        endBands,
+        endExam,
         mockMarksData,
-        mk
+        term,
+        year,
+        subjects,
+        divisions,
+        isLower
     ]);
-    return /*#__PURE__*/ _jsxs("div", {
-        children: [
-            usesMunicipalMock && /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    background: "#fff7ed",
-                    border: "1px solid #fdba74",
-                    borderRadius: 8,
-                    padding: "8px 14px",
-                    marginBottom: 12,
-                    fontSize: 12.5,
-                    color: "#9a3412"
-                },
-                children: [
-                    "🏛️ ",
-                    /*#__PURE__*/ _jsx("b", {
-                        children: "P7 \xb7 Term II"
-                    }),
-                    " report cards are generated from ",
-                    /*#__PURE__*/ _jsx("b", {
-                        children: "Municipal Mock"
-                    }),
-                    " results, not the regular End-of-Term marks."
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                className: "no-print",
-                style: {
-                    display: "flex",
-                    gap: 10,
-                    marginBottom: 16,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 10,
-                            flexWrap: "wrap",
-                            alignItems: "flex-end"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Class",
-                                value: cls,
-                                onChange: setCls,
-                                opts: ALL_CLASSES
-                            }),
-                            /*#__PURE__*/ _jsx(Sel, {
-                                label: "Term",
-                                value: term,
-                                onChange: setTerm,
-                                opts: TERMS
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Year"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        type: "number",
-                                        value: year,
-                                        onChange: (e)=>setYear(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 90
-                                        }
-                                    })
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsxs("div", {
-                                children: [
-                                    /*#__PURE__*/ _jsx("label", {
-                                        style: lbl,
-                                        children: "Search Pupil"
-                                    }),
-                                    /*#__PURE__*/ _jsx("input", {
-                                        value: search,
-                                        onChange: (e)=>setSearch(e.target.value),
-                                        style: {
-                                            ...inp,
-                                            width: 180
-                                        },
-                                        placeholder: "Filter by name..."
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            display: "flex",
-                            gap: 8,
-                            flexWrap: "wrap"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>exportReportCardsWord({
-                                        school,
-                                        cls,
-                                        term,
-                                        year,
-                                        isLower,
-                                        rows,
-                                        allPositions,
-                                        totalInClass: studentsWithResultsCount,
-                                        bands,
-                                        divisions,
-                                        initials
-                                    }),
-                                style: btnWord,
-                                children: "📄 Download Word"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                disabled: pdfBusy,
-                                onClick: async ()=>{
-                                    setPdfBusy(true);
-                                    try {
-                                        var _cardListRef_current;
-                                        const cards = Array.from(((_cardListRef_current = cardListRef.current) === null || _cardListRef_current === void 0 ? void 0 : _cardListRef_current.querySelectorAll(".report-card-sheet")) || []);
-                                        await downloadNodesAsPdf(cards, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Report_Cards.pdf"));
-                                    } finally{
-                                        setPdfBusy(false);
-                                    }
-                                },
-                                style: pdfBusy ? btnPdfBusy : btnPdf,
-                                children: pdfBusy ? "⏳ Generating..." : "📕 Download PDF"
-                            }),
-                            /*#__PURE__*/ _jsx("button", {
-                                onClick: ()=>window.print(),
-                                style: btnPrimary,
-                                children: "🖨️ Print All Cards"
-                            })
-                        ]
-                    })
-                ]
-            }),
-            classStudents.length === 0 && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    padding: 40,
-                    textAlign: "center",
-                    color: "#9ca3af",
-                    border: "1px solid #e5e7eb"
-                },
-                children: [
-                    "No students found in ",
-                    cls,
-                    "."
-                ]
-            }),
-            classStudents.length > 0 && rows.length === 0 && /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "#fffbeb",
-                    borderRadius: 12,
-                    padding: 24,
-                    textAlign: "center",
-                    color: "#92400e",
-                    border: "1px solid #fde68a",
-                    marginBottom: 16
-                },
-                children: [
-                    "No ",
-                    cls,
-                    " learners have any ",
-                    term,
-                    " ",
-                    year,
-                    " marks recorded yet."
-                ]
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                ref: cardListRef,
-                className: "report-card-list",
-                children: rows.map((r)=>/*#__PURE__*/ _jsx(ReportCard, {
-                        school: school,
-                        r: r,
-                        term: term,
-                        year: year,
-                        cls: cls,
-                        position: allPositions[r.s.id],
-                        totalInClass: studentsWithResultsCount,
-                        isLower: isLower,
-                        bands: bands,
-                        divisions: divisions,
-                        initials: initials
-                    }, r.s.id))
-            })
-        ]
-    });
-}
-function ReportCard(param) {
-    let { school, r, term, year, cls, position, totalInClass, isLower, bands, divisions, initials } = param;
-    const { s, perSub, totMk, totAgg, div, hasX } = r;
-    const comments = autoComments({
-        isLower,
-        totMk,
-        div,
-        hasX,
-        seed: "".concat(s.id, "-").concat(term, "-").concat(year)
-    });
-    return /*#__PURE__*/ _jsxs("div", {
-        className: "report-card-sheet",
-        style: {
-            width: "210mm",
-            minHeight: "297mm",
-            maxWidth: "210mm",
-            boxSizing: "border-box",
-            padding: "10mm",
-            background: "white"
-        },
-        children: [
-            /*#__PURE__*/ _jsx("div", {
-                style: {
-                    border: "7px double #d97706",
-                    borderRadius: 10,
-                    padding: 6,
-                    background: "white"
-                },
-                children: /*#__PURE__*/ _jsxs("div", {
-                    style: {
-                        border: "3px double #1e3a6e",
-                        borderRadius: 6,
-                        overflow: "hidden",
-                        background: "white"
-                    },
-                    children: [
-                        /*#__PURE__*/ _jsxs("div", {
-                            style: {
-                                background: "linear-gradient(135deg,#1e3a6e 0%,#1e40af 100%)",
-                                color: "white",
-                                padding: "16px 20px",
-                                textAlign: "center",
-                                borderBottom: "4px solid #d97706"
-                            },
-                            children: [
-                                school.logo && /*#__PURE__*/ _jsx("img", {
-                                    src: school.logo,
-                                    alt: "logo",
-                                    style: {
-                                        width: 48,
-                                        height: 48,
-                                        objectFit: "contain",
-                                        display: "block",
-                                        margin: "0 auto 6px",
-                                        borderRadius: "50%",
-                                        border: "2px solid #fbbf24"
-                                    }
-                                }),
-                                /*#__PURE__*/ _jsx("div", {
-                                    style: {
-                                        fontWeight: 800,
-                                        fontSize: 26,
-                                        fontFamily: "Georgia,serif",
-                                        letterSpacing: 1
-                                    },
-                                    children: school.name
-                                }),
-                                school.motto && /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        fontSize: 11.5,
-                                        fontStyle: "italic",
-                                        opacity: 0.95,
-                                        marginTop: 1
-                                    },
-                                    children: [
-                                        '"',
-                                        school.motto,
-                                        '"'
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        fontSize: 11,
-                                        opacity: 0.9,
-                                        marginTop: 2
-                                    },
-                                    children: [
-                                        school.poBox,
-                                        " - ",
-                                        school.email,
-                                        school.tel ? " - Tel: ".concat(school.tel) : ""
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsx("div", {
-                                    style: {
-                                        marginTop: 10,
-                                        display: "inline-block",
-                                        background: "#d97706",
-                                        borderRadius: 20,
-                                        padding: "5px 22px",
-                                        fontSize: 13,
-                                        fontWeight: 800,
-                                        letterSpacing: 0.5,
-                                        color: "white"
-                                    },
-                                    children: "PUPIL'S ACADEMIC REPORT CARD"
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        marginTop: 4,
-                                        fontSize: 11.5,
-                                        fontWeight: 600,
-                                        opacity: 0.95
-                                    },
-                                    children: [
-                                        "END OF ",
-                                        term.toUpperCase(),
-                                        " ",
-                                        year
-                                    ]
-                                })
-                            ]
-                        }),
-                        /*#__PURE__*/ _jsxs("div", {
-                            style: {
-                                background: "#f0fdfa",
-                                borderBottom: "2px solid #99f6e4",
-                                padding: "10px 16px",
-                                display: "grid",
-                                gridTemplateColumns: "1.5fr 0.8fr 0.8fr 1.3fr",
-                                gap: 8,
-                                fontSize: 13,
-                                alignItems: "center"
-                            },
-                            children: [
-                                /*#__PURE__*/ _jsxs("div", {
-                                    children: [
-                                        /*#__PURE__*/ _jsx("b", {
-                                            style: {
-                                                color: "#0f766e"
-                                            },
-                                            children: "NAME:"
-                                        }),
-                                        " ",
-                                        /*#__PURE__*/ _jsx("span", {
-                                            style: {
-                                                fontWeight: 800,
-                                                fontStyle: "italic"
-                                            },
-                                            children: s.name
-                                        })
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    children: [
-                                        /*#__PURE__*/ _jsx("b", {
-                                            style: {
-                                                color: "#0f766e"
-                                            },
-                                            children: "CLASS:"
-                                        }),
-                                        " ",
-                                        cls
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    children: [
-                                        /*#__PURE__*/ _jsx("b", {
-                                            style: {
-                                                color: "#0f766e"
-                                            },
-                                            children: "TERM:"
-                                        }),
-                                        " ",
-                                        term
-                                    ]
-                                }),
-                                /*#__PURE__*/ _jsxs("div", {
-                                    children: [
-                                        /*#__PURE__*/ _jsx("b", {
-                                            style: {
-                                                color: "#0f766e"
-                                            },
-                                            children: "POSITION:"
-                                        }),
-                                        " ",
-                                        position && position !== "-" ? /*#__PURE__*/ _jsxs(_Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsxs("span", {
-                                                    style: {
-                                                        color: "#dc2626",
-                                                        fontWeight: 800
-                                                    },
-                                                    children: [
-                                                        position,
-                                                        /*#__PURE__*/ _jsx("sup", {
-                                                            style: {
-                                                                fontSize: "0.7em",
-                                                                marginLeft: 1
-                                                            },
-                                                            children: ordinalSuffix(position)
-                                                        })
-                                                    ]
-                                                }),
-                                                " ",
-                                                /*#__PURE__*/ _jsx("span", {
-                                                    style: {
-                                                        color: "#000000"
-                                                    },
-                                                    children: "OUT OF"
-                                                }),
-                                                " ",
-                                                /*#__PURE__*/ _jsx("span", {
-                                                    style: {
-                                                        color: "#2563eb",
-                                                        fontWeight: 800
-                                                    },
-                                                    children: totalInClass
-                                                })
-                                            ]
-                                        }) : "-"
-                                    ]
-                                }),
-                                s.lin && /*#__PURE__*/ _jsxs("div", {
-                                    style: {
-                                        gridColumn: "1/-1",
-                                        fontSize: 12,
-                                        color: "#1e3a6e"
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ _jsx("b", {
-                                            style: {
-                                                color: "#0f766e"
-                                            },
-                                            children: "LIN:"
-                                        }),
-                                        " ",
-                                        /*#__PURE__*/ _jsx("span", {
-                                            style: {
-                                                fontStyle: "italic",
-                                                color: "#2563eb",
-                                                fontWeight: 700
-                                            },
-                                            children: s.lin
-                                        })
-                                    ]
-                                })
-                            ]
-                        }),
-                        /*#__PURE__*/ _jsx("div", {
-                            style: {
-                                padding: "12px 16px"
-                            },
-                            children: /*#__PURE__*/ _jsxs("table", {
-                                style: {
-                                    width: "100%",
-                                    fontSize: 13
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("thead", {
-                                        children: /*#__PURE__*/ _jsxs("tr", {
-                                            style: {
-                                                background: "#0f766e",
-                                                color: "white"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        textAlign: "left",
-                                                        color: "white"
-                                                    },
-                                                    children: "SUBJECT"
-                                                }),
-                                                !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                    children: [
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                color: "white"
-                                                            },
-                                                            children: "CA"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("th", {
-                                                            style: {
-                                                                ...th,
-                                                                color: "white"
-                                                            },
-                                                            children: "EXAM"
-                                                        })
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        color: "white"
-                                                    },
-                                                    children: isLower ? "MARK" : "AVERAGE"
-                                                }),
-                                                !isLower && /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        color: "white"
-                                                    },
-                                                    children: "AGG"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        color: "white"
-                                                    },
-                                                    children: "REMARKS"
-                                                }),
-                                                /*#__PURE__*/ _jsx("th", {
-                                                    style: {
-                                                        ...th,
-                                                        color: "white"
-                                                    },
-                                                    children: "INITIALS"
-                                                })
-                                            ]
-                                        })
-                                    }),
-                                    /*#__PURE__*/ _jsxs("tbody", {
-                                        children: [
-                                            perSub.map((p, i)=>{
-                                                const isUnscored = isLower && lowerSubjectMax(p.sub) !== 100;
-                                                var _padMark, _padMark1, _padMark2;
-                                                return /*#__PURE__*/ _jsxs("tr", {
-                                                    style: {
-                                                        background: i % 2 === 0 ? "white" : "#f0fdfa"
-                                                    },
-                                                    children: [
-                                                        /*#__PURE__*/ _jsxs("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 600,
-                                                                textAlign: "left"
-                                                            },
-                                                            children: [
-                                                                p.sub,
-                                                                isUnscored ? " (/".concat(lowerSubjectMax(p.sub), ")") : ""
-                                                            ]
-                                                        }),
-                                                        !isLower && /*#__PURE__*/ _jsxs(_Fragment, {
-                                                            children: [
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        background: "#fefce8"
-                                                                    },
-                                                                    children: p.isX ? "X" : (_padMark = padMark(p.ca)) !== null && _padMark !== void 0 ? _padMark : "-"
-                                                                }),
-                                                                /*#__PURE__*/ _jsx("td", {
-                                                                    style: {
-                                                                        ...td,
-                                                                        background: "#f0fdf4"
-                                                                    },
-                                                                    children: p.isX ? "X" : (_padMark1 = padMark(p.exam)) !== null && _padMark1 !== void 0 ? _padMark1 : "-"
-                                                                })
-                                                            ]
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 700,
-                                                                fontSize: 15
-                                                            },
-                                                            children: p.isX ? "X" : (_padMark2 = padMark(p.av)) !== null && _padMark2 !== void 0 ? _padMark2 : "-"
-                                                        }),
-                                                        !isLower && /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 700,
-                                                                color: "#dc2626"
-                                                            },
-                                                            children: isUnscored ? "-" : p.isX ? "X" : p.av !== undefined ? p.agg : "-"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 700,
-                                                                color: "#2563eb"
-                                                            },
-                                                            children: isUnscored ? "-" : p.isX ? "Absent" : p.av !== undefined ? remarkFor(p.av) : "-"
-                                                        }),
-                                                        /*#__PURE__*/ _jsx("td", {
-                                                            style: {
-                                                                ...td,
-                                                                fontWeight: 700,
-                                                                color: "#dc2626"
-                                                            },
-                                                            children: ((initials || {})[cls] || {})[p.sub] || ""
-                                                        })
-                                                    ]
-                                                }, p.sub);
-                                            }),
-                                            /*#__PURE__*/ _jsxs("tr", {
-                                                style: {
-                                                    background: "#fef3c7",
-                                                    fontWeight: 700
-                                                },
-                                                children: [
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            textAlign: "left"
-                                                        },
-                                                        colSpan: isLower ? 1 : 3,
-                                                        children: "TOTAL"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            fontSize: 15
-                                                        },
-                                                        children: padTotMk(totMk) || "-"
-                                                    }),
-                                                    !isLower && /*#__PURE__*/ _jsx("td", {
-                                                        style: {
-                                                            ...td,
-                                                            color: "#dc2626",
-                                                            fontWeight: 800
-                                                        },
-                                                        children: hasX ? "X" : totAgg || "-"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: td
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("td", {
-                                                        style: td
-                                                    })
-                                                ]
-                                            })
-                                        ]
-                                    })
-                                ]
-                            })
-                        })
-                    ]
-                })
-            }),
-            /*#__PURE__*/ _jsx("div", {
-                style: {
-                    padding: "12px 4px 0",
-                    fontSize: 13,
-                    lineHeight: 2
-                },
-                children: !isLower && /*#__PURE__*/ _jsxs("div", {
-                    children: [
-                        /*#__PURE__*/ _jsx("b", {
-                            children: "DIVISION:"
-                        }),
-                        " ",
-                        /*#__PURE__*/ _jsx("span", {
-                            style: {
-                                color: "#dc2626",
-                                fontWeight: 800
-                            },
-                            children: hasX ? "X" : totMk ? div : "-"
-                        })
-                    ]
-                })
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    padding: "0 4px 0",
-                    fontSize: 13,
-                    lineHeight: 2,
-                    fontFamily: "'Times New Roman', Times, serif"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "CONDUCT:"
-                            }),
-                            " ..........................................................................................."
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            fontSize: 12
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Class Teacher's Comment:"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic",
-                                    color: "#1d4ed8"
-                                },
-                                children: comments.teacher || ".............................................................................."
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Sign:"
-                            }),
-                            " ......................"
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            fontSize: 12
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Head Teacher's Comment:"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic",
-                                    color: "#dc2626"
-                                },
-                                children: comments.head || ".............................................................................."
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Sign:"
-                            }),
-                            " ......................"
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Next Term begins on"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic",
-                                    color: "#1d4ed8"
-                                },
-                                children: school.nextOpens || "......................."
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Ends on"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic",
-                                    color: "#1d4ed8"
-                                },
-                                children: school.nextEnds || "......................."
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Requirements:"
-                            }),
-                            " ",
-                            /*#__PURE__*/ _jsx("span", {
-                                style: {
-                                    fontWeight: 700,
-                                    fontStyle: "italic",
-                                    color: "#15803d"
-                                },
-                                children: school.requirements || "..........................................................................................."
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ _jsxs("div", {
-                        children: [
-                            /*#__PURE__*/ _jsx("b", {
-                                children: "Parent's Signature after reading:"
-                            }),
-                            " ..................................................................."
-                        ]
-                    })
-                ]
-            }),
-            /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    marginTop: 14,
-                    display: "flex",
-                    gap: 10,
-                    flexWrap: "wrap"
-                },
-                children: [
-                    /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            flex: isLower ? "1 1 100%" : "1 1 300px",
-                            background: "#eff6ff",
-                            border: "1px solid #bfdbfe",
-                            borderRadius: 10,
-                            padding: "10px 12px"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsxs("div", {
-                                style: {
-                                    fontSize: 11,
-                                    fontWeight: 800,
-                                    color: "#1e3a6e",
-                                    textAlign: "center",
-                                    marginBottom: 8,
-                                    letterSpacing: 0.3
-                                },
-                                children: [
-                                    "GRADING SCALE — ",
-                                    isLower ? "LOWER" : "UPPER",
-                                    " PRIMARY"
-                                ]
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 6,
-                                    justifyContent: "center"
-                                },
-                                children: bands.map((b)=>/*#__PURE__*/ _jsxs("div", {
-                                        style: {
-                                            background: "white",
-                                            border: "1px solid #dbeafe",
-                                            borderRadius: 20,
-                                            padding: "3px 10px",
-                                            fontSize: 10
-                                        },
-                                        children: [
-                                            !isLower && /*#__PURE__*/ _jsxs("b", {
-                                                style: {
-                                                    color: "#1e3a6e"
-                                                },
-                                                children: [
-                                                    b.grade,
-                                                    " "
-                                                ]
-                                            }),
-                                            /*#__PURE__*/ _jsxs("span", {
-                                                style: {
-                                                    color: "#1e3a6e",
-                                                    fontWeight: isLower ? 700 : 400
-                                                },
-                                                children: [
-                                                    "(",
-                                                    b.min,
-                                                    b.max !== b.min ? "-".concat(b.max) : "",
-                                                    ")"
-                                                ]
-                                            }),
-                                            " ",
-                                            /*#__PURE__*/ _jsx("span", {
-                                                style: {
-                                                    fontStyle: "italic",
-                                                    color: "#6b7280"
-                                                },
-                                                children: b.label
-                                            })
-                                        ]
-                                    }, b.grade))
-                            })
-                        ]
-                    }),
-                    !isLower && /*#__PURE__*/ _jsxs("div", {
-                        style: {
-                            flex: "1 1 300px",
-                            background: "#fef9c3",
-                            border: "1px solid #fde68a",
-                            borderRadius: 10,
-                            padding: "10px 12px"
-                        },
-                        children: [
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    fontSize: 11,
-                                    fontWeight: 800,
-                                    color: "#92400e",
-                                    textAlign: "center",
-                                    marginBottom: 8,
-                                    letterSpacing: 0.3
-                                },
-                                children: "DIVISION SCALE"
-                            }),
-                            /*#__PURE__*/ _jsx("div", {
-                                style: {
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 6,
-                                    justifyContent: "center"
-                                },
-                                children: (divisions || []).map((dv)=>/*#__PURE__*/ _jsxs("div", {
-                                        style: {
-                                            background: "white",
-                                            border: "1px solid #fde68a",
-                                            borderRadius: 20,
-                                            padding: "3px 10px",
-                                            fontSize: 10
-                                        },
-                                        children: [
-                                            /*#__PURE__*/ _jsxs("b", {
-                                                style: {
-                                                    color: "#92400e"
-                                                },
-                                                children: [
-                                                    "Div. ",
-                                                    dv.name
-                                                ]
-                                            }),
-                                            " ",
-                                            /*#__PURE__*/ _jsxs("span", {
-                                                style: {
-                                                    color: "#b45309"
-                                                },
-                                                children: [
-                                                    "(",
-                                                    dv.min,
-                                                    "-",
-                                                    dv.max,
-                                                    ")"
-                                                ]
-                                            })
-                                        ]
-                                    }, dv.name))
-                            })
-                        ]
-                    })
-                ]
-            })
-        ]
-    });
+    return <div className="p-4">
+            <h2 className="text-xl font-bold mb-4 print:hidden">Report Cards</h2>
+            <div className="flex flex-wrap gap-3 mb-4 items-end print:hidden">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Class</label>
+                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
+                        {ALL_CLASSES.map((c)=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Term</label>
+                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
+                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Year</label>
+                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                    <label className="block text-sm font-medium mb-1">Search</label>
+                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
+                </div>
+                <button className="bg-blue-600 text-white rounded px-4 py-2" onClick={()=>window.print()}>Print</button>
+            </div>
+            {chooserApplies && doneExams.length > 1 && <div className="mb-4 border border-amber-300 bg-amber-50 rounded p-3 print:hidden">
+                    <div className="text-sm font-semibold mb-1">P7 has {doneExams.length} exams recorded for {year}. Choose the one that counts as the Term II end-of-term result:</div>
+                    <div className="flex flex-wrap gap-x-5 gap-y-1">
+                        {doneExams.map((id)=><label key={id} className="flex items-center gap-1 text-sm cursor-pointer">
+                                <input type="radio" name="end-of-term-exam" checked={endExam === id} onChange={()=>chooseEndExam(id)} />
+                                {examDisplayName(id)}
+                            </label>)}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">This choice is used for the End of Term Performance table below and for P7's Term II results on the Dashboard. Mid Term and BOT are not affected.</div>
+                </div>}
+            {cards.map((c)=><div key={c.s.id} className="border-4 border-red-300 rounded p-4 mb-6 max-w-2xl mx-auto bg-white print:break-after-page">
+                    <div className="flex items-center justify-between">
+                        {school.logo && <img src={school.logo} alt="logo" className="w-16 h-16 object-contain" />}
+                        <div className="text-center flex-1">
+                            <div className="text-lg font-bold tracking-wide">{school.name || "SCHOOL NAME"}</div>
+                            {school.poBox && <div className="text-xs">{school.poBox}</div>}
+                            {school.tel && <div className="text-xs">Tel. {school.tel}</div>}
+                        </div>
+                        {school.logo && <img src={school.logo} alt="logo" className="w-16 h-16 object-contain" />}
+                    </div>
+                    <div className="mt-3 text-sm">
+                        <div><span className="font-semibold">PUPILS NAME: </span>{c.s.name}&nbsp;&nbsp;&nbsp;<span className="font-semibold">CLASS: </span>{cls}</div>
+                        <div>
+                            <span className="font-semibold">AGG: </span>{c.end.totalAgg ?? "-"}&nbsp;&nbsp;&nbsp;
+                            <span className="font-semibold">DIV: </span>{c.end.div}&nbsp;&nbsp;&nbsp;
+                            <span className="font-semibold">TOTAL IN CLASS: </span>{classSize}&nbsp;&nbsp;&nbsp;
+                            <span className="font-semibold">TERM: </span>{term}&nbsp;&nbsp;&nbsp;
+                            <span className="font-semibold">YEAR: </span>{year}
+                        </div>
+                    </div>
+                    <div className="text-center font-semibold mt-3 mb-1">MID TERM PERFORMANCE</div>
+                    <table className="w-full text-xs border-collapse border">
+                        <tbody>
+                            {isLower ? <>
+                                    <tr>
+                                        <th className="border p-1">ENG</th>
+                                        <th className="border p-1">AGG</th>
+                                        <th className="border p-1">MATHS</th>
+                                        <th className="border p-1">AGG</th>
+                                        <th className="border p-1">LIT I</th>
+                                        <th className="border p-1">LIT II</th>
+                                        <th className="border p-1">AGG</th>
+                                        <th className="border p-1">RE</th>
+                                        <th className="border p-1">AGG</th>
+                                        <th className="border p-1">TOT MARK</th>
+                                        <th className="border p-1">TOT AGG</th>
+                                        <th className="border p-1">DIV</th>
+                                    </tr>
+                                    <tr>
+                                        <td className="border p-1 text-center">{c.midLower.eng.mark ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.eng.agg ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.maths.mark ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.maths.agg ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.litI.mark ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.litII.mark ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.litAgg ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.re.mark ?? "-"}</td>
+                                        <td className="border p-1 text-center">{c.midLower.re.agg ?? "-"}</td>
+                                        <td className="border p-1 text-center font-semibold">{c.midLower.total || "-"}</td>
+                                        <td className="border p-1 text-center font-semibold">{c.midLower.totalAgg ?? "-"}</td>
+                                        <td className="border p-1 text-center font-semibold">{c.midLower.div}</td>
+                                    </tr>
+                                </> : <>
+                                    <tr>
+                                        {UPPER_MIDTERM_ORDER.map((sub)=>{
+                                            return <React.Fragment key={sub}>
+                                                    <th className="border p-1">{upperSubjectLabel(sub)}</th>
+                                                    <th className="border p-1">AGG</th>
+                                                </React.Fragment>;
+                                        })}
+                                        <th className="border p-1">TOT MARK</th>
+                                        <th className="border p-1">TOT AGG</th>
+                                        <th className="border p-1">DIV</th>
+                                    </tr>
+                                    <tr>
+                                        {UPPER_MIDTERM_ORDER.map((sub)=>{
+                                            const p = c.mid.perSub.find((x)=>x.sub === sub);
+                                            return <React.Fragment key={sub}>
+                                                    <td className="border p-1 text-center">{p?.mark === undefined ? "-" : p.mark}</td>
+                                                    <td className="border p-1 text-center">{p?.agg ?? "-"}</td>
+                                                </React.Fragment>;
+                                        })}
+                                        <td className="border p-1 text-center font-semibold">{c.mid.total || "-"}</td>
+                                        <td className="border p-1 text-center font-semibold">{c.mid.totalAgg ?? "-"}</td>
+                                        <td className="border p-1 text-center font-semibold">{c.mid.div}</td>
+                                    </tr>
+                                </>}
+                        </tbody>
+                    </table>
+                    <div className="text-center font-semibold mt-3 mb-1">END OF TERM PERFORMANCE{endExam !== END_EXAM_MARK_ENTRY ? ` (${examDisplayName(endExam)})` : ""}</div>
+                    <table className="w-full text-xs border-collapse border">
+                        <thead>
+                            <tr>
+                                <th className="border p-1">SUBJECT</th>
+                                <th className="border p-1">FULL MARK</th>
+                                <th className="border p-1">SCORE</th>
+                                <th className="border p-1">AGG</th>
+                                <th className="border p-1">{isLower ? "COMMENT" : "COMMENTS"}</th>
+                                <th className="border p-1">INITIALS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isLower ? <>
+                                    {LOWER_MIDTERM_ORDER.map((sub)=>{
+                                        const p = c.end.perSub.find((x)=>x.sub === sub);
+                                        return <tr key={sub}>
+                                                <td className="border p-1">{sub}</td>
+                                                <td className="border p-1 text-center">{lowerSubjectMax(sub)}</td>
+                                                <td className="border p-1 text-center">{p?.mark === undefined ? "-" : p.mark}</td>
+                                                <td className="border p-1 text-center">{p?.agg ?? "-"}</td>
+                                                <td className="border p-1"></td>
+                                                <td className="border p-1"></td>
+                                            </tr>;
+                                    })}
+                                    <tr>
+                                        <td className="border p-1 font-semibold">TOTAL</td>
+                                        <td className="border p-1"></td>
+                                        <td className="border p-1 text-center font-semibold">{c.end.total || "-"}</td>
+                                        <td className="border p-1" colSpan={3}></td>
+                                    </tr>
+                                </> : <>
+                                    {UPPER_MIDTERM_ORDER.map((sub)=>{
+                                        const p = c.end.perSub.find((x)=>x.sub === sub);
+                                        return <tr key={sub}>
+                                                <td className="border p-1">{upperSubjectLabel(sub)}</td>
+                                                <td className="border p-1 text-center">100</td>
+                                                <td className="border p-1 text-center">{p?.mark === undefined ? "-" : p.mark}</td>
+                                                <td className="border p-1 text-center">{p?.agg ?? "-"}</td>
+                                                <td className="border p-1"></td>
+                                                <td className="border p-1"></td>
+                                            </tr>;
+                                    })}
+                                    <tr>
+                                        <td className="border p-1 font-semibold">TOTAL</td>
+                                        <td className="border p-1"></td>
+                                        <td className="border p-1 text-center font-semibold">{c.end.total || "-"}</td>
+                                        <td className="border p-1" colSpan={3}></td>
+                                    </tr>
+                                </>}
+                        </tbody>
+                    </table>
+                    <div className="mt-3 text-xs space-y-1">
+                        <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
+                        <div>CLASS TEACHER'S REPORT: ______________________________________________________&nbsp;&nbsp;Sign: __________</div>
+                        <div>NEXT TERM BEGINS ON: _______________&nbsp;&nbsp;ENDS ON: _______________</div>
+                        <div>HEADTEACHER'S COMMENT: ______________________________________________________</div>
+                        <div>SIGNATURE: __________________</div>
+                    </div>
+                    <div className="mt-2 text-[10px]">
+                        <span className="font-semibold underline">SCHOOL REQUIREMENTS</span>: 1 ream (photocopying), 1 bar of soap (white star), 2kg of sugar, 2 rolls of toilet paper, 1 broom, 1 hard brush and 1 bag of cement per parent.
+                    </div>
+                    {school.motto && <div className="text-center italic text-xs mt-3">MOTTO: {school.motto}</div>}
+                </div>)}
+        </div>;
 }
 // ─── REPORTS (Performance Analysis & Graphs) ─────────────────────────────────
 // Data-driven Reports module: every statistic and graph below is computed
@@ -25474,7 +18185,7 @@ const PLE_SUBJECT_MAP_R = {
 };
 // Returns a 0-100 percentage for one pupil/one subject/one term+year, pulling
 // from whichever source is authoritative for that pupil+term (Exam Entry for
-// everyone except P7 in Term II, which uses the Municipal Mock, and P7 in
+// everyone except P7 in Term II, which uses the District Mock, and P7 in
 // Term III, which uses PLE results) -- exactly the same substitution the
 // Dashboard's own performance charts already use, so a Reports graph and the
 // Dashboard's chart for the same period never disagree.
@@ -25484,7 +18195,7 @@ function reportSubjectPct(s, sub, isLower, term, year, termMarksData, mockMarksD
     if (s.className === "P7") {
         if (term === "Term II") {
             var _mockMarksData_s_id_, _mockMarksData_s_id;
-            const val = mockMarksData === null || mockMarksData === void 0 ? void 0 : (_mockMarksData_s_id = mockMarksData[s.id]) === null || _mockMarksData_s_id === void 0 ? void 0 : (_mockMarksData_s_id_ = _mockMarksData_s_id["Municipal Mock__".concat(year)]) === null || _mockMarksData_s_id_ === void 0 ? void 0 : _mockMarksData_s_id_[sub];
+            const val = mockMarksData === null || mockMarksData === void 0 ? void 0 : (_mockMarksData_s_id = mockMarksData[s.id]) === null || _mockMarksData_s_id === void 0 ? void 0 : (_mockMarksData_s_id_ = _mockMarksData_s_id["District Mock__".concat(year)]) === null || _mockMarksData_s_id_ === void 0 ? void 0 : _mockMarksData_s_id_[sub];
             if (typeof val !== "number") return undefined;
             return val / (isLower ? lowerSubjectMax(sub) : 100) * 100;
         }
@@ -25497,12 +18208,8 @@ function reportSubjectPct(s, sub, isLower, term, year, termMarksData, mockMarksD
             return (10 - n) / 9 * 100;
         }
     }
-    const m = (termMarksData === null || termMarksData === void 0 ? void 0 : (_termMarksData_s_id = termMarksData[s.id]) === null || _termMarksData_s_id === void 0 ? void 0 : _termMarksData_s_id["".concat(term, "__").concat(year)]) || {};
-    const ca = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.ca, exam = (_m_sub1 = m[sub]) === null || _m_sub1 === void 0 ? void 0 : _m_sub1.exam;
-    const hasBoth = typeof ca === "number" && typeof exam === "number";
-    if (!hasBoth && typeof exam !== "number" && typeof ca !== "number") return undefined;
-    const av = hasBoth ? (ca + exam) / 2 : typeof exam === "number" ? exam : ca;
-    return av / (isLower ? lowerSubjectMax(sub) : 100) * 100;
+    // Mark Entry now stores one mark per subject (see markEntryPct).
+    return markEntryPct(termMarksData, s, sub, isLower, term, year);
 }
 // Average % across every learner+subject percentage available for a class
 // (or a filtered set of classes), for one term+year. `subjectsFor(cls)`
@@ -25583,7 +18290,7 @@ function reportPupilPassStatus(students, classesFilter, term, year, subjectsFor,
                 pass: totMk >= 140
             });
         } else {
-            const classBands = bandsForClass(s.className, bands, specialBands, "End of Term", year);
+            const classBands = bandsForClass(s.className, bands, specialBands, "End of Term", year, term);
             let totAgg = 0, count = 0, hasF9 = false;
             subs.forEach((sub)=>{
                 const p = reportSubjectPct(s, sub, false, term, year, termMarksData, mockMarksData, pleResultsData);
@@ -25632,7 +18339,7 @@ function upperGradeAndDivisionBreakdown(students, classesFilter, term, year, sub
     let divTotal = 0;
     students.filter((s)=>classesFilter.includes(s.className) && UPPER_CLASSES.includes(s.className)).forEach((s)=>{
         const subs = subjectsFor(s.className);
-        const classBands = bandsForClass(s.className, bands, specialBands, "End of Term", year);
+        const classBands = bandsForClass(s.className, bands, specialBands, "End of Term", year, term);
         let totAgg = 0, count = 0, hasF9 = false;
         subs.forEach((sub)=>{
             const p = reportSubjectPct(s, sub, false, term, year, termMarksData, mockMarksData, pleResultsData);
@@ -25692,7 +18399,7 @@ function upperClassAchievers(students, classesFilter, term, year, subjectsFor, t
     const out = [];
     UPPER_CLASSES.filter((c)=>classesFilter.includes(c)).forEach((c)=>{
         const subs = subjectsFor(c);
-        const classBands = bandsForClass(c, bands, specialBands, "End of Term", year);
+        const classBands = bandsForClass(c, bands, specialBands, "End of Term", year, term);
         const rows = [];
         students.filter((s)=>s.className === c).forEach((s)=>{
             let totMk = 0, totAgg = 0, count = 0, hasF9 = false;
@@ -26116,7 +18823,7 @@ function Reports(param) {
         let repBands = bands;
         pupilPcts.forEach((param)=>{
             let { student, avgPct } = param;
-            const b = bandsForClass(student.className, bands, specialBands, "End of Term", year);
+            const b = bandsForClass(student.className, bands, specialBands, "End of Term", year, term);
             const label = gradeLabel(Math.round(avgPct), b);
             counts[label] = (counts[label] || 0) + 1;
         });
@@ -26149,7 +18856,8 @@ function Reports(param) {
         pupilPcts,
         bands,
         specialBands,
-        year
+        year,
+        term
     ]);
     // Real pass/fail per learner (Division I-IV / 140+ marks = pass,
     // Division U / <140 marks = fail) -- feeds stats.passRate below. See
@@ -28714,11 +21422,7 @@ function AccountManager(param) {
                     /*#__PURE__*/ _jsx("b", {
                         children: "Tip:"
                     }),
-                    ' After adding or changing accounts, the new credentials take effect immediately — teachers can log in with their new username and password right away. To remove the old shared "Teacher / KIZITO172" account, find it in the list above and tap ',
-                    /*#__PURE__*/ _jsx("b", {
-                        children: "Delete"
-                    }),
-                    "."
+                    ' After adding or changing accounts, the new credentials take effect immediately — teachers can log in with their new username and password right away.',
                 ]
             })
         ]
@@ -28814,7 +21518,10 @@ function Settings(param) {
                     bands: bands.map((b)=>({
                             ...b
                         })),
-                    examTypes: []
+                    examTypes: [],
+                    terms: [
+                        ...TERMS
+                    ]
                 }
             ]);
     };
@@ -28843,8 +21550,8 @@ function Settings(param) {
                     bands: bandsUpdater(sc.bands || [])
                 } : sc));
     };
-    // Toggles whether one exam type (End of Term / Monthly Exams / Municipal
-    // Mock / TAEB Mock) is covered by one Scale.
+    // Toggles whether one exam type (End of Term / Monthly Exams / District
+    // Mock / Special Mock) is covered by one Scale.
     const toggleScaleExamType = (idx, examType)=>{
         updateScales((scales)=>scales.map((sc, i)=>{
                 if (i !== idx) return sc;
@@ -28856,6 +21563,17 @@ function Settings(param) {
                 return {
                     ...sc,
                     examTypes: nextTypes
+                };
+            }));
+    };
+    // Toggles whether one Scale is switched on for one term (Term I / II / III).
+    const toggleScaleTerm = (idx, term)=>{
+        updateScales((scales)=>scales.map((sc, i)=>{
+                if (i !== idx) return sc;
+                const cur = scaleTermsOf(sc);
+                return {
+                    ...sc,
+                    terms: cur.includes(term) ? cur.filter((t)=>t !== term) : TERMS.filter((t)=>t === term || cur.includes(t))
                 };
             }));
     };
@@ -29453,7 +22171,7 @@ function Settings(param) {
                             color: "#6b7280",
                             marginBottom: 14
                         },
-                        children: 'An optional alternate grading scale for a single class in a single academic Year. Pick a class and Year below, then add one or more Scales — each named "Scale 1", "Scale 2" etc. automatically — and tick which exam types each Scale should apply to. Only those exam types use that Scale; every exam type left unticked (and every other class or Year) keeps using the standard Grade Bands below.'
+                        children: 'An optional alternate grading scale for a single class in a single academic Year. Pick a class and Year below, then add one or more Scales — each named "Scale 1", "Scale 2" etc. automatically — and tick which exams (Mark Entry, District Mock, Special Exam, Pre-Mock, Pre-PLE, Other Exams…) and which terms each Scale applies to. A Scale is used only for the ticked exams in the ticked terms; every exam or term left unticked (and every other class or Year) keeps using the standard Grade Bands below.'
                     }),
                     /*#__PURE__*/ _jsxs("div", {
                         style: {
@@ -29570,7 +22288,7 @@ function Settings(param) {
                                                     color: "#92400e",
                                                     marginBottom: 6
                                                 },
-                                                children: "Applies to these exam types:"
+                                                children: "Applies to these exams:"
                                             }),
                                             /*#__PURE__*/ _jsx("div", {
                                                 style: {
@@ -29592,7 +22310,7 @@ function Settings(param) {
                                                                 checked: (scale.examTypes || []).includes(et),
                                                                 onChange: ()=>toggleScaleExamType(idx, et)
                                                             }),
-                                                            et
+                                                            specialScaleExamLabel(et)
                                                         ]
                                                     }, et))
                                             }),
@@ -29603,13 +22321,44 @@ function Settings(param) {
                                                     marginTop: 6
                                                 },
                                                 children: [
-                                                    "No exam types selected — ",
+                                                    "No exams selected — ",
                                                     scale.name,
                                                     " won't be used anywhere until at least one is ticked."
                                                 ]
                                             })
                                         ]
                                     }),
+                                    <div key="scale-terms" style={{
+        marginBottom: 12
+    }}>
+                                        <div style={{
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#92400e",
+        marginBottom: 6
+    }}>Applies to these terms:</div>
+                                        <div style={{
+        display: "flex",
+        gap: 14,
+        flexWrap: "wrap"
+    }}>
+                                            {TERMS.map((t)=><label key={t} style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 13,
+        cursor: "pointer"
+    }}>
+                                                    <input type="checkbox" checked={scaleTermsOf(scale).includes(t)} onChange={()=>toggleScaleTerm(idx, t)} />
+                                                    {t}
+                                                </label>)}
+                                        </div>
+                                        {scaleTermsOf(scale).length === 0 && <div style={{
+        fontSize: 12,
+        color: "#dc2626",
+        marginTop: 6
+    }}>No terms selected — {scale.name} won't be used in any term until at least one is ticked.</div>}
+                                    </div>,
                                     /*#__PURE__*/ _jsxs("div", {
                                         style: {
                                             overflowX: "auto"
@@ -30223,7 +22972,7 @@ function Settings(param) {
 }
 // ─── DOWNLOAD CENTRE ─────────────────────────────────────────────────────────
 function DownloadCentre(param) {
-    let { students, termMarks, monthlyMarks, groupWork, municipalPerf, examTimetable, reportsData, bands, specialBands, divisions, school, accounts, role, currentUser, forceRestoreData } = param;
+    let { students, termMarks, monthlyMarks, reportsData, bands, specialBands, divisions, school, accounts, role, currentUser, forceRestoreData } = param;
     var _pendingRestore__meta_exportedAt, _pendingRestore__meta, _pendingRestore__meta1, _pendingRestore_school, _pendingRestore_students;
     const [importStatus, setImportStatus] = useState("");
     const [importError, setImportError] = useState("");
@@ -30258,9 +23007,6 @@ function DownloadCentre(param) {
             students,
             termMarks,
             monthlyMarks,
-            groupWork,
-            municipalPerf,
-            examTimetable,
             reportsData
         };
         const blob = new Blob([
@@ -30402,7 +23148,7 @@ function DownloadCentre(param) {
     }, []);
     const NEXT_FILES = useMemo(()=>({
             "package.json": JSON.stringify({
-                name: "st-kizito-mis-nextjs",
+                name: "raven-mis-nextjs",
                 version: BUILD_VERSION,
                 private: true,
                 scripts: {
@@ -30430,9 +23176,9 @@ function DownloadCentre(param) {
                 }
             }, null, 2),
             ".gitignore": "node_modules\n.next\nout\n.env*.local\n",
-            "README.md": "# St. Kizito's Primary School — Result Management System (Next.js)\n\nBuild version: **".concat(BUILD_VERSION, "**\nExported: ").concat(new Date().toISOString(), "\n\nA complete, self-contained Next.js build of the MKIS result management app.\n\n## Run it\n\n```bash\nnpm install\nnpm run dev\n```\n\nThen open http://localhost:3000\n\n## Notes\n\n- All data is stored in the browser's localStorage (no server / database needed).\n- To back up data: open the Download Centre inside the app and export a Full Backup (.json).\n- To deploy: `npm run build && npm start`, or push to Vercel.\n"),
+            "README.md": "# Raven Junior School — Result Management System (Next.js)\n\nBuild version: **".concat(BUILD_VERSION, "**\nExported: ").concat(new Date().toISOString(), "\n\nA complete, self-contained Next.js build of the MKIS result management app.\n\n## Run it\n\n```bash\nnpm install\nnpm run dev\n```\n\nThen open http://localhost:3000\n\n## Notes\n\n- All data is stored in the browser's localStorage (no server / database needed).\n- To back up data: open the Download Centre inside the app and export a Full Backup (.json).\n- To deploy: `npm run build && npm start`, or push to Vercel.\n"),
             "lib/storage-shim.js": "// Provides window.storage.{get,set} backed by localStorage so the MKIS\n// component runs identically outside the Lovable host environment.\n// Build: ".concat(BUILD_VERSION, '\nexport function installStorageShim() {\n  if (typeof window === "undefined") return;\n  if (window.storage && window.storage.__mkisShim) return;\n  const prefix = "mkis_shared::";\n  window.storage = {\n    __mkisShim: true,\n    async get(key) {\n      try {\n        const value = window.localStorage.getItem(prefix + key);\n        return value == null ? null : { value };\n      } catch { return null; }\n    },\n    async set(key, value) {\n      try { window.localStorage.setItem(prefix + key, String(value)); } catch {}\n      return true;\n    },\n    async remove(key) {\n      try { window.localStorage.removeItem(prefix + key); } catch {}\n      return true;\n    },\n  };\n}\n'),
-            "app/layout.js": 'export const metadata = {\n  title: "St. Kizito\'s Primary School — Result Management System",\n  description: "Result Management System for St. Kizito\'s Primary School",\n};\n\nexport default function RootLayout({ children }) {\n  return (\n    <html lang="en">\n      <body style={{ margin: 0, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>\n        {children}\n      </body>\n    </html>\n  );\n}\n',
+            "app/layout.js": 'export const metadata = {\n  title: "Raven Junior School — Result Management System",\n  description: "Result Management System for Raven Junior School",\n};\n\nexport default function RootLayout({ children }) {\n  return (\n    <html lang="en">\n      <body style={{ margin: 0, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>\n        {children}\n      </body>\n    </html>\n  );\n}\n',
             "app/page.js": '"use client";\nimport dynamic from "next/dynamic";\nimport { useEffect, useState } from "react";\nimport { installStorageShim } from "../lib/storage-shim";\n\nconst MKIS = dynamic(() => import("../components/MKIS.jsx"), { ssr: false });\n\nexport default function Page() {\n  const [ready, setReady] = useState(false);\n  useEffect(() => { installStorageShim(); setReady(true); }, []);\n  if (!ready) return null;\n  return <MKIS />;\n}\n',
             "components/MKIS.jsx": MKIS_SOURCE
         }), [
@@ -30442,7 +23188,7 @@ function DownloadCentre(param) {
         try {
             setNextZipBuilding(true);
             const zip = new JSZip();
-            const projectName = "st-kizito-mis-nextjs";
+            const projectName = "raven-mis-nextjs";
             const root = zip.folder(projectName);
             for (const [path, content] of Object.entries(NEXT_FILES)){
                 root.file(path, content);
@@ -31332,9 +24078,6 @@ function AuditLog() {
             mkis_initials: "Initials",
             mkis_locked_term: "Term Lock",
             mkis_locked_monthly: "Monthly Lock",
-            mkis_groupwork: "Group Work",
-            mkis_municipalperf: "Municipal Performance",
-            mkis_examtimetable: "Exam Timetable",
             mkis_mock_marks: "Mock Results",
             mkis_pledata: "PLE Results"
         })[key] || key;
