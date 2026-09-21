@@ -2865,13 +2865,21 @@ function ConfirmModal(param) {
 // like Month depending on Term) }]. Values are plain objects keyed by field
 // key; initialFrom/initialTo seed the two sides. onConfirm(fromValues,
 // toValues) performs the actual copy and is expected to close the modal.
-function normalizeTransferValues(vals, fields) {
+// A term's results can be moved to the SAME term (e.g. BOT -> Mid Term, or a
+// different year) or to a LATER term -- Term I -> Term II / Term III, and
+// Term II -> Term III -- never backwards. Used as a "To" field's options in
+// TransferResultModal (second argument = the "From" values).
+function transferTermOptions(vals, from) {
+    const src = from && from.term ? TERMS.indexOf(from.term) : 0;
+    return TERMS.slice(src < 0 ? 0 : src);
+}
+function normalizeTransferValues(vals, fields, other) {
     const v = {
         ...vals
     };
     fields.forEach((f)=>{
         if (f.type === "text") return;
-        const opts = typeof f.options === "function" ? f.options(v) : f.options;
+        const opts = typeof f.options === "function" ? f.options(v, other) : f.options;
         if (opts && opts.length && !opts.includes(v[f.key])) v[f.key] = opts[0];
     });
     return v;
@@ -2879,10 +2887,14 @@ function normalizeTransferValues(vals, fields) {
 function TransferResultModal(param) {
     let { title, note, fields, initialFrom, initialTo, onConfirm, onClose } = param;
     const [from, setFrom] = useState(()=>normalizeTransferValues(initialFrom, fields));
-    const [to, setTo] = useState(()=>normalizeTransferValues(initialTo, fields));
+    const [toRaw, setTo] = useState(()=>normalizeTransferValues(initialTo, fields, normalizeTransferValues(initialFrom, fields)));
     const [confirming, setConfirming] = useState(false);
+    // The "To" side is re-normalised against the current "From" values on every
+    // render, so a field whose choices depend on the source (e.g. a term can
+    // only be moved to the same or a LATER term) always shows valid options.
+    const to = normalizeTransferValues(toRaw, fields, from);
     const sameSelection = JSON.stringify(from) === JSON.stringify(to);
-    const renderField = (f, vals, setVals)=>/*#__PURE__*/ _jsxs("div", {
+    const renderField = (f, vals, setVals, other)=>/*#__PURE__*/ _jsxs("div", {
             style: {
                 marginBottom: 10
             },
@@ -2896,7 +2908,7 @@ function TransferResultModal(param) {
                     onChange: (e)=>setVals((v)=>normalizeTransferValues({
                                 ...v,
                                 [f.key]: e.target.value
-                            }, fields)),
+                            }, fields, other)),
                     style: {
                         ...inp,
                         width: "100%",
@@ -2907,13 +2919,13 @@ function TransferResultModal(param) {
                     onChange: (e)=>setVals((v)=>normalizeTransferValues({
                                 ...v,
                                 [f.key]: e.target.value
-                            }, fields)),
+                            }, fields, other)),
                     style: {
                         ...inp,
                         width: "100%",
                         boxSizing: "border-box"
                     },
-                    children: (typeof f.options === "function" ? f.options(vals) : f.options).map((o)=>/*#__PURE__*/ _jsx("option", {
+                    children: (typeof f.options === "function" ? f.options(vals, other) : f.options).map((o)=>/*#__PURE__*/ _jsx("option", {
                             value: o,
                             children: o
                         }, o))
@@ -3004,7 +3016,7 @@ function TransferResultModal(param) {
                                     },
                                     children: "From"
                                 }),
-                                fields.map((f)=>renderField(f, from, setFrom))
+                                fields.map((f)=>renderField(f, from, setFrom, undefined))
                             ]
                         }),
                         /*#__PURE__*/ _jsxs("div", {
@@ -3020,7 +3032,7 @@ function TransferResultModal(param) {
                                     },
                                     children: "To"
                                 }),
-                                fields.map((f)=>renderField(f, to, setTo))
+                                fields.map((f)=>renderField(f, to, setTo, from))
                             ]
                         })
                     ]
@@ -4098,6 +4110,62 @@ export default function App() {
     }, [
         students
     ]);
+    // Period-level transfers: copy ONE period (End of Term, BOT or Mid Term) of
+    // one term/year into another term/year/period for every pupil in the class,
+    // overwriting whatever the destination already holds. Used by Nursery Mark
+    // Entry and Assessments (nursery uses nurseryMarks, P1-P7 use termMarks).
+    const transferNurseryMarks = useCallback((cls, fromTk, fromPeriod, toTk, toPeriod)=>{
+        markEditing();
+        const [fTerm, fYear] = fromTk.split("__");
+        const [tTerm, tYear] = toTk.split("__");
+        stampAudit("mkis_nurserymarks", "Nursery marks TRANSFERRED — ".concat(cls, " ").concat(fTerm, " ").concat(fYear, " ").concat(fromPeriod, " → ").concat(tTerm, " ").concat(tYear, " ").concat(toPeriod));
+        setNurseryMarks((prev)=>{
+            const next = {
+                ...prev
+            };
+            students.filter((s)=>s.className === cls).forEach((s)=>{
+                const src = prev[s.id]?.[fromTk]?.[fromPeriod];
+                if (src !== undefined && src !== null) {
+                    next[s.id] = {
+                        ...next[s.id],
+                        [toTk]: {
+                            ...next[s.id]?.[toTk],
+                            [toPeriod]: src
+                        }
+                    };
+                }
+            });
+            return next;
+        });
+    }, [
+        students
+    ]);
+    const transferTermPeriodMarks = useCallback((cls, fromTk, fromPeriod, toTk, toPeriod)=>{
+        markEditing();
+        const [fTerm, fYear] = fromTk.split("__");
+        const [tTerm, tYear] = toTk.split("__");
+        stampAudit("mkis_termmarks", "Term marks TRANSFERRED — ".concat(cls, " ").concat(fTerm, " ").concat(fYear, " ").concat(fromPeriod, " → ").concat(tTerm, " ").concat(tYear, " ").concat(toPeriod));
+        setTermMarks((prev)=>{
+            const next = {
+                ...prev
+            };
+            students.filter((s)=>s.className === cls).forEach((s)=>{
+                const src = prev[s.id]?.[fromTk]?.[fromPeriod];
+                if (src !== undefined && src !== null) {
+                    next[s.id] = {
+                        ...next[s.id],
+                        [toTk]: {
+                            ...next[s.id]?.[toTk],
+                            [toPeriod]: src
+                        }
+                    };
+                }
+            });
+            return next;
+        });
+    }, [
+        students
+    ]);
     const transferMonthlyMarks = useCallback((cls, fromTk, fromMonth, toTk, toMonth)=>{
         markEditing();
         const [fTerm, fYear] = fromTk.split("__");
@@ -4908,6 +4976,8 @@ export default function App() {
         updateMonthlyMark,
         transferTermMarks,
         transferMonthlyMarks,
+        transferNurseryMarks,
+        transferTermPeriodMarks,
         resetMonthlyMonth,
         restoreMonthlyMonth,
         monthlyResetBackups,
@@ -10119,8 +10189,9 @@ function MarkEntry(param) {
 // performance colour computed live from nurseryColorForMark as the
 // teacher types, matching the report card's automatic colour-key.
 function NurseryMarkEntry(param) {
-    let { students, nurseryMarks, updateNurseryMark, school } = param;
+    let { students, nurseryMarks, updateNurseryMark, transferNurseryMarks, school } = param;
     const [cls, setCls] = useState("Baby");
+    const [showTransfer, setShowTransfer] = useState(false);
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
     // Nursery Mark Entry is End of Term only -- BOT and Mid Term both live
@@ -10241,6 +10312,12 @@ function NurseryMarkEntry(param) {
                                 }
                             })
                         ]
+                    }),
+                    /*#__PURE__*/ _jsx("button", {
+                        onClick: ()=>setShowTransfer(true),
+                        style: btnGhost,
+                        title: "Copy ".concat(cls, "'s saved results from one term into the same or a later term"),
+                        children: "🔀 Transfer Result"
                     })
                 ]
             }),
@@ -10352,6 +10429,35 @@ function NurseryMarkEntry(param) {
                         })
                     ]
                 })
+            }),
+            showTransfer && /*#__PURE__*/ _jsx(TransferResultModal, {
+                title: "Transfer Result — ".concat(cls),
+                note: "Copies every ".concat(cls, " pupil's End of Term results (marks and comments) from the \"From\" term into the \"To\" term. A term can be moved to a later term (Term I → Term II or Term III, Term II → Term III), or to the same term of a different year. Anything already at the destination is overwritten."),
+                fields: [
+                    {
+                        key: "term",
+                        label: "Term",
+                        options: (v, from)=>from ? transferTermOptions(v, from) : TERMS
+                    },
+                    {
+                        key: "year",
+                        label: "Year",
+                        type: "text"
+                    }
+                ],
+                initialFrom: {
+                    term,
+                    year
+                },
+                initialTo: {
+                    term: TERMS[Math.min(TERMS.indexOf(term) + 1, TERMS.length - 1)],
+                    year
+                },
+                onClose: ()=>setShowTransfer(false),
+                onConfirm: (from, to)=>{
+                    if (String(from.year).trim() && String(to.year).trim()) transferNurseryMarks(cls, "".concat(from.term, "__").concat(String(from.year).trim()), period, "".concat(to.term, "__").concat(String(to.year).trim()), period);
+                    setShowTransfer(false);
+                }
             })
         ]
     });
@@ -10370,7 +10476,8 @@ const MIDTERM_ASSESSMENTS = [
     "Mid Term"
 ];
 function AssessmentEntry(param) {
-    let { students, termMarks, updateTermMark, nurseryMarks, updateNurseryMark, bands: defaultBands, specialBands, divisions, school } = param;
+    let { students, termMarks, updateTermMark, nurseryMarks, updateNurseryMark, transferNurseryMarks, transferTermPeriodMarks, bands: defaultBands, specialBands, divisions, school } = param;
+    const [showTransfer, setShowTransfer] = useState(false);
     const allClasses = [
         ...NURSERY_CLASSES,
         ...ALL_CLASSES
@@ -10518,6 +10625,12 @@ function AssessmentEntry(param) {
                                 }
                             })
                         ]
+                    }),
+                    /*#__PURE__*/ _jsx("button", {
+                        onClick: ()=>setShowTransfer(true),
+                        style: btnGhost,
+                        title: "Copy ".concat(cls, "'s saved results from one term into the same or a later term"),
+                        children: "🔀 Transfer Result"
                     })
                 ]
             }),
@@ -10641,6 +10754,47 @@ function AssessmentEntry(param) {
                         })
                     ]
                 })
+            }),
+            showTransfer && /*#__PURE__*/ _jsx(TransferResultModal, {
+                title: "Transfer Result — ".concat(cls),
+                note: "Copies every ".concat(cls, " pupil's saved assessment results from the \"From\" term/assessment into the \"To\" term/assessment. Results can be moved to the same term (e.g. BOT → Mid Term) or to a later term (Term I → Term II or Term III, Term II → Term III). Anything already at the destination is overwritten."),
+                fields: [
+                    {
+                        key: "term",
+                        label: "Term",
+                        options: (v, from)=>from ? transferTermOptions(v, from) : TERMS
+                    },
+                    {
+                        key: "year",
+                        label: "Year",
+                        type: "text"
+                    },
+                    {
+                        key: "assessment",
+                        label: "Assessment",
+                        options: MIDTERM_ASSESSMENTS
+                    }
+                ],
+                initialFrom: {
+                    term,
+                    year,
+                    assessment
+                },
+                initialTo: {
+                    term: TERMS[Math.min(TERMS.indexOf(term) + 1, TERMS.length - 1)],
+                    year,
+                    assessment
+                },
+                onClose: ()=>setShowTransfer(false),
+                onConfirm: (from, to)=>{
+                    if (String(from.year).trim() && String(to.year).trim()) {
+                        const fromTk = "".concat(from.term, "__").concat(String(from.year).trim());
+                        const toTk = "".concat(to.term, "__").concat(String(to.year).trim());
+                        if (isNursery) transferNurseryMarks(cls, fromTk, from.assessment, toTk, to.assessment);
+                        else transferTermPeriodMarks(cls, fromTk, from.assessment, toTk, to.assessment);
+                    }
+                    setShowTransfer(false);
+                }
             })
         ]
     });
@@ -10719,6 +10873,8 @@ function NurseryReportCard(param) {
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
     const [search, setSearch] = useState("");
+    const [pdfBusy, setPdfBusy] = useState(false);
+    const cardsWrapRef = useRef(null);
     const tk = "".concat(term, "__").concat(year);
     const classStudents = useMemo(()=>students.filter((s)=>s.className === cls && s.name.toLowerCase().includes(search.toLowerCase())).sort((a, b)=>a.name.localeCompare(b.name)), [
         students,
@@ -10789,8 +10945,18 @@ function NurseryReportCard(param) {
                     <label style={lbl}>Search Pupil</label>
                     <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
                 </div>
+                <button disabled={pdfBusy} onClick={async ()=>{
+                    setPdfBusy(true);
+                    try {
+                        const nodes = Array.from(cardsWrapRef.current?.querySelectorAll(".rc-sheet") || []);
+                        await downloadNodesAsPdf(nodes, `${safeFileName(cls)}_${safeFileName(term)}_${year}_Report_Cards.pdf`);
+                    } finally {
+                        setPdfBusy(false);
+                    }
+                }} style={pdfBusy ? btnPdfBusy : btnPdf}>{pdfBusy ? "⏳ Generating..." : "📕 Download PDF"}</button>
                 <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
             </div>
+            <div ref={cardsWrapRef}>
             {cards.map((c)=><div key={c.s.id} className="print-break rc-sheet" style={{ marginBottom: 24, maxWidth: 700, marginLeft: "auto", marginRight: "auto" }}>
                     <ReportCardFrame subtitle={"".concat(cls, " \u2014 ").concat(term, " ").concat(year)}>
                     <div style={{ ...RC_INFO_LINE, marginBottom: 6 }}>
@@ -10868,6 +11034,7 @@ function NurseryReportCard(param) {
                     <RCNurseryScales />
                     </ReportCardFrame>
                 </div>)}
+            </div>
         </div>;
 }
 const MOCK_TYPES = flattenExamOptions(MOCK_EXAM_OPTIONS);
@@ -12706,7 +12873,7 @@ function MockInfo(param) {
 // than before. Each group of six is one sheet; the print rules below pin the
 // sheet to the page so a slip is never split and no blank page is left behind.
 const SLIPS_PER_SHEET = 6;
-const SLIP_SHEET_CSS = "\n.slip-sheet, .slip-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n.slip-sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }\n.slip-card { overflow: hidden; display: flex; flex-direction: column; }\n@media print {\n  .slip-sheet { grid-template-columns: 94mm 94mm; grid-template-rows: repeat(3, 90mm); gap: 4mm; justify-content: center; margin: 0; break-after: page; page-break-after: always; }\n  .slip-sheet:last-child { break-after: auto; page-break-after: auto; }\n  .slip-card { height: 90mm; break-inside: avoid; page-break-inside: avoid; }\n}\n";
+const SLIP_SHEET_CSS = "\n.slip-sheet, .slip-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n.slip-sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }\n.slip-card { overflow: hidden; display: flex; flex-direction: column; }\n@media print {\n  .slip-sheet { grid-template-columns: 94mm 94mm; grid-template-rows: repeat(3, 90mm); gap: 4mm; justify-content: center; margin: 0; break-after: page; page-break-after: always; }\n  .slip-sheet:last-child { break-after: auto; page-break-after: auto; }\n  .slip-card { height: 90mm; break-inside: avoid; page-break-inside: avoid; }\n}\n/* Applied only while a PDF is being captured: the same fixed A4 layout as printing (six slips per page, 2 x 3), so the PDF matches the printout and no slip is cut across two pages. */\n.slip-pdf-mode .slip-sheet { box-sizing: border-box; width: 210mm; height: 296mm; padding: 9mm 8mm; grid-template-columns: 94mm 94mm; grid-template-rows: repeat(3, 90mm); gap: 4mm; justify-content: center; align-content: start; margin: 0; background: white; }\n.slip-pdf-mode .slip-card { height: 90mm; }\n";
 // ─── SLIPS (BOT / Mid Term result slips) ────────────────────────────────────
 // Prints one compact slip per pupil for whichever assessment is selected --
 // spans all three sections the same way AssessmentEntry's data entry does.
@@ -12724,6 +12891,8 @@ function Slips(param) {
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
     const [assessment, setAssessment] = useState("BOT");
     const [search, setSearch] = useState("");
+    const [pdfBusy, setPdfBusy] = useState(false);
+    const slipsWrapRef = useRef(null);
     const isNursery = NURSERY_CLASSES.includes(cls);
     const isLower = LOWER_CLASSES.includes(cls);
     const subjects = isNursery ? NURSERY_SUBJECTS : isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
@@ -12816,6 +12985,23 @@ function Slips(param) {
     // Group the slips into sheets of SLIPS_PER_SHEET (six).
     const slipSheets = [];
     for(let k = 0; k < slips.length; k += SLIPS_PER_SHEET)slipSheets.push(slips.slice(k, k + SLIPS_PER_SHEET));
+    // Downloads every slip sheet (six slips per A4 page) as one PDF. The sheets
+    // are switched into the fixed print layout for the moment of capture, then
+    // put back, so the PDF looks the same as printing whatever the screen size.
+    const downloadSlipsPdf = async ()=>{
+        const wrap = slipsWrapRef.current;
+        const nodes = wrap ? Array.from(wrap.querySelectorAll(".slip-sheet")) : [];
+        if (!nodes.length) return;
+        setPdfBusy(true);
+        wrap.classList.add("slip-pdf-mode");
+        try {
+            await new Promise((resolve)=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+            await downloadNodesAsPdf(nodes, `${safeFileName(cls)}_${safeFileName(term)}_${year}_${safeFileName(assessment)}_Slips.pdf`);
+        } finally {
+            wrap.classList.remove("slip-pdf-mode");
+            setPdfBusy(false);
+        }
+    };
     return <div>
             <style>{SLIP_SHEET_CSS}</style>
             <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -12830,8 +13016,10 @@ function Slips(param) {
                     <label style={lbl}>Search Pupil</label>
                     <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
                 </div>
+                <button disabled={pdfBusy} onClick={downloadSlipsPdf} style={pdfBusy ? btnPdfBusy : btnPdf}>{pdfBusy ? "⏳ Generating..." : "📕 Download PDF"}</button>
                 <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
             </div>
+            <div ref={slipsWrapRef} className="slips-wrap">
             {slipSheets.map((group, k)=><div key={k} className="slip-sheet">
                 {group.map((sl)=><div key={sl.s.id} className="slip-card" style={{ border: "1.5px solid #d1d5db", borderRadius: 8, padding: 12, background: "white" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 6 }}>
@@ -12879,6 +13067,7 @@ function Slips(param) {
                         </div>
                     </div>)}
             </div>)}
+            </div>
         </div>;
 }
 
@@ -16561,11 +16750,7 @@ function PleInfo(param) {
                                             marginBottom: 10
                                         },
                                         children: [
-                                            "These names appear in the imported file but don't match any learner in the system. They may be from another school using the same EMIS code (",
-                                            /*#__PURE__*/ _jsx("b", {
-                                                children: school.emis || "010999"
-                                            }),
-                                            "). Review carefully — tick to remove from this import, or leave them if you need to add them to the system manually."
+                                            "These names appear in the imported file but don't match any learner in the system. They may be from another school. Review carefully — tick to remove from this import, or leave them if you need to add them to the system manually."
                                         ]
                                     }),
                                     /*#__PURE__*/ _jsxs("table", {
@@ -16837,7 +17022,7 @@ function PleInfo(param) {
                                                             color: "#1e3a6e",
                                                             fontSize: 13
                                                         },
-                                                        children: "DISTRICT: TORORO M/C"
+                                                        children: "DISTRICT: TORORO"
                                                     }),
                                                     /*#__PURE__*/ _jsxs("div", {
                                                         style: {
@@ -16845,7 +17030,7 @@ function PleInfo(param) {
                                                             color: "#374151"
                                                         },
                                                         children: [
-                                                            "041 - TORORO M/C Results for ",
+                                                            "TORORO Results for ",
                                                             year
                                                         ]
                                                     }),
@@ -16854,11 +17039,7 @@ function PleInfo(param) {
                                                             color: "#374151",
                                                             fontWeight: 700
                                                         },
-                                                        children: [
-                                                            school.emis || "010999",
-                                                            " - ",
-                                                            RAVEN_SCHOOL_NAME
-                                                        ]
+                                                        children: RAVEN_SCHOOL_NAME
                                                     })
                                                 ]
                                             }),
@@ -19011,7 +19192,18 @@ function ReportCards(param) {
     ];
     const cards = useMemo(()=>classStudents.map((s)=>{
             const mid = buildPeriod(termMarks[s.id]?.[tk]?.["Mid Term"], midBands);
-            const end = buildPeriod(examMarksFor(s.id, endExam, term, year, termMarks, mockMarksData), endBands);
+            const endMarks = examMarksFor(s.id, endExam, term, year, termMarks, mockMarksData);
+            const endBase = buildPeriod(endMarks, endBands);
+            // P1-P3: the End of Term total AGG and DIV follow the same rule as the
+            // Mid Term table -- LIT I and LIT II count as ONE "Literacy" subject (the
+            // average of their two AGGs), so four subjects are aggregated, not five.
+            // P4-P7 are unchanged.
+            const endLower = isLower ? buildLowerMidPeriod(endMarks, endBands) : null;
+            const end = endLower ? {
+                ...endBase,
+                totalAgg: endLower.totalAgg,
+                div: endLower.div
+            } : endBase;
             const midLower = isLower ? buildLowerMidPeriod(termMarks[s.id]?.[tk]?.["Mid Term"], midBands) : null;
             // Auto-written Class Teacher's Report / Headteacher's Comment, worked
             // out from the End of Term result shown on this card (Division for
@@ -19181,7 +19373,8 @@ function ReportCards(param) {
                                         <td style={{ ...rcTd, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
                                         <td style={rcTd}></td>
                                         <td style={{ ...rcTd, fontWeight: 700 }}>{c.end.total || "-"}</td>
-                                        <td style={rcTd} colSpan={3}></td>
+                                        <td style={{ ...rcTd, fontWeight: 700, color: "#dc2626" }}>{c.end.totalAgg ?? "-"}</td>
+                                        <td style={rcTd} colSpan={2}></td>
                                     </tr>
                                 </> : <>
                                     {UPPER_MIDTERM_ORDER.map((sub, i)=>{
@@ -19199,12 +19392,14 @@ function ReportCards(param) {
                                         <td style={{ ...rcTd, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
                                         <td style={rcTd}></td>
                                         <td style={{ ...rcTd, fontWeight: 700 }}>{c.end.total || "-"}</td>
-                                        <td style={rcTd} colSpan={3}></td>
+                                        <td style={{ ...rcTd, fontWeight: 700, color: "#dc2626" }}>{c.end.totalAgg ?? "-"}</td>
+                                        <td style={rcTd} colSpan={2}></td>
                                     </tr>
                                 </>}
                         </tbody>
                     </RCTable>
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
+                        <div><b>DIV:</b> {c.end.div}</div>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         {c.comments.teacher ? <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT_CLASS}>{c.comments.teacher}</span></div>
