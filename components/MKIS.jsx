@@ -858,11 +858,18 @@ const RC_COMMENT = {
     fontStyle: "italic",
     color: "#1e3a6e"
 };
-// Headteacher's Comment text specifically: bold black (label itself is bold red).
-const RC_COMMENT_HEAD = {
+// Class Teacher's Report text specifically: bold black.
+const RC_COMMENT_CLASS = {
     fontWeight: 700,
     fontStyle: "italic",
     color: "#000000"
+};
+// Headteacher's Comment text specifically: bold red (the label itself is
+// styled like every other label on the card).
+const RC_COMMENT_HEAD = {
+    fontWeight: 700,
+    fontStyle: "italic",
+    color: "#dc2626"
 };
 // Font used ONLY for the school name + contacts heading at the top of the
 // report card (ReportCardFrame) -- not the rest of the report card's font.
@@ -8854,13 +8861,70 @@ const ATTENDANCE_STATUSES = [
     "Late",
     "Half-day"
 ];
-// Full literal class names (not built dynamically) so Tailwind keeps them.
-const ATTENDANCE_STATUS_TEXT = {
-    Present: "text-green-700",
-    Absent: "text-red-700",
-    Late: "text-amber-700",
-    "Half-day": "text-blue-700"
+// Colour scheme for each attendance status (solid = active pill / accent bar,
+// bg + fg = soft tile). Full literal values so nothing depends on Tailwind.
+const ATTENDANCE_STATUS_STYLE = {
+    Present: { solid: "#16a34a", bg: "#dcfce7", fg: "#166534", border: "#86efac", icon: "✅" },
+    Absent: { solid: "#dc2626", bg: "#fee2e2", fg: "#991b1b", border: "#fca5a5", icon: "❌" },
+    Late: { solid: "#d97706", bg: "#fef3c7", fg: "#92400e", border: "#fcd34d", icon: "⏰" },
+    "Half-day": { solid: "#2563eb", bg: "#dbeafe", fg: "#1e40af", border: "#93c5fd", icon: "🌗" },
+    "Not marked": { solid: "#64748b", bg: "#f1f5f9", fg: "#475569", border: "#cbd5e1", icon: "➖" }
 };
+const ATTENDANCE_BANNER_TONE = {
+    success: { bg: "#dcfce7", border: "#86efac", fg: "#166534", icon: "✅" },
+    error: { bg: "#fee2e2", border: "#fca5a5", fg: "#991b1b", icon: "⛔" },
+    info: { bg: "#dbeafe", border: "#93c5fd", fg: "#1e40af", icon: "ℹ️" },
+    warn: { bg: "#fef3c7", border: "#fcd34d", fg: "#92400e", icon: "⚠️" }
+};
+const ATTENDANCE_AVATAR_COLORS = [
+    "#2563eb",
+    "#7c3aed",
+    "#0891b2",
+    "#db2777",
+    "#ea580c",
+    "#059669"
+];
+function attendanceInitials(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+function shiftAttendanceDate(iso, days) {
+    const d = new Date(`${iso}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function sortTeachersByName(list) {
+    return [
+        ...list
+    ].sort((a, b)=>String(a.name || "").localeCompare(String(b.name || "")));
+}
+function AttBanner(param) {
+    let { tone = "info", icon = true, children } = param;
+    const c = ATTENDANCE_BANNER_TONE[tone] || ATTENDANCE_BANNER_TONE.info;
+    return <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12, padding: "10px 14px", borderRadius: 10, background: c.bg, border: `1px solid ${c.border}`, color: c.fg, fontSize: 13, lineHeight: 1.5 }}>
+            {icon ? <span style={{ flexShrink: 0 }}>{c.icon}</span> : null}
+            <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+        </div>;
+}
+// One coloured count tile (Present / Absent / Late / Half-day / Not marked).
+function AttStatTile(param) {
+    let { label, count, total } = param;
+    const st = ATTENDANCE_STATUS_STYLE[label] || ATTENDANCE_STATUS_STYLE["Not marked"];
+    const pct = total > 0 ? Math.round(count / total * 100) : 0;
+    return <div style={{ background: st.bg, border: `1px solid ${st.border}`, borderTop: `4px solid ${st.solid}`, borderRadius: 12, padding: "10px 12px", boxShadow: "0 1px 3px rgba(15,23,42,0.08)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: st.fg, letterSpacing: 0.5, textTransform: "uppercase" }}>{label}</span>
+                <span style={{ fontSize: 16 }}>{st.icon}</span>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: st.solid, lineHeight: 1.2 }}>{count}</div>
+            {total > 0 && <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.8)", marginTop: 4, overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: st.solid }} />
+                </div>}
+        </div>;
+}
 const ATTENDANCE_DRAFT_PREFIX = "mkis_attendance_draft::";
 // Queue written by the previous version of this page for saves that failed
 // offline. New saves no longer write here (the per-date draft replaced it);
@@ -9060,6 +9124,14 @@ function TeacherAttendance(param) {
     const [monthFilter, setMonthFilter] = useState(thisMonthIso());
     const [monthSummary, setMonthSummary] = useState(null);
     const [monthSummaryLoading, setMonthSummaryLoading] = useState(false);
+    // Teacher roster management (add / rename teachers without leaving MKIS).
+    const [showRoster, setShowRoster] = useState(false);
+    const [newTeacherText, setNewTeacherText] = useState("");
+    const [addingTeachers, setAddingTeachers] = useState(false);
+    const [teacherMsg, setTeacherMsg] = useState(null); // { type, text }
+    const [renamingId, setRenamingId] = useState(null);
+    const [renameValue, setRenameValue] = useState("");
+    const [renameBusy, setRenameBusy] = useState(false);
     // Guards against a stale async response (an older date's fetch resolving
     // after the admin has already moved on to a newer one) clobbering what's
     // currently on screen.
@@ -9508,135 +9580,342 @@ function TeacherAttendance(param) {
         });
         setMonthSummary(counts);
     };
+    // ── Teacher roster: add / rename (writes to the `teachers` table so the
+    // attendance records keep pointing at the same teacher ids). Teachers are
+    // deliberately never deleted here -- removing one could take their whole
+    // attendance history with it. ──
+    const cleanName = (s)=>String(s || "").trim().replace(/\s+/g, " ");
+    const addTeachers = async ()=>{
+        const seen = new Set(teachers.map((t)=>cleanName(t.name).toLowerCase()));
+        const names = [];
+        let dupes = 0;
+        newTeacherText.split(/\n/).forEach((raw)=>{
+            const n = cleanName(raw);
+            if (!n) return;
+            const k = n.toLowerCase();
+            if (seen.has(k)) {
+                dupes++;
+                return;
+            }
+            seen.add(k);
+            names.push(n);
+        });
+        if (names.length === 0) {
+            setTeacherMsg({
+                type: dupes > 0 ? "info" : "error",
+                text: dupes > 0 ? "Those teachers are already in the list." : "Type at least one teacher's name first."
+            });
+            return;
+        }
+        setAddingTeachers(true);
+        setTeacherMsg(null);
+        let inserted = null;
+        let errMsg = "";
+        try {
+            const res = await supabase.from("teachers").insert(names.map((name)=>({
+                    name
+                }))).select("id, name");
+            if (res.error) errMsg = res.error.message || "the database refused the change";
+            else inserted = res.data || [];
+        } catch (e) {
+            errMsg = e && e.message || "connection problem";
+        }
+        setAddingTeachers(false);
+        if (errMsg) {
+            setTeacherMsg({
+                type: "error",
+                text: `Couldn't add the teacher${names.length === 1 ? "" : "s"} (${errMsg}). If this mentions "row-level security", the teachers table in Supabase doesn't allow this app to add rows yet -- turn on an INSERT policy for it.`
+            });
+            return;
+        }
+        if (inserted.length === names.length) setTeachers((prev)=>sortTeachersByName([
+                ...prev,
+                ...inserted
+            ]));
+        else setTeachersTick((t)=>t + 1); // saved but not echoed back -- reload the list
+        setNewTeacherText("");
+        setTeacherMsg({
+            type: "success",
+            text: `${names.length} teacher${names.length === 1 ? "" : "s"} added${dupes > 0 ? ` (${dupes} already listed, skipped)` : ""}. They now appear in the register below.`
+        });
+    };
+    const startRename = (t)=>{
+        setRenamingId(t.id);
+        setRenameValue(t.name || "");
+        setTeacherMsg(null);
+    };
+    const saveRename = async ()=>{
+        const name = cleanName(renameValue);
+        if (!name) {
+            setTeacherMsg({
+                type: "error",
+                text: "A teacher's name can't be empty."
+            });
+            return;
+        }
+        if (teachers.some((t)=>t.id !== renamingId && cleanName(t.name).toLowerCase() === name.toLowerCase())) {
+            setTeacherMsg({
+                type: "error",
+                text: `There is already a teacher called ${name}.`
+            });
+            return;
+        }
+        setRenameBusy(true);
+        let updated = null;
+        let errMsg = "";
+        try {
+            const res = await supabase.from("teachers").update({
+                name
+            }).eq("id", renamingId).select("id, name");
+            if (res.error) errMsg = res.error.message || "the database refused the change";
+            else updated = res.data || [];
+        } catch (e) {
+            errMsg = e && e.message || "connection problem";
+        }
+        setRenameBusy(false);
+        if (errMsg || !updated || updated.length === 0) {
+            setTeacherMsg({
+                type: "error",
+                text: `Couldn't rename the teacher (${errMsg || "the database didn't accept the change -- check the update permission on the teachers table"}).`
+            });
+            return;
+        }
+        setTeachers((prev)=>sortTeachersByName(prev.map((t)=>t.id === renamingId ? {
+                    ...t,
+                    name
+                } : t)));
+        setRenamingId(null);
+        setRenameValue("");
+        setTeacherMsg({
+            type: "success",
+            text: `Renamed to ${name}.`
+        });
+    };
     if (role !== "admin") {
-        return <div className="p-4 text-gray-500">Only an admin account can access the Attendance Tracker.</div>;
+        return <div style={{ padding: 16, color: "#6b7280" }}>Only an admin account can access the Attendance Tracker.</div>;
     }
     const unsavedCount = dirtyIds.length;
     const otherDrafts = draftIndex.filter((d)=>d.date !== date);
     const saveBlocked = saving || loadingTeachers || loadingRows || !!loadError || !date;
-    const messageStyle = {
-        success: "bg-green-100 text-green-800",
-        error: "bg-red-100 text-red-800",
-        info: "bg-blue-100 text-blue-800"
+    const busy = saving || addingTeachers || renameBusy;
+    const totalTeachers = teachers.length;
+    const cardStyle = {
+        background: "white",
+        border: `1px solid ${RC_LINE}`,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 14,
+        boxShadow: "0 1px 4px rgba(15,23,42,0.07)"
     };
-    return <div className="p-4">
-            <h2 className="text-xl font-bold mb-4">Teacher Attendance Tracker</h2>
-            {legacyPending > 0 && <div className="mb-3 px-3 py-2 rounded bg-amber-100 text-amber-800 text-sm">
-                    ⚠️ {legacyPending} attendance record(s) saved on this device are waiting to sync -- they'll upload automatically once you're back online.
-                </div>}
-            {message && <div className={`mb-3 px-3 py-2 rounded text-sm ${messageStyle[message.type] || messageStyle.info}`}>
-                    {message.text}
-                </div>}
-            {!draftStorageOk && <div className="mb-3 px-3 py-2 rounded bg-amber-100 text-amber-800 text-sm">
-                    ⚠️ This browser wouldn't let the page keep a copy of your entries on this device, so they exist only on screen until you press Save Attendance. Save before leaving or refreshing.
-                </div>}
-            {teacherLoadError && <div className="mb-3 px-3 py-2 rounded bg-red-100 text-red-800 text-sm">
-                    Couldn't load the teacher list ({teacherLoadError}).{" "}
-                    <button className="underline font-medium" onClick={()=>setTeachersTick((t)=>t + 1)}>Retry</button>
-                </div>}
-            {loadError && <div className="mb-3 px-3 py-2 rounded bg-red-100 text-red-800 text-sm">
-                    Couldn't load the saved attendance for {prettyAttendanceDate(date)} ({loadError}). Saving is paused so nothing already recorded gets overwritten -- your entries are safe on this device.{" "}
-                    <button className="underline font-medium" onClick={()=>setReloadTick((t)=>t + 1)}>Retry</button>
-                </div>}
-            {unsavedCount > 0 && (draft.pending ? <div className="mb-3 px-3 py-2 rounded bg-amber-100 text-amber-800 text-sm">
-                        ⚠️ {unsavedCount} entr{unsavedCount === 1 ? "y" : "ies"} for {prettyAttendanceDate(date)} {unsavedCount === 1 ? "is" : "are"} stored on this device but NOT on the server yet. They'll upload automatically when you're back online, or press Save Attendance to try now.
-                    </div> : <div className="mb-3 px-3 py-2 rounded bg-amber-50 text-amber-800 text-sm border border-amber-200">
-                        ✏️ {unsavedCount} unsaved change{unsavedCount === 1 ? "" : "s"} for {prettyAttendanceDate(date)} -- kept on this device until you press Save Attendance.
-                    </div>)}
-            <div className="flex flex-wrap gap-3 mb-4 items-end">
+    const navBtn = {
+        ...btnGhost,
+        padding: "7px 12px",
+        fontSize: 15,
+        lineHeight: 1
+    };
+    const atTh = {
+        ...rcTh,
+        padding: "10px 8px",
+        fontSize: 11,
+        textAlign: "left",
+        letterSpacing: 0.4
+    };
+    const atTd = {
+        ...rcTd,
+        padding: "8px 8px",
+        textAlign: "left",
+        verticalAlign: "middle"
+    };
+    const showRosterPanel = !loadingTeachers && (showRoster || totalTeachers === 0 && !teacherLoadError);
+    return <div style={{ padding: 4, maxWidth: 1100, margin: "0 auto" }}>
+            {/* ── Banner ── */}
+            <div style={{ background: "linear-gradient(135deg,#1e3a6e,#2563eb)", color: "white", borderRadius: 16, padding: "16px 20px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", boxShadow: "0 4px 14px rgba(30,58,110,0.25)" }}>
                 <div>
-                    <label className="block text-sm font-medium mb-1">Date</label>
-                    <input type="date" className="border rounded px-2 py-1" value={date} max={todayIso()} disabled={saving} onChange={(e)=>changeDate(e.target.value)} />
+                    <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.3 }}>🧑‍🏫 Teacher Attendance Register</div>
+                    <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>{date ? prettyAttendanceDate(date) : "Pick a date"} · {totalTeachers} teacher{totalTeachers === 1 ? "" : "s"}</div>
                 </div>
-                <button className="bg-gray-700 text-white rounded px-4 py-2 disabled:opacity-50" onClick={handleMarkAllPresent} disabled={loadingTeachers || loadingRows || saving || !date || teachers.length === 0}>
-                    Mark All Present
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    {unsavedCount > 0 && <span style={{ background: "#fef3c7", color: "#92400e", fontWeight: 800, fontSize: 12, padding: "5px 12px", borderRadius: 999 }}>✏️ {unsavedCount} unsaved</span>}
+                    {totalTeachers > 0 && <button type="button" style={{ ...btnGhost, background: "rgba(255,255,255,0.15)", color: "white", border: "1.5px solid rgba(255,255,255,0.5)" }} onClick={()=>setShowRoster((v)=>!v)} disabled={loadingTeachers}>
+                            👥 {showRosterPanel ? "Hide Teachers" : "Manage Teachers"}
+                        </button>}
+                </div>
+            </div>
+
+            {/* ── Notices ── */}
+            {legacyPending > 0 && <AttBanner tone="warn">{legacyPending} attendance record(s) saved on this device are waiting to sync -- they'll upload automatically once you're back online.</AttBanner>}
+            {message && <AttBanner tone={message.type} icon={!String(message.text).startsWith("✅")}>{message.text}</AttBanner>}
+            {!draftStorageOk && <AttBanner tone="warn">This browser wouldn't let the page keep a copy of your entries on this device, so they exist only on screen until you press Save Attendance. Save before leaving or refreshing.</AttBanner>}
+            {teacherLoadError && <AttBanner tone="error">
+                    Couldn't load the teacher list ({teacherLoadError}).{" "}
+                    <button type="button" style={{ textDecoration: "underline", fontWeight: 700, background: "none", border: "none", color: "inherit", cursor: "pointer" }} onClick={()=>setTeachersTick((t)=>t + 1)}>Retry</button>
+                </AttBanner>}
+            {loadError && <AttBanner tone="error">
+                    Couldn't load the saved attendance for {prettyAttendanceDate(date)} ({loadError}). Saving is paused so nothing already recorded gets overwritten -- your entries are safe on this device.{" "}
+                    <button type="button" style={{ textDecoration: "underline", fontWeight: 700, background: "none", border: "none", color: "inherit", cursor: "pointer" }} onClick={()=>setReloadTick((t)=>t + 1)}>Retry</button>
+                </AttBanner>}
+            {unsavedCount > 0 && (draft.pending ? <AttBanner tone="warn">
+                        {unsavedCount} entr{unsavedCount === 1 ? "y" : "ies"} for {prettyAttendanceDate(date)} {unsavedCount === 1 ? "is" : "are"} stored on this device but NOT on the server yet. They'll upload automatically when you're back online, or press Save Attendance to try now.
+                    </AttBanner> : <AttBanner tone="warn" icon={false}>
+                        ✏️ {unsavedCount} unsaved change{unsavedCount === 1 ? "" : "s"} for {prettyAttendanceDate(date)} -- kept on this device until you press Save Attendance.
+                    </AttBanner>)}
+
+            {/* ── Manage teachers (add / rename) ── */}
+            {showRosterPanel && <div style={cardStyle}>
+                    <RCHeading tight>{totalTeachers === 0 ? "ADD YOUR TEACHERS" : "MANAGE TEACHERS"}</RCHeading>
+                    {totalTeachers === 0 && <div style={{ textAlign: "center", padding: "6px 0 12px", color: "#475569", fontSize: 13 }}>
+                            <div style={{ fontSize: 34 }}>👩‍🏫</div>
+                            No teachers have been added yet. Type your teachers' names below (one per line) -- they're saved to the school database and appear in the register straight away.
+                        </div>}
+                    {teacherMsg && <AttBanner tone={teacherMsg.type}>{teacherMsg.text}</AttBanner>}
+                    <label style={lbl}>Add teacher(s) -- one name per line</label>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                        <textarea rows={3} placeholder={"e.g.\nMr. Okello John\nMrs. Achieng Grace"} value={newTeacherText} disabled={busy} onChange={(e)=>setNewTeacherText(e.target.value)} style={{ ...inp, flex: 1, minWidth: 220, fontFamily: "inherit", resize: "vertical" }} />
+                        <button type="button" style={{ ...btnSuccess, opacity: busy || !newTeacherText.trim() ? 0.55 : 1 }} disabled={busy || !newTeacherText.trim()} onClick={addTeachers}>
+                            {addingTeachers ? "Adding…" : "➕ Add Teachers"}
+                        </button>
+                    </div>
+                    {totalTeachers > 0 && <div style={{ marginTop: 14 }}>
+                            <label style={lbl}>Current teachers ({totalTeachers})</label>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                {teachers.map((t, i)=>renamingId === t.id ? <div key={t.id} style={{ display: "flex", gap: 6, alignItems: "center", background: RC_LIGHTER, border: `1px solid ${RC_LINE}`, borderRadius: 10, padding: 6 }}>
+                                            <input type="text" autoFocus value={renameValue} disabled={renameBusy} onChange={(e)=>setRenameValue(e.target.value)} onKeyDown={(e)=>{
+                                            if (e.key === "Enter") saveRename();
+                                            if (e.key === "Escape") setRenamingId(null);
+                                        }} style={{ ...inp, padding: "5px 8px", minWidth: 160 }} />
+                                            <button type="button" style={{ ...btnSuccess, padding: "5px 10px" }} disabled={renameBusy} onClick={saveRename}>{renameBusy ? "…" : "Save"}</button>
+                                            <button type="button" style={{ ...btnGhost, padding: "5px 10px" }} disabled={renameBusy} onClick={()=>setRenamingId(null)}>Cancel</button>
+                                        </div> : <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, background: RC_LIGHTER, border: `1px solid ${RC_LINE}`, borderRadius: 999, padding: "4px 6px 4px 4px" }}>
+                                            <span style={{ width: 24, height: 24, borderRadius: "50%", background: ATTENDANCE_AVATAR_COLORS[i % ATTENDANCE_AVATAR_COLORS.length], color: "white", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{attendanceInitials(t.name)}</span>
+                                            <span style={{ fontSize: 12, fontWeight: 600, color: "#1f2937" }}>{t.name}</span>
+                                            <button type="button" title="Rename" aria-label={`Rename ${t.name}`} disabled={busy} onClick={()=>startRename(t)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 12 }}>✏️</button>
+                                        </div>)}
+                            </div>
+                        </div>}
+                </div>}
+
+            {/* ── Date + actions ── */}
+            <div style={{ ...cardStyle, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                <div>
+                    <label style={lbl}>Date</label>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <button type="button" style={navBtn} title="Previous day" aria-label="Previous day" disabled={saving || !date} onClick={()=>changeDate(shiftAttendanceDate(date, -1))}>‹</button>
+                        <input type="date" style={inp} value={date} max={todayIso()} disabled={saving} onChange={(e)=>changeDate(e.target.value)} />
+                        <button type="button" style={navBtn} title="Next day" aria-label="Next day" disabled={saving || !date || date >= todayIso()} onClick={()=>changeDate(shiftAttendanceDate(date, 1))}>›</button>
+                        <button type="button" style={{ ...btnGhost, padding: "7px 12px" }} disabled={saving || date === todayIso()} onClick={()=>changeDate(todayIso())}>Today</button>
+                    </div>
+                </div>
+                <div style={{ flex: 1 }} />
+                <button type="button" style={{ ...btnSuccess, opacity: loadingTeachers || loadingRows || saving || !date || teachers.length === 0 ? 0.55 : 1 }} onClick={handleMarkAllPresent} disabled={loadingTeachers || loadingRows || saving || !date || teachers.length === 0}>
+                    ✅ Mark All Present
                 </button>
-                {unsavedCount > 0 && <button className="border border-gray-400 text-gray-700 rounded px-4 py-2 disabled:opacity-50" onClick={()=>setConfirmDiscard(true)} disabled={saving}>
-                        Discard Changes
-                    </button>}
-                <button className="bg-blue-600 text-white rounded px-4 py-2 disabled:opacity-50" onClick={handleSave} disabled={saveBlocked}>
-                    {saving ? "Saving…" : unsavedCount > 0 ? `Save Attendance (${unsavedCount})` : "Save Attendance"}
+                {unsavedCount > 0 && <button type="button" style={btnGhost} onClick={()=>setConfirmDiscard(true)} disabled={saving}>Discard Changes</button>}
+                <button type="button" style={{ ...btnPrimary, opacity: saveBlocked ? 0.55 : 1 }} onClick={handleSave} disabled={saveBlocked}>
+                    {saving ? "Saving…" : unsavedCount > 0 ? `💾 Save Attendance (${unsavedCount})` : "💾 Save Attendance"}
                 </button>
             </div>
-            {otherDrafts.length > 0 && <div className="mb-4 text-sm flex flex-wrap items-center gap-2">
-                    <span className="text-gray-600">Also waiting on this device:</span>
-                    {otherDrafts.map((d)=><button key={d.date} className="border rounded px-2 py-0.5 bg-amber-50 border-amber-300 text-amber-800 disabled:opacity-50" disabled={saving} onClick={()=>changeDate(d.date)}>
+            {otherDrafts.length > 0 && <div style={{ marginBottom: 14, fontSize: 13, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "#475569" }}>Also waiting on this device:</span>
+                    {otherDrafts.map((d)=><button type="button" key={d.date} disabled={saving} onClick={()=>changeDate(d.date)} style={{ border: "1px solid #fcd34d", background: "#fef3c7", color: "#92400e", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                             {d.pending ? "⚠️ " : ""}{prettyAttendanceDate(d.date)} ({d.count})
                         </button>)}
                 </div>}
-            {loadingRows && !loadingTeachers && <div className="mb-2 text-xs text-gray-500">Loading saved attendance…</div>}
-            {loadingTeachers ? <div className="text-gray-500 p-6 text-center">Loading teachers…</div> : teachers.length === 0 ? <div className="text-gray-400 p-6 text-center">No teachers found. This list comes from the teachers table in Supabase -- add teachers there and they'll appear here.</div> : <div className="overflow-x-auto border rounded">
-                    <table className="min-w-full text-sm">
-                        <thead>
-                            <tr className="bg-gray-100">
-                                <th className="p-2 text-left">Teacher</th>
-                                <th className="p-2 text-left">Status</th>
-                                <th className="p-2 text-left">Time In</th>
-                                <th className="p-2 text-left">Time Out</th>
-                                <th className="p-2 text-left">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {teachers.map((t)=>{
-                                const r = draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW;
-                                const err = submitAttempted && validation.rowErrors[t.id];
-                                const isDirty = dirtySet.has(t.id);
-                                return <tr key={t.id} className={`border-t align-top ${err ? "bg-red-50" : isDirty ? "bg-yellow-50" : ""}`}>
-                                        <td className="p-2 font-medium whitespace-nowrap">
-                                            {t.name}
-                                            {isDirty && <span className="ml-2 text-xs font-normal text-amber-700">unsaved</span>}
-                                            {err && <div className="text-xs font-normal text-red-600 mt-1">{err}</div>}
-                                        </td>
-                                        <td className="p-2">
-                                            <select aria-label={`Status for ${t.name}`} className={`border rounded px-2 py-1 ${ATTENDANCE_STATUS_TEXT[r.status] || ""} ${err ? "border-red-400" : ""}`} value={r.status} disabled={saving} onChange={(e)=>setRowField(t.id, "status", e.target.value)}>
-                                                <option value="">Select…</option>
-                                                {ATTENDANCE_STATUSES.map((s)=><option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </td>
-                                        <td className="p-2">
-                                            <input type="time" aria-label={`Time in for ${t.name}`} className="border rounded px-2 py-1" value={r.time_in} disabled={saving} onChange={(e)=>setRowField(t.id, "time_in", e.target.value)} />
-                                        </td>
-                                        <td className="p-2">
-                                            <input type="time" aria-label={`Time out for ${t.name}`} className="border rounded px-2 py-1" value={r.time_out} disabled={saving} onChange={(e)=>setRowField(t.id, "time_out", e.target.value)} />
-                                        </td>
-                                        <td className="p-2">
-                                            <input type="text" aria-label={`Remarks for ${t.name}`} className="border rounded px-2 py-1 w-full" placeholder="Optional" value={r.remarks} disabled={saving} onChange={(e)=>setRowField(t.id, "remarks", e.target.value)} />
-                                        </td>
-                                    </tr>;
-                            })}
-                        </tbody>
-                    </table>
+
+            {/* ── Today's counts ── */}
+            {totalTeachers > 0 && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 14 }}>
+                    {Object.entries(dailySummary).map((param)=>{
+            let [label, count] = param;
+            return <AttStatTile key={label} label={label} count={count} total={totalTeachers} />;
+        })}
                 </div>}
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {Object.entries(dailySummary).map((param)=>{
-                    let [label, count] = param;
-                    return <div key={label} className="border rounded p-3 text-center">
-                            <div className="text-2xl font-bold">{count}</div>
-                            <div className="text-xs text-gray-500">{label}</div>
-                        </div>;
-                })}
-            </div>
-            <div className="mt-8 border-t pt-4">
-                <h3 className="text-lg font-semibold mb-3">Monthly Summary</h3>
-                <div className="flex flex-wrap gap-3 mb-3 items-end">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Month</label>
-                        <input type="month" className="border rounded px-2 py-1" value={monthFilter} onChange={(e)=>setMonthFilter(e.target.value)} />
+
+            {/* ── Register ── */}
+            {loadingRows && !loadingTeachers && <div style={{ marginBottom: 8, fontSize: 12, color: "#64748b" }}>Loading saved attendance…</div>}
+            {loadingTeachers ? <div style={{ ...cardStyle, textAlign: "center", color: "#64748b", padding: 30 }}>Loading teachers…</div> : teachers.length === 0 ? null : <div>
+                    <RCHeading>DAILY REGISTER</RCHeading>
+                    <div style={{ borderRadius: 12, overflow: "hidden", background: RC_LIGHT, boxShadow: "0 1px 4px rgba(15,23,42,0.08)" }}>
+                        <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820, fontSize: 12 }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ ...atTh, width: 34, textAlign: "center" }}>#</th>
+                                        <th style={atTh}>TEACHER</th>
+                                        <th style={atTh}>STATUS</th>
+                                        <th style={atTh}>TIME IN</th>
+                                        <th style={atTh}>TIME OUT</th>
+                                        <th style={atTh}>REMARKS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {teachers.map((t, i)=>{
+                const r = draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW;
+                const err = submitAttempted && validation.rowErrors[t.id];
+                const isDirty = dirtySet.has(t.id);
+                const st = ATTENDANCE_STATUS_STYLE[r.status];
+                const rowBg = err ? "#fee2e2" : isDirty ? "#fef9c3" : i % 2 === 0 ? RC_LIGHT : RC_LIGHTER;
+                const cellBg = {
+                    background: rowBg
+                };
+                return <tr key={t.id}>
+                                                <td style={{ ...atTd, ...cellBg, textAlign: "center", fontWeight: 700, color: "#475569", borderLeft: `5px solid ${st ? st.solid : "#cbd5e1"}` }}>{i + 1}</td>
+                                                <td style={{ ...atTd, ...cellBg, whiteSpace: "nowrap" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                        <span style={{ width: 30, height: 30, borderRadius: "50%", background: ATTENDANCE_AVATAR_COLORS[i % ATTENDANCE_AVATAR_COLORS.length], color: "white", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{attendanceInitials(t.name)}</span>
+                                                        <div>
+                                                            <div style={{ fontWeight: 700, color: "#1f2937", fontSize: 13 }}>{t.name}{isDirty && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 800, color: "#92400e", background: "#fde68a", borderRadius: 999, padding: "1px 7px" }}>unsaved</span>}</div>
+                                                            {err && <div style={{ fontSize: 11, color: "#b91c1c", marginTop: 2, whiteSpace: "normal" }}>{err}</div>}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td style={{ ...atTd, ...cellBg }}>
+                                                    <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
+                                                        {ATTENDANCE_STATUSES.map((s)=>{
+                        const ss = ATTENDANCE_STATUS_STYLE[s];
+                        const active = r.status === s;
+                        return <button type="button" key={s} aria-pressed={active} aria-label={`${s} - ${t.name}`} disabled={busy} onClick={()=>setRowField(t.id, "status", active ? "" : s)} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer", border: `1.5px solid ${active ? ss.solid : err ? "#f87171" : "#cbd5e1"}`, background: active ? ss.solid : "white", color: active ? "white" : ss.fg, whiteSpace: "nowrap" }}>{s}</button>;
+                    })}
+                                                    </div>
+                                                </td>
+                                                <td style={{ ...atTd, ...cellBg }}>
+                                                    <input type="time" aria-label={`Time in for ${t.name}`} style={{ ...inp, padding: "5px 6px", fontSize: 12, minWidth: 0 }} value={r.time_in} disabled={busy} onChange={(e)=>setRowField(t.id, "time_in", e.target.value)} />
+                                                </td>
+                                                <td style={{ ...atTd, ...cellBg }}>
+                                                    <input type="time" aria-label={`Time out for ${t.name}`} style={{ ...inp, padding: "5px 6px", fontSize: 12, minWidth: 0 }} value={r.time_out} disabled={busy} onChange={(e)=>setRowField(t.id, "time_out", e.target.value)} />
+                                                </td>
+                                                <td style={{ ...atTd, ...cellBg }}>
+                                                    <input type="text" aria-label={`Remarks for ${t.name}`} placeholder="Optional" style={{ ...inp, padding: "5px 8px", fontSize: 12, width: "100%", minWidth: 140 }} value={r.remarks} disabled={busy} onChange={(e)=>setRowField(t.id, "remarks", e.target.value)} />
+                                                </td>
+                                            </tr>;
+            })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <button className="bg-gray-700 text-white rounded px-4 py-2" onClick={loadMonthSummary} disabled={monthSummaryLoading}>
-                        {monthSummaryLoading ? "Loading…" : "Load Summary"}
+                </div>}
+
+            {/* ── Monthly summary ── */}
+            <div style={{ ...cardStyle, marginTop: 20 }}>
+                <RCHeading tight>MONTHLY SUMMARY</RCHeading>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12, alignItems: "flex-end" }}>
+                    <div>
+                        <label style={lbl}>Month</label>
+                        <input type="month" style={inp} value={monthFilter} onChange={(e)=>setMonthFilter(e.target.value)} />
+                    </div>
+                    <button type="button" style={btnPrimary} onClick={loadMonthSummary} disabled={monthSummaryLoading}>
+                        {monthSummaryLoading ? "Loading…" : "📊 Load Summary"}
                     </button>
                 </div>
-                {monthSummary && <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {Object.entries(monthSummary).map((param)=>{
-                            let [label, count] = param;
-                            return <div key={label} className="border rounded p-3 text-center">
-                                    <div className="text-2xl font-bold">{count}</div>
-                                    <div className="text-xs text-gray-500">{label}</div>
-                                </div>;
-                        })}
-                    </div>}
+                {monthSummary ? (()=>{
+                const monthTotal = Object.values(monthSummary).reduce((a, n)=>a + n, 0);
+                return <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
+                            {Object.entries(monthSummary).map((param)=>{
+                    let [label, count] = param;
+                    return <AttStatTile key={label} label={label} count={count} total={monthTotal} />;
+                })}
+                        </div>;
+            })() : <div style={{ fontSize: 12, color: "#64748b" }}>Choose a month and press Load Summary to see how many Present, Absent, Late and Half-day entries were recorded.</div>}
             </div>
+
             {confirmAllPresent > 0 && <ConfirmModal title="Mark everyone Present?" message={`${confirmAllPresent} teacher(s) currently marked Absent, Late or Half-day will be changed to Present. You can still edit any row before saving.`} confirmLabel="Mark All Present" danger={false} onCancel={()=>setConfirmAllPresent(0)} onConfirm={applyMarkAllPresent} />}
             {confirmDiscard && <ConfirmModal title="Discard unsaved changes?" message={`${unsavedCount} unsaved change${unsavedCount === 1 ? "" : "s"} for ${prettyAttendanceDate(date)} will be removed and the register will go back to what was last saved.`} confirmLabel="Discard" onCancel={()=>setConfirmDiscard(false)} onConfirm={discardChanges} />}
         </div>;
@@ -10301,13 +10580,67 @@ function AssessmentEntry(param) {
 // Teacher's Report/Headteacher's Comment/next-term dates/signature print as
 // blank lines to fill by hand -- same as the paper original -- rather than
 // adding a whole new per-pupil data model for those right now.
-const NURSERY_GRADE_LABEL = {
-    green: "A",
-    blue: "B",
-    purple: "C",
-    brown: "D",
-    red: "E"
-};
+// Nursery report-card grade comes from the pupil's TOTAL marks (5 subjects
+// out of 100 = 500), not from the average colour band.
+// Ordered highest-first: nurseryGradeForTotal returns the first grade whose
+// `min` the total clears.
+const NURSERY_TOTAL_GRADES = [
+    { grade: "A", min: 450, max: 500 },
+    { grade: "B", min: 400, max: 449 },
+    { grade: "C", min: 200, max: 399 },
+    { grade: "D", min: 0, max: 199 }
+];
+function nurseryGradeForTotal(total, hasMarks) {
+    if (!hasMarks) return "-";
+    const n = Number(total) || 0;
+    for (const g of NURSERY_TOTAL_GRADES){
+        if (n >= g.min) return g.grade;
+    }
+    return "D";
+}
+// Key (colour legend) + Total-marks grading scale printed at the bottom of
+// every Nursery report card, laid out like the Primary grading-scale tables.
+function RCNurseryScales() {
+    const head = { ...rcTh, padding: "3px 2px", fontSize: 10 };
+    const label = { ...head, textAlign: "left", paddingLeft: 6, fontSize: 9 };
+    const cell = { ...rcTd, padding: "3px 2px", fontSize: 10, lineHeight: 1.25 };
+    const cap = (t)=>t.charAt(0).toUpperCase() + t.slice(1);
+    return <div style={{ marginTop: 4 }}>
+            <RCHeading tight>KEY</RCHeading>
+            <RCTable labelWidth={64}>
+                <tbody>
+                    <tr>
+                        <th style={label}>COLOUR</th>
+                        {NURSERY_COLOR_BANDS.map((b)=><td key={b.label} style={{
+        ...cell,
+        padding: 0,
+        height: 10,
+        background: b.color,
+        WebkitPrintColorAdjust: "exact",
+        printColorAdjust: "exact"
+    }}></td>)}
+                    </tr>
+                    <tr>
+                        <th style={label}>REMARK</th>
+                        {NURSERY_COLOR_BANDS.map((b)=><td key={b.label} style={{ ...cell, fontStyle: "italic" }}>{b.label}</td>)}
+                    </tr>
+                </tbody>
+            </RCTable>
+            <RCHeading tight>GRADING SCALE</RCHeading>
+            <RCTable labelWidth={64}>
+                <tbody>
+                    <tr>
+                        <th style={label}>GRADE</th>
+                        {NURSERY_TOTAL_GRADES.map((g)=><th key={g.grade} style={head}>{g.grade}</th>)}
+                    </tr>
+                    <tr>
+                        <th style={label}>TOTAL</th>
+                        {NURSERY_TOTAL_GRADES.map((g)=><td key={g.grade} style={cell}>{"".concat(g.min, "-").concat(g.max)}</td>)}
+                    </tr>
+                </tbody>
+            </RCTable>
+        </div>;
+}
 function NurseryReportCard(param) {
     let { students, nurseryMarks, school, initials } = param;
     const [cls, setCls] = useState("Baby");
@@ -10340,12 +10673,10 @@ function NurseryReportCard(param) {
         });
         const enteredCount = perSub.filter((p)=>typeof p.mark === "number").length;
         const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
-        const avg = enteredCount ? total / enteredCount : undefined;
-        const avgBand = nurseryColorForMark(avg);
         return {
             perSub,
             total,
-            grade: avgBand ? NURSERY_GRADE_LABEL[avgBand.color] : "-"
+            grade: nurseryGradeForTotal(total, enteredCount > 0)
         };
     };
     const cards = useMemo(()=>classStudents.map((s)=>{
@@ -10452,16 +10783,17 @@ function NurseryReportCard(param) {
                             </tr>
                         </tbody>
                     </RCTable>
-                    <div style={{ marginTop: 8, fontSize: 10, color: "#374151" }}>
-                        <b style={{ textDecoration: "underline" }}>KEY</b>: {NURSERY_COLOR_BANDS.map((b)=>"".concat(b.label, " - ").concat(b.color[0].toUpperCase() + b.color.slice(1))).join("    ")}
-                    </div>
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
-                        <div>CLASS TEACHER'S REPORT: {c.comments.teacher ? <span style={RC_COMMENT}>{c.comments.teacher}</span> : "______________________________________________________"}</div>
+                        {c.comments.teacher ? <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT_CLASS}>{c.comments.teacher}</span></div>
+                            <div style={{ whiteSpace: "nowrap" }}>Sign: __________</div>
+                        </div> : <div>CLASS TEACHER'S REPORT: ________________________________________________&nbsp;&nbsp;Sign: __________</div>}
                         <div>NEXT TERM BEGINS ON: {school.nextOpens ? <span style={RC_COMMENT}>{school.nextOpens}</span> : "_______________"}&nbsp;&nbsp;ENDS ON: {school.nextEnds ? <span style={RC_COMMENT}>{school.nextEnds}</span> : "_______________"}</div>
-                        <div><span style={{ fontWeight: 700, color: "#dc2626" }}>HEADTEACHER'S COMMENT:</span> {c.comments.head ? <span style={RC_COMMENT_HEAD}>{c.comments.head}</span> : "______________________________________________________"}</div>
+                        <div><span>HEADTEACHER'S COMMENT:</span> {c.comments.head ? <span style={RC_COMMENT_HEAD}>{c.comments.head}</span> : "______________________________________________________"}</div>
                         <div>SIGNATURE: __________________</div>
                     </div>
+                    <RCNurseryScales />
                     </ReportCardFrame>
                 </div>)}
         </div>;
@@ -18803,11 +19135,11 @@ function ReportCards(param) {
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         {c.comments.teacher ? <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT}>{c.comments.teacher}</span></div>
+                            <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT_CLASS}>{c.comments.teacher}</span></div>
                             <div style={{ whiteSpace: "nowrap" }}>Sign: __________</div>
                         </div> : <div>CLASS TEACHER'S REPORT: ________________________________________________&nbsp;&nbsp;Sign: __________</div>}
                         <div>NEXT TERM BEGINS ON: {school.nextOpens ? <span style={RC_COMMENT}>{school.nextOpens}</span> : "_______________"}&nbsp;&nbsp;ENDS ON: {school.nextEnds ? <span style={RC_COMMENT}>{school.nextEnds}</span> : "_______________"}</div>
-                        <div><span style={{ fontWeight: 700, color: "#dc2626" }}>HEADTEACHER'S COMMENT:</span> {c.comments.head ? <span style={RC_COMMENT_HEAD}>{c.comments.head}</span> : "______________________________________________________"}</div>
+                        <div><span>HEADTEACHER'S COMMENT:</span> {c.comments.head ? <span style={RC_COMMENT_HEAD}>{c.comments.head}</span> : "______________________________________________________"}</div>
                         <div>SIGNATURE: __________________</div>
                     </div>
                     <div style={{ marginTop: 8, fontSize: 10, color: "#374151" }}>
