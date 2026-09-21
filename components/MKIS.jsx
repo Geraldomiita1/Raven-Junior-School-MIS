@@ -8861,6 +8861,51 @@ const ATTENDANCE_STATUSES = [
     "Late",
     "Half-day"
 ];
+// One-time database setup for the Attendance Tracker. Shown inside the page
+// (with a Copy button) when Supabase reports the tables don't exist yet.
+// Run it once in Supabase -> SQL Editor. Policies allow read / add / edit but
+// deliberately NOT delete, matching the page's "never delete" rule.
+const ATTENDANCE_SETUP_SQL = `create table if not exists public.teachers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists teachers_name_lower_idx
+  on public.teachers (lower(name));
+
+create table if not exists public.teacher_attendance (
+  id uuid primary key default gen_random_uuid(),
+  teacher_id uuid not null references public.teachers(id) on delete cascade,
+  date date not null,
+  status text not null check (status in ('Present','Absent','Late','Half-day')),
+  time_in timestamp,
+  time_out timestamp,
+  remarks text,
+  created_at timestamptz not null default now(),
+  unique (teacher_id, date)
+);
+
+alter table public.teachers enable row level security;
+alter table public.teacher_attendance enable row level security;
+
+drop policy if exists teachers_select on public.teachers;
+drop policy if exists teachers_insert on public.teachers;
+drop policy if exists teachers_update on public.teachers;
+create policy teachers_select on public.teachers for select using (true);
+create policy teachers_insert on public.teachers for insert with check (true);
+create policy teachers_update on public.teachers for update using (true) with check (true);
+
+drop policy if exists att_select on public.teacher_attendance;
+drop policy if exists att_insert on public.teacher_attendance;
+drop policy if exists att_update on public.teacher_attendance;
+create policy att_select on public.teacher_attendance for select using (true);
+create policy att_insert on public.teacher_attendance for insert with check (true);
+create policy att_update on public.teacher_attendance for update using (true) with check (true);
+
+notify pgrst, 'reload schema';`;
+function isMissingAttendanceTable(msg) {
+    return /schema cache|does not exist|could not find the table|relation .* does not exist/i.test(String(msg || ""));
+}
 // Colour scheme for each attendance status (solid = active pill / accent bar,
 // bg + fg = soft tile). Full literal values so nothing depends on Tailwind.
 const ATTENDANCE_STATUS_STYLE = {
@@ -9132,6 +9177,7 @@ function TeacherAttendance(param) {
     const [renamingId, setRenamingId] = useState(null);
     const [renameValue, setRenameValue] = useState("");
     const [renameBusy, setRenameBusy] = useState(false);
+    const [copiedSql, setCopiedSql] = useState(""); // "" | "ok" | "failed"
     // Guards against a stale async response (an older date's fetch resolving
     // after the admin has already moved on to a newer one) clobbering what's
     // currently on screen.
@@ -9584,6 +9630,15 @@ function TeacherAttendance(param) {
     // attendance records keep pointing at the same teacher ids). Teachers are
     // deliberately never deleted here -- removing one could take their whole
     // attendance history with it. ──
+    const copySetupSql = async ()=>{
+        try {
+            await navigator.clipboard.writeText(ATTENDANCE_SETUP_SQL);
+            setCopiedSql("ok");
+        } catch {
+            setCopiedSql("failed");
+        }
+        setTimeout(()=>setCopiedSql(""), 3000);
+    };
     const cleanName = (s)=>String(s || "").trim().replace(/\s+/g, " ");
     const addTeachers = async ()=>{
         const seen = new Set(teachers.map((t)=>cleanName(t.name).toLowerCase()));
@@ -9746,10 +9801,27 @@ function TeacherAttendance(param) {
             {legacyPending > 0 && <AttBanner tone="warn">{legacyPending} attendance record(s) saved on this device are waiting to sync -- they'll upload automatically once you're back online.</AttBanner>}
             {message && <AttBanner tone={message.type} icon={!String(message.text).startsWith("✅")}>{message.text}</AttBanner>}
             {!draftStorageOk && <AttBanner tone="warn">This browser wouldn't let the page keep a copy of your entries on this device, so they exist only on screen until you press Save Attendance. Save before leaving or refreshing.</AttBanner>}
-            {teacherLoadError && <AttBanner tone="error">
+            {teacherLoadError && isMissingAttendanceTable(teacherLoadError) ? <div style={cardStyle}>
+                    <RCHeading tight>ONE-TIME SETUP</RCHeading>
+                    <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6, marginBottom: 10 }}>
+                        The school database doesn't have the <b>teachers</b> and <b>teacher_attendance</b> tables yet, so there is nowhere to keep the register. Create them once and this page will work:
+                        <ol style={{ margin: "8px 0 0 18px", padding: 0 }}>
+                            <li>Press <b>Copy SQL</b> below.</li>
+                            <li>Open your Supabase project → <b>SQL Editor</b> → New query → paste → <b>Run</b>.</li>
+                            <li>Come back here and press <b>I've run it -- Retry</b>.</li>
+                        </ol>
+                    </div>
+                    <pre style={{ background: "#0f172a", color: "#e2e8f0", borderRadius: 10, padding: 12, fontSize: 11, lineHeight: 1.5, maxHeight: 220, overflow: "auto", margin: "0 0 10px", whiteSpace: "pre-wrap" }}>{ATTENDANCE_SETUP_SQL}</pre>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <button type="button" style={btnPrimary} onClick={copySetupSql}>{copiedSql === "ok" ? "✅ Copied" : "📋 Copy SQL"}</button>
+                        <button type="button" style={btnSuccess} onClick={()=>setTeachersTick((t)=>t + 1)}>🔄 I've run it -- Retry</button>
+                        {copiedSql === "failed" && <span style={{ fontSize: 12, color: "#b91c1c" }}>Couldn't copy automatically -- select the text above and copy it.</span>}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 8 }}>Technical detail: {teacherLoadError}</div>
+                </div> : teacherLoadError ? <AttBanner tone="error">
                     Couldn't load the teacher list ({teacherLoadError}).{" "}
                     <button type="button" style={{ textDecoration: "underline", fontWeight: 700, background: "none", border: "none", color: "inherit", cursor: "pointer" }} onClick={()=>setTeachersTick((t)=>t + 1)}>Retry</button>
-                </AttBanner>}
+                </AttBanner> : null}
             {loadError && <AttBanner tone="error">
                     Couldn't load the saved attendance for {prettyAttendanceDate(date)} ({loadError}). Saving is paused so nothing already recorded gets overwritten -- your entries are safe on this device.{" "}
                     <button type="button" style={{ textDecoration: "underline", fontWeight: 700, background: "none", border: "none", color: "inherit", cursor: "pointer" }} onClick={()=>setReloadTick((t)=>t + 1)}>Retry</button>
