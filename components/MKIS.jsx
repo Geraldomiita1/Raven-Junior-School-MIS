@@ -852,25 +852,94 @@ const RC_INFO_LINE = {
     borderBottom: "1px solid ".concat(RC_LINE),
     color: "#111827"
 };
+// Auto-generated Class Teacher's Report / Headteacher's Comment text.
+const RC_COMMENT = {
+    fontWeight: 700,
+    fontStyle: "italic",
+    color: "#1e3a6e"
+};
 // Scoped CSS for the report-card template. Print colours are forced on so the
 // blue frame, light-blue tables and decorations survive "Background graphics"
 // being off, and each pupil's card fills one A4 page (never split across two).
 const REPORT_CARD_CSS = "\n.rc-frame, .rc-frame * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n.rc-table-wrap { border-radius: 12px; overflow: hidden; background: ".concat(RC_LIGHT, "; }\n.rc-table td { background: ").concat(RC_LIGHT, "; }\n.rc-table tbody tr:nth-child(even) td { background: ").concat(RC_LIGHTER, "; }\n@media print {\n  .rc-sheet { break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always; margin: 0 auto !important; }\n  .rc-sheet:last-child { break-after: auto; page-break-after: auto; }\n  .rc-sheet .rc-frame { min-height: 272mm; }\n}\n");
 // Rounded light-blue table shell shared by every report-card table.
 function RCTable(param) {
-    let { children } = param;
+    let { children, labelWidth } = param;
     return <div className="rc-table-wrap">
-            <table className="rc-table" style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>{children}</table>
+            <table className="rc-table" style={{ width: "100%", fontSize: 11, borderCollapse: "collapse", tableLayout: labelWidth ? "fixed" : "auto" }}>
+                {labelWidth ? <colgroup><col style={{ width: labelWidth }} /></colgroup> : null}
+                {children}
+            </table>
         </div>;
 }
 // Section heading ("MID TERM PERFORMANCE" ...) with the template's thin
 // light-blue rules either side.
 function RCHeading(param) {
-    let { children } = param;
-    return <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 6px" }}>
+    let { children, tight } = param;
+    return <div style={{ display: "flex", alignItems: "center", gap: 10, margin: tight ? "10px 0 5px" : "14px 0 6px" }}>
             <div style={{ flex: 1, height: 1, background: RC_LINE }} />
             <div style={{ fontWeight: 800, fontSize: 13, color: RC_BLUE_DARK, letterSpacing: 0.5, textAlign: "center" }}>{children}</div>
             <div style={{ flex: 1, height: 1, background: RC_LINE }} />
+        </div>;
+}
+// Grading Scale + Division Scale strip printed at the bottom of P1-P7 report
+// cards. Both are read straight from Settings: the grading bands (the standard
+// scale, or the class's Special Grading Scale where one applies) and the
+// Division ranges -- so editing them in Settings changes every card.
+function RCScales(param) {
+    let { scales, divisions } = param;
+    const head = { ...rcTh, padding: "3px 2px", fontSize: 10 };
+    const label = { ...head, textAlign: "left", paddingLeft: 6, fontSize: 9 };
+    const cell = { ...rcTd, padding: "3px 2px", fontSize: 10, lineHeight: 1.25 };
+    const range = (lo, hi)=>lo === hi ? String(lo) : "".concat(lo, "-").concat(hi);
+    const divList = [
+        ...divisions || []
+    ].sort((a, b)=>a.min - b.min);
+    return <div style={{ marginTop: 4 }}>
+            {scales.map((sc)=>{
+            const list = [
+                ...sc.bands || []
+            ].sort((a, b)=>b.min - a.min);
+            if (!list.length) return null;
+            return <div key={sc.title}>
+                        <RCHeading tight>{sc.title}</RCHeading>
+                        <RCTable labelWidth={64}>
+                            <tbody>
+                                <tr>
+                                    <th style={label}>GRADE</th>
+                                    {list.map((b, i)=><th key={i} style={head}>{b.grade}</th>)}
+                                </tr>
+                                <tr>
+                                    <th style={label}>MARKS</th>
+                                    {list.map((b, i)=><td key={i} style={cell}>{range(b.min, b.max)}</td>)}
+                                </tr>
+                                <tr>
+                                    <th style={label}>AGG</th>
+                                    {list.map((b, i)=><td key={i} style={{ ...cell, fontWeight: 700 }}>{parseInt(String(b.grade).replace(/\D/g, "")) || 9}</td>)}
+                                </tr>
+                                <tr>
+                                    <th style={label}>REMARK</th>
+                                    {list.map((b, i)=><td key={i} style={{ ...cell, fontStyle: "italic" }}>{b.label || "-"}</td>)}
+                                </tr>
+                            </tbody>
+                        </RCTable>
+                    </div>;
+        })}
+            {divList.length > 0 && <div>
+                    <RCHeading tight>DIVISION SCALE</RCHeading>
+                    <RCTable labelWidth={64}>
+                        <tbody>
+                            <tr>
+                                <th style={label}>DIVISION</th>
+                                {divList.map((d, i)=><th key={i} style={head}>{"DIV ".concat(d.name)}</th>)}
+                            </tr>
+                            <tr>
+                                <th style={label}>TOT AGG</th>
+                                {divList.map((d, i)=><td key={i} style={{ ...cell, fontWeight: 700 }}>{range(d.min, d.max)}</td>)}
+                            </tr>
+                        </tbody>
+                    </RCTable>
+                </div>}
         </div>;
 }
 // The template's illustrations, drawn as inline SVG/CSS (no image files) and
@@ -1983,7 +2052,7 @@ function exportResultSheetWord(param) {
             gRow
         ]));
     }
-    body += "<p>Class Teacher's Comment: .............................................................................. Sign: ......................</p>";
+    body += "<p>Class Teacher's Report: .............................................................................. Sign: ......................</p>";
     body += "<p>Head Teacher's Comment: .............................................................................. Sign: ......................</p>";
     downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"));
 }
@@ -2042,7 +2111,7 @@ function exportReportCardsWord(param) {
         if (!isLower) body += '<b>DIVISION:</b> <b style="color:#dc2626;">'.concat(hasX ? "X" : totMk ? div : "-", "</b>&nbsp;&nbsp;&nbsp;");
         body += "</p>";
         body += "<div style=\"font-family:'Times New Roman',Times,serif;\">";
-        body += '<p style="font-size:11pt;line-height:2;"><b>CONDUCT:</b> ...........................................................................................</p>\n      <p style="font-size:12pt;line-height:2;"><b>Class Teacher\'s Comment:</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">'.concat(escapeHtml(comments.teacher) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:12pt;line-height:2;"><b>Head Teacher\'s Comment:</b> <span style="font-weight:bold;font-style:italic;color:#dc2626;">').concat(escapeHtml(comments.head) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:11pt;line-height:2;"><b>Next Term begins on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextOpens || "......................."), '</span> <b>Ends on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextEnds || "......................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Requirements:</b> <span style="font-weight:bold;font-style:italic;color:#15803d;">').concat(escapeHtml(school.requirements || "..........................................................................................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Parent\'s Signature after reading:</b> ...................................................................</p>');
+        body += '<p style="font-size:11pt;line-height:2;"><b>CONDUCT:</b> ...........................................................................................</p>\n      <p style="font-size:12pt;line-height:2;"><b>Class Teacher\'s Report:</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">'.concat(escapeHtml(comments.teacher) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:12pt;line-height:2;"><b>Head Teacher\'s Comment:</b> <span style="font-weight:bold;font-style:italic;color:#dc2626;">').concat(escapeHtml(comments.head) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:11pt;line-height:2;"><b>Next Term begins on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextOpens || "......................."), '</span> <b>Ends on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextEnds || "......................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Requirements:</b> <span style="font-weight:bold;font-style:italic;color:#15803d;">').concat(escapeHtml(school.requirements || "..........................................................................................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Parent\'s Signature after reading:</b> ...................................................................</p>');
         body += "</div>";
         // Grading Scale + Division Scale, side by side as pill badges, at the
         // very bottom of the card, after the comments/signature section.
@@ -10082,7 +10151,7 @@ const NURSERY_GRADE_LABEL = {
     red: "E"
 };
 function NurseryReportCard(param) {
-    let { students, nurseryMarks, school } = param;
+    let { students, nurseryMarks, school, initials } = param;
     const [cls, setCls] = useState("Baby");
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
@@ -10124,10 +10193,22 @@ function NurseryReportCard(param) {
     const cards = useMemo(()=>classStudents.map((s)=>{
             const mid = buildPeriod(nurseryMarks[s.id]?.[tk]?.["Mid Term"]);
             const end = buildPeriod(nurseryMarks[s.id]?.[tk]?.["End of Term"]);
+            // Auto-written Class Teacher's Report / Headteacher's Comment, the same
+            // way as the Primary cards. Nursery has 5 subjects marked out of 100
+            // (a total out of 500, like P1-P3), so the P1-P3 wording bank applies.
+            const missedPaper = end.total > 0 && end.perSub.some((p)=>typeof p.mark !== "number");
+            const comments = autoComments({
+                isLower: true,
+                totMk: end.total,
+                div: undefined,
+                hasX: missedPaper,
+                seed: "".concat(s.id, "-").concat(term, "-").concat(year)
+            });
             return {
                 s,
                 mid,
-                end
+                end,
+                comments
             };
         }), [
         classStudents,
@@ -10201,8 +10282,8 @@ function NurseryReportCard(param) {
                                         WebkitPrintColorAdjust: "exact",
                                         printColorAdjust: "exact"
                                     }}></td>
-                                    <td style={{ ...rcTd, textAlign: "left" }}>{p.comment}</td>
-                                    <td style={rcTd}></td>
+                                    <td style={{ ...rcTd, textAlign: "left" }}>{p.band ? p.band.label : ""}</td>
+                                    <td style={rcTd}>{initials?.[cls]?.[p.sub] || ""}</td>
                                 </tr>)}
                             <tr>
                                 <td style={{ ...rcTd, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
@@ -10218,9 +10299,9 @@ function NurseryReportCard(param) {
                     </div>
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
-                        <div>CLASS TEACHER'S REPORT: ______________________________________________________</div>
-                        <div>NEXT TERM BEGINS ON: _______________&nbsp;&nbsp;ENDS ON: _______________</div>
-                        <div>HEADTEACHER'S COMMENT: ______________________________________________________</div>
+                        <div>CLASS TEACHER'S REPORT: {c.comments.teacher ? <span style={RC_COMMENT}>{c.comments.teacher}</span> : "______________________________________________________"}</div>
+                        <div>NEXT TERM BEGINS ON: {school.nextOpens ? <span style={RC_COMMENT}>{school.nextOpens}</span> : "_______________"}&nbsp;&nbsp;ENDS ON: {school.nextEnds ? <span style={RC_COMMENT}>{school.nextEnds}</span> : "_______________"}</div>
+                        <div>HEADTEACHER'S COMMENT: {c.comments.head ? <span style={RC_COMMENT}>{c.comments.head}</span> : "______________________________________________________"}</div>
                         <div>SIGNATURE: __________________</div>
                     </div>
                     </ReportCardFrame>
@@ -12059,6 +12140,11 @@ function MockInfo(param) {
         ]
     });
 }
+// Slips print six to an A4 sheet (2 across x 3 down), so each slip is larger
+// than before. Each group of six is one sheet; the print rules below pin the
+// sheet to the page so a slip is never split and no blank page is left behind.
+const SLIPS_PER_SHEET = 6;
+const SLIP_SHEET_CSS = "\n.slip-sheet, .slip-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n.slip-sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }\n.slip-card { overflow: hidden; display: flex; flex-direction: column; }\n@media print {\n  .slip-sheet { grid-template-columns: 94mm 94mm; grid-template-rows: repeat(3, 90mm); gap: 4mm; justify-content: center; margin: 0; break-after: page; page-break-after: always; }\n  .slip-sheet:last-child { break-after: auto; page-break-after: auto; }\n  .slip-card { height: 90mm; break-inside: avoid; page-break-inside: avoid; }\n}\n";
 // ─── SLIPS (BOT / Mid Term result slips) ────────────────────────────────────
 // Prints one compact slip per pupil for whichever assessment is selected --
 // spans all three sections the same way AssessmentEntry's data entry does.
@@ -12066,7 +12152,7 @@ function MockInfo(param) {
 // writes; Report Cards never read "BOT", only "Mid Term", so nothing
 // entered here for BOT can ever show up on a report card.
 function Slips(param) {
-    let { students, termMarks, nurseryMarks, bands: defaultBands, specialBands, school } = param;
+    let { students, termMarks, nurseryMarks, bands: defaultBands, specialBands, divisions, school } = param;
     const allClasses = [
         ...NURSERY_CLASSES,
         ...ALL_CLASSES
@@ -12103,10 +12189,21 @@ function Slips(param) {
                         band: nurseryColorForMark(m[sub]?.mark)
                     }));
                 const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+                // Auto Class Teacher's Report / Headteacher's Comment (same wording
+                // banks as the report cards; Nursery uses the P1-P3 bank).
+                const missedPaper = total > 0 && perSub.some((p)=>typeof p.mark !== "number");
+                const comments = autoComments({
+                    isLower: true,
+                    totMk: total,
+                    div: undefined,
+                    hasX: missedPaper,
+                    seed: "".concat(s.id, "-").concat(term, "-").concat(year, "-").concat(assessment)
+                });
                 return {
                     s,
                     perSub,
-                    total
+                    total,
+                    comments
                 };
             }
             const m = termMarks[s.id]?.[tk]?.[assessment] || {};
@@ -12119,10 +12216,26 @@ function Slips(param) {
                 };
             });
             const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+            // Auto Class Teacher's Report / Headteacher's Comment, worked out from
+            // this slip's marks: total marks for P1-P3, Division for P4-P7.
+            const missedPaper = total > 0 && perSub.some((p)=>typeof p.mark !== "number");
+            let div;
+            if (!isLower && !missedPaper && total > 0) {
+                const aggs = perSub.map((p)=>aggOf(p.mark, bands));
+                div = divisionOf(aggs.reduce((a, v)=>a + v, 0), subjects.length, divisions || [], aggs.some((a)=>a === 9));
+            }
+            const comments = autoComments({
+                isLower,
+                totMk: total,
+                div,
+                hasX: missedPaper,
+                seed: "".concat(s.id, "-").concat(term, "-").concat(year, "-").concat(assessment)
+            });
             return {
                 s,
                 perSub,
-                total
+                total,
+                comments
             };
         }), [
         classStudents,
@@ -12132,9 +12245,17 @@ function Slips(param) {
         tk,
         assessment,
         subjects,
-        bands
+        bands,
+        divisions,
+        isLower,
+        term,
+        year
     ]);
+    // Group the slips into sheets of SLIPS_PER_SHEET (six).
+    const slipSheets = [];
+    for(let k = 0; k < slips.length; k += SLIPS_PER_SHEET)slipSheets.push(slips.slice(k, k + SLIPS_PER_SHEET));
     return <div>
+            <style>{SLIP_SHEET_CSS}</style>
             <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
                 <Sel label="Class" value={cls} onChange={setCls} opts={allClasses} />
                 <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
@@ -12149,50 +12270,56 @@ function Slips(param) {
                 </div>
                 <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                {slips.map((sl)=><div key={sl.s.id} className="print-break" style={{ border: "1.5px solid #d1d5db", borderRadius: 8, padding: 10, background: "white" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
-                            <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={36} height={36} style={{ width: 36, height: 36, minWidth: 36, maxWidth: 36, maxHeight: 36, objectFit: "contain", flexShrink: 0 }} />
+            {slipSheets.map((group, k)=><div key={k} className="slip-sheet">
+                {group.map((sl)=><div key={sl.s.id} className="slip-card" style={{ border: "1.5px solid #d1d5db", borderRadius: 8, padding: 12, background: "white" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 6 }}>
+                            <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={44} height={44} style={{ width: 44, height: 44, minWidth: 44, maxWidth: 44, maxHeight: 44, objectFit: "contain", flexShrink: 0 }} />
                             <div style={{ textAlign: "center" }}>
-                                <div style={{ fontWeight: 800, fontSize: 12, color: "#1e3a6e" }}>{RAVEN_SCHOOL_NAME}</div>
-                                <div style={{ fontSize: 9, fontStyle: "italic", color: "#374151" }}>"{RAVEN_SCHOOL_MOTTO}"</div>
-                                <div style={{ fontSize: 9, color: "#374151" }}>{assessment} Result Slip</div>
+                                <div style={{ fontWeight: 800, fontSize: 14, color: "#1e3a6e" }}>{RAVEN_SCHOOL_NAME}</div>
+                                <div style={{ fontSize: 10, fontStyle: "italic", color: "#374151" }}>"{RAVEN_SCHOOL_MOTTO}"</div>
+                                <div style={{ fontSize: 10.5, color: "#374151" }}>{assessment} Result Slip</div>
                             </div>
                         </div>
-                        <div style={{ fontSize: 11, marginBottom: 2 }}><b>Name:</b> {sl.s.name}&nbsp;&nbsp;<b>Class:</b> {cls}</div>
-                        <div style={{ fontSize: 11, marginBottom: 6 }}><b>Term:</b> {term}&nbsp;&nbsp;<b>Year:</b> {year}</div>
-                        <table style={{ width: "100%", fontSize: 10, borderCollapse: "collapse" }}>
+                        <div style={{ fontSize: 13, marginBottom: 2 }}><b>Name:</b> {sl.s.name}&nbsp;&nbsp;<b>Class:</b> {cls}</div>
+                        <div style={{ fontSize: 13, marginBottom: 6 }}><b>Term:</b> {term}&nbsp;&nbsp;<b>Year:</b> {year}</div>
+                        <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
                             <thead>
                                 <tr style={{ background: "#1e3a6e", color: "white" }}>
-                                    <th style={{ ...th, padding: "3px 4px", textAlign: "left" }}>Subject</th>
-                                    <th style={{ ...th, padding: "3px 4px" }}>Mark</th>
-                                    <th style={{ ...th, padding: "3px 4px" }}>{isNursery ? "Comment" : "Grade"}</th>
+                                    <th style={{ ...th, padding: "3px 6px", textAlign: "left", fontSize: 12 }}>Subject</th>
+                                    <th style={{ ...th, padding: "3px 6px", fontSize: 12 }}>Mark</th>
+                                    <th style={{ ...th, padding: "3px 6px", fontSize: 12 }}>{isNursery ? "Comment" : "Grade"}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {sl.perSub.map((p, i)=><tr key={p.sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
-                                        <td style={{ ...td, padding: "3px 4px", textAlign: "left" }}>{p.sub}</td>
-                                        <td style={{ ...td, padding: "3px 4px" }}>{p.mark === undefined ? "-" : p.mark}</td>
+                                        <td style={{ ...td, padding: "3px 6px", fontSize: 12, textAlign: "left" }}>{p.sub}</td>
+                                        <td style={{ ...td, padding: "3px 6px", fontSize: 12 }}>{p.mark === undefined ? "-" : p.mark}</td>
                                         <td style={{
-                                            ...td,
-                                            padding: "3px 4px",
-                                            background: isNursery && p.band ? p.band.color : undefined,
-                                            color: isNursery && p.band ? "white" : undefined,
-                                            WebkitPrintColorAdjust: "exact",
-                                            printColorAdjust: "exact"
-                                        }}>{isNursery ? p.band ? p.band.label : "" : p.grade || "-"}</td>
+        ...td,
+        padding: "3px 6px",
+        fontSize: 12,
+        background: isNursery && p.band ? p.band.color : undefined,
+        color: isNursery && p.band ? "white" : undefined,
+        WebkitPrintColorAdjust: "exact",
+        printColorAdjust: "exact"
+    }}>{isNursery ? p.band ? p.band.label : "" : p.grade || "-"}</td>
                                     </tr>)}
                                 <tr>
-                                    <td style={{ ...td, padding: "3px 4px", textAlign: "left", fontWeight: 700 }}>TOTAL</td>
-                                    <td style={{ ...td, padding: "3px 4px", fontWeight: 700 }}>{sl.total || "-"}</td>
-                                    <td style={{ ...td, padding: "3px 4px" }}></td>
+                                    <td style={{ ...td, padding: "3px 6px", fontSize: 12, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                    <td style={{ ...td, padding: "3px 6px", fontSize: 12, fontWeight: 700 }}>{sl.total || "-"}</td>
+                                    <td style={{ ...td, padding: "3px 6px", fontSize: 12 }}></td>
                                 </tr>
                             </tbody>
                         </table>
+                        <div style={{ marginTop: "auto", paddingTop: 8, fontSize: 11, lineHeight: 1.5, color: "#111827" }}>
+                            <div><b>Class Teacher's Report:</b> {sl.comments.teacher ? <i style={{ fontWeight: 700, color: "#1e3a6e" }}>{sl.comments.teacher}</i> : "______________________________"}</div>
+                            <div><b>Headteacher's Comment:</b> {sl.comments.head ? <i style={{ fontWeight: 700, color: "#1e3a6e" }}>{sl.comments.head}</i> : "______________________________"}</div>
+                        </div>
                     </div>)}
-            </div>
+            </div>)}
         </div>;
 }
+
 function parsePleSlipText(text) {
     const norm = text.replace(/\r/g, "");
     const out = {
@@ -17841,7 +17968,7 @@ function ResultSheets(param) {
                                         },
                                         children: [
                                             /*#__PURE__*/ _jsx("b", {
-                                                children: "Class Teacher's Comment:"
+                                                children: "Class Teacher's Report:"
                                             }),
                                             /*#__PURE__*/ _jsx("br", {}),
                                             ".........................................................",
@@ -17896,7 +18023,7 @@ function ResultSheets(param) {
 // Lower Primary (P1-P3) doesn't -- that's not an oversight, it matches what
 // the two paper templates actually show.
 function ReportCards(param) {
-    let { students, termMarks, bands: defaultBands, specialBands, divisions, school, reportsData, setReportsData, markEditing } = param;
+    let { students, termMarks, bands: defaultBands, specialBands, divisions, school, initials, reportsData, setReportsData, markEditing } = param;
     const [cls, setCls] = useState("P5");
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
@@ -18057,15 +18184,55 @@ function ReportCards(param) {
             div
         };
     };
+    // Per-subject remark for the End of Term COMMENT column: the wording of the
+    // grading-scale band the mark falls in (Excellent, Very Good, Good, ... Fail)
+    // -- the same scale (standard or Special) that produces the AGG beside it.
+    // A scale band with no wording falls back to the standard remark for the mark.
+    const remarkOfMark = (mark)=>{
+        if (typeof mark !== "number") return "";
+        const g = gradeFor(mark, endBands);
+        return g?.label || remarkFor(mark);
+    };
+    // Grading scale(s) shown at the bottom of each card. Normally one (the End of
+    // Term scale); if a Special Grading Scale makes Mid Term grade differently,
+    // both are shown so the card never lists a scale that wasn't used.
+    const scaleSets = JSON.stringify(midBands) === JSON.stringify(endBands) ? [
+        {
+            title: "GRADING SCALE",
+            bands: endBands
+        }
+    ] : [
+        {
+            title: "GRADING SCALE - MID TERM",
+            bands: midBands
+        },
+        {
+            title: "GRADING SCALE - END OF TERM",
+            bands: endBands
+        }
+    ];
     const cards = useMemo(()=>classStudents.map((s)=>{
             const mid = buildPeriod(termMarks[s.id]?.[tk]?.["Mid Term"], midBands);
             const end = buildPeriod(examMarksFor(s.id, endExam, term, year, termMarks, mockMarksData), endBands);
             const midLower = isLower ? buildLowerMidPeriod(termMarks[s.id]?.[tk]?.["Mid Term"], midBands) : null;
+            // Auto-written Class Teacher's Report / Headteacher's Comment, worked
+            // out from the End of Term result shown on this card (Division for
+            // P4-P7, total marks for P1-P3). A pupil with some -- but not all --
+            // subjects entered is treated as having missed paper(s).
+            const missedPaper = end.total > 0 && end.perSub.some((p)=>typeof p.mark !== "number");
+            const comments = autoComments({
+                isLower,
+                totMk: end.total,
+                div: end.div,
+                hasX: missedPaper,
+                seed: "".concat(s.id, "-").concat(term, "-").concat(year)
+            });
             return {
                 s,
                 mid,
                 end,
-                midLower
+                midLower,
+                comments
             };
         }), [
         classStudents,
@@ -18198,8 +18365,8 @@ function ReportCards(param) {
                                                 <td style={rcTd}>{lowerSubjectMax(sub)}</td>
                                                 <td style={rcTd}>{p?.mark === undefined ? "-" : p.mark}</td>
                                                 <td style={rcTd}>{p?.agg ?? "-"}</td>
-                                                <td style={{ ...rcTd, textAlign: "left" }}></td>
-                                                <td style={rcTd}></td>
+                                                <td style={{ ...rcTd, textAlign: "left" }}>{remarkOfMark(p?.mark)}</td>
+                                                <td style={rcTd}>{initials?.[cls]?.[sub] || ""}</td>
                                             </tr>;
                                     })}
                                     <tr>
@@ -18216,8 +18383,8 @@ function ReportCards(param) {
                                                 <td style={rcTd}>100</td>
                                                 <td style={rcTd}>{p?.mark === undefined ? "-" : p.mark}</td>
                                                 <td style={rcTd}>{p?.agg ?? "-"}</td>
-                                                <td style={{ ...rcTd, textAlign: "left" }}></td>
-                                                <td style={rcTd}></td>
+                                                <td style={{ ...rcTd, textAlign: "left" }}>{remarkOfMark(p?.mark)}</td>
+                                                <td style={rcTd}>{initials?.[cls]?.[sub] || ""}</td>
                                             </tr>;
                                     })}
                                     <tr>
@@ -18231,14 +18398,18 @@ function ReportCards(param) {
                     </RCTable>
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
-                        <div>CLASS TEACHER'S REPORT: ________________________________________________&nbsp;&nbsp;Sign: __________</div>
-                        <div>NEXT TERM BEGINS ON: _______________&nbsp;&nbsp;ENDS ON: _______________</div>
-                        <div>HEADTEACHER'S COMMENT: ______________________________________________________</div>
+                        {c.comments.teacher ? <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT}>{c.comments.teacher}</span></div>
+                            <div style={{ whiteSpace: "nowrap" }}>Sign: __________</div>
+                        </div> : <div>CLASS TEACHER'S REPORT: ________________________________________________&nbsp;&nbsp;Sign: __________</div>}
+                        <div>NEXT TERM BEGINS ON: {school.nextOpens ? <span style={RC_COMMENT}>{school.nextOpens}</span> : "_______________"}&nbsp;&nbsp;ENDS ON: {school.nextEnds ? <span style={RC_COMMENT}>{school.nextEnds}</span> : "_______________"}</div>
+                        <div>HEADTEACHER'S COMMENT: {c.comments.head ? <span style={RC_COMMENT}>{c.comments.head}</span> : "______________________________________________________"}</div>
                         <div>SIGNATURE: __________________</div>
                     </div>
                     <div style={{ marginTop: 8, fontSize: 10, color: "#374151" }}>
                         <b style={{ textDecoration: "underline" }}>SCHOOL REQUIREMENTS</b>: 1 ream (photocopying), 1 bar of soap (white star), 2kg of sugar, 2 rolls of toilet paper, 1 broom, 1 hard brush and 1 bag of cement per parent.
                     </div>
+                    <RCScales scales={scaleSets} divisions={divisions} />
                     </ReportCardFrame>
                 </div>)}
         </div>;
@@ -20503,12 +20674,13 @@ function SubjectInitialsManager(param) {
     const [selSubject, setSelSubject] = useState("");
     const [inputVal, setInputVal] = useState("");
     const [msg, setMsg] = useState("");
-    const isLower = LOWER_CLASSES.includes(selClass);
-    const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
+    // Nursery classes are included so their report cards can show initials too.
+    const initialsSubjectsFor = (c)=>NURSERY_CLASSES.includes(c) ? NURSERY_SUBJECTS : LOWER_CLASSES.includes(c) ? LOWER_SUBJECTS : UPPER_SUBJECTS;
+    const subjects = initialsSubjectsFor(selClass);
     // Auto-select first subject when class changes
     const handleClassChange = (cls)=>{
         setSelClass(cls);
-        const subs = LOWER_CLASSES.includes(cls) ? LOWER_SUBJECTS : UPPER_SUBJECTS;
+        const subs = initialsSubjectsFor(cls);
         setSelSubject(subs[0] || "");
         setInputVal("");
         setMsg("");
@@ -20595,7 +20767,10 @@ function SubjectInitialsManager(param) {
                                     ...inp,
                                     width: 90
                                 },
-                                children: ALL_CLASSES.map((c)=>/*#__PURE__*/ _jsx("option", {
+                                children: [
+        ...NURSERY_CLASSES,
+        ...ALL_CLASSES
+    ].map((c)=>/*#__PURE__*/ _jsx("option", {
                                         children: c
                                     }, c))
                             })
@@ -20777,7 +20952,10 @@ function SubjectInitialsManager(param) {
                             flexWrap: "wrap",
                             gap: 8
                         },
-                        children: ALL_CLASSES.filter((c)=>Object.keys((initials || {})[c] || {}).length > 0).map((c)=>/*#__PURE__*/ _jsxs("div", {
+                        children: [
+        ...NURSERY_CLASSES,
+        ...ALL_CLASSES
+    ].filter((c)=>Object.keys((initials || {})[c] || {}).length > 0).map((c)=>/*#__PURE__*/ _jsxs("div", {
                                 style: {
                                     background: "#ede9fe",
                                     border: "1px solid #c4b5fd",
