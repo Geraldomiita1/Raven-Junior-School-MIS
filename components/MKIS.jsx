@@ -801,6 +801,76 @@ function ExamHeading(param) {
     }}>{subtitle}</div> : null}
         </div>;
 }
+// ── Shared report-card frame ──────────────────────────────────────────────
+// Matches the physical Raven report card templates exactly: a bordered card
+// with the badge repeated on BOTH sides of the centred title (not just one,
+// like ExamHeading above -- that's for printable sheets/slips, this is
+// specifically for report cards). Used by every report card -- Nursery and
+// Primary alike -- so there's one place to fix the look, not one per class
+// band. The badge size is capped with BOTH the width/height HTML attributes
+// and matching inline style, deliberately redundant: a single className-only
+// size constraint is what let the logo render at its full native resolution
+// (thousands of pixels wide) instead of a small badge before this fix.
+function ReportCardFrame(param) {
+    let { children, subtitle, badgeSize = 52 } = param;
+    const badgeStyle = {
+        width: badgeSize,
+        height: badgeSize,
+        minWidth: badgeSize,
+        maxWidth: badgeSize,
+        maxHeight: badgeSize,
+        objectFit: "contain",
+        flexShrink: 0
+    };
+    return <div style={{
+        border: "3px double #1e3a6e",
+        borderRadius: 10,
+        padding: "14px 18px",
+        background: "white"
+    }}>
+            <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 12,
+        marginBottom: 4
+    }}>
+                <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={badgeSize} height={badgeSize} style={badgeStyle} />
+                <div style={{ textAlign: "center" }}>
+                    <div style={{
+        fontWeight: 900,
+        fontSize: 16,
+        color: "#1e3a6e",
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        fontFamily: RAVEN_HEADING_FONT
+    }}>{RAVEN_SCHOOL_NAME}</div>
+                    <div style={{
+        fontSize: 10,
+        color: "#374151",
+        marginTop: 1,
+        fontFamily: RAVEN_HEADING_FONT
+    }}>P.O. Box 731, Tororo &nbsp;|&nbsp; 📞 +256776745781 / +256789113131</div>
+                </div>
+                <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={badgeSize} height={badgeSize} style={badgeStyle} />
+            </div>
+            {subtitle ? <div style={{
+        fontWeight: 800,
+        fontSize: 13,
+        color: "#1e3a6e",
+        textAlign: "center",
+        marginBottom: 8
+    }}>{subtitle}</div> : null}
+            {children}
+            <div style={{
+        textAlign: "center",
+        fontSize: 11,
+        fontStyle: "italic",
+        color: "#374151",
+        marginTop: 10
+    }}>MOTTO: {RAVEN_SCHOOL_MOTTO}</div>
+        </div>;
+}
 // Exam types the Special Grading Scale can be scoped to. A class's special
 // scale only overrides the standard scale for the exam types checked for it
 // in Settings; any exam type left unchecked keeps using the standard scale
@@ -9227,54 +9297,43 @@ function MarkEntry(param) {
         rows,
         search
     ]);
-    return <div className="p-4">
-            <h2 className="text-xl font-bold mb-4">Mark Entry</h2>
-            <div className="flex flex-wrap gap-3 mb-4 items-end">
+    return <div>
+            <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <Sel label="Class" value={cls} onChange={setCls} opts={ALL_CLASSES} />
+                <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
                 <div>
-                    <label className="block text-sm font-medium mb-1">Class</label>
-                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
-                        {ALL_CLASSES.map((c)=><option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <label style={lbl}>Year</label>
+                    <input type="number" value={year} onChange={(e)=>setYear(e.target.value)} style={{ ...inp, width: 90 }} />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Term</label>
-                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
-                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Year</label>
-                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
-                </div>
-                <div className="flex-1 min-w-[160px]">
-                    <label className="block text-sm font-medium mb-1">Search</label>
-                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
+                <div style={{ flex: 1, minWidth: 180 }}>
+                    <label style={lbl}>Search Pupil</label>
+                    <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
                 </div>
             </div>
-            <div className="overflow-x-auto border rounded">
-                <table className="min-w-full text-sm">
+            <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
                     <thead>
-                        <tr className="bg-gray-100">
-                            <th className="p-2 text-left">Pupil</th>
-                            {subjects.map((sub)=><th key={sub} className="p-2 text-center">{upperSubjectLabel(sub)}</th>)}
-                            <th className="p-2 text-center">Total</th>
-                            <th className="p-2 text-center">Tot Agg</th>
-                            <th className="p-2 text-center">Div</th>
+                        <tr style={{ background: "#1e3a6e", color: "white" }}>
+                            <th style={{ ...th, textAlign: "left" }}>Pupil</th>
+                            {subjects.map((sub)=><th key={sub} style={th}>{upperSubjectLabel(sub)}</th>)}
+                            <th style={th}>Total</th>
+                            <th style={th}>Tot Agg</th>
+                            <th style={th}>Div</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {displayRows.map((r)=><tr key={r.s.id} className="border-t align-top">
-                                <td className="p-2 font-medium whitespace-nowrap">{r.s.name}</td>
-                                {r.perSub.map((p)=><td key={p.sub} className="p-2">
-                                        <input type="number" min={0} max={100} className="border rounded w-16 px-1 py-0.5 text-center" value={p.mark === undefined ? "" : p.mark} onChange={(e)=>{
+                        {displayRows.map((r, i)=><tr key={r.s.id} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                                <td style={{ ...td, textAlign: "left", fontWeight: 600, whiteSpace: "nowrap" }}>{r.s.name}</td>
+                                {r.perSub.map((p)=><td key={p.sub} style={{ ...td, verticalAlign: "top" }}>
+                                        <input type="number" min={0} max={100} style={markInput} value={p.mark === undefined ? "" : p.mark} onChange={(e)=>{
                                         const raw = e.target.value;
                                         updateTermMark(r.s.id, tk, period, p.sub, raw === "" ? undefined : Number(raw));
                                     }} />
-                                        {p.grade && <div className="text-xs mt-1 text-center font-semibold">{p.grade}</div>}
+                                        {p.grade && <div style={{ fontSize: 11, marginTop: 3, fontWeight: 700, textAlign: "center", color: "#1e3a6e" }}>{p.grade}</div>}
                                     </td>)}
-                                <td className="p-2 text-center font-semibold">{r.totalMarks || "-"}</td>
-                                <td className="p-2 text-center font-semibold">{r.totalAgg ?? "-"}</td>
-                                <td className="p-2 text-center font-semibold">{r.div}</td>
+                                <td style={{ ...td, fontWeight: 700 }}>{r.totalMarks || "-"}</td>
+                                <td style={{ ...td, fontWeight: 700 }}>{r.totalAgg ?? "-"}</td>
+                                <td style={{ ...td, fontWeight: 700 }}>{r.div}</td>
                             </tr>)}
                     </tbody>
                 </table>
@@ -9349,153 +9408,182 @@ function NurseryMarkEntry(param) {
         positions,
         search
     ]);
-    return _jsxs("div", {
-        className: "p-4",
+    return /*#__PURE__*/ _jsxs("div", {
         children: [
-            _jsx("h2", {
-                className: "text-xl font-bold mb-4",
-                children: "Nursery Mark Entry"
-            }),
-            _jsxs("div", {
-                className: "flex flex-wrap gap-3 mb-4 items-end",
+            /*#__PURE__*/ _jsxs("div", {
+                className: "no-print",
+                style: {
+                    display: "flex",
+                    gap: 10,
+                    marginBottom: 16,
+                    flexWrap: "wrap",
+                    alignItems: "flex-end"
+                },
                 children: [
-                    _jsxs("div", {
-                        children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
-                                children: "Class"
-                            }),
-                            _jsx("select", {
-                                className: "border rounded px-2 py-1",
-                                value: cls,
-                                onChange: (e)=>setCls(e.target.value),
-                                children: NURSERY_CLASSES.map((c)=>_jsx("option", {
-                                        value: c,
-                                        children: c
-                                    }, c))
-                            })
-                        ]
+                    /*#__PURE__*/ _jsx(Sel, {
+                        label: "Class",
+                        value: cls,
+                        onChange: setCls,
+                        opts: NURSERY_CLASSES
                     }),
-                    _jsxs("div", {
-                        children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
-                                children: "Term"
-                            }),
-                            _jsx("select", {
-                                className: "border rounded px-2 py-1",
-                                value: term,
-                                onChange: (e)=>setTerm(e.target.value),
-                                children: TERMS.map((t)=>_jsx("option", {
-                                        value: t,
-                                        children: t
-                                    }, t))
-                            })
-                        ]
+                    /*#__PURE__*/ _jsx(Sel, {
+                        label: "Term",
+                        value: term,
+                        onChange: setTerm,
+                        opts: TERMS
                     }),
-                    _jsxs("div", {
+                    /*#__PURE__*/ _jsxs("div", {
                         children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
+                            /*#__PURE__*/ _jsx("label", {
+                                style: lbl,
                                 children: "Year"
                             }),
-                            _jsx("input", {
-                                className: "border rounded px-2 py-1 w-24",
+                            /*#__PURE__*/ _jsx("input", {
+                                type: "number",
                                 value: year,
-                                onChange: (e)=>setYear(e.target.value)
+                                onChange: (e)=>setYear(e.target.value),
+                                style: {
+                                    ...inp,
+                                    width: 90
+                                }
                             })
                         ]
                     }),
-                    _jsxs("div", {
-                        className: "flex-1 min-w-[160px]",
+                    /*#__PURE__*/ _jsxs("div", {
+                        style: {
+                            flex: 1,
+                            minWidth: 180
+                        },
                         children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
-                                children: "Search"
+                            /*#__PURE__*/ _jsx("label", {
+                                style: lbl,
+                                children: "Search Pupil"
                             }),
-                            _jsx("input", {
-                                className: "border rounded px-2 py-1 w-full",
-                                placeholder: "Search pupil...",
+                            /*#__PURE__*/ _jsx("input", {
+                                type: "text",
+                                placeholder: "Type a name...",
                                 value: search,
-                                onChange: (e)=>setSearch(e.target.value)
+                                onChange: (e)=>setSearch(e.target.value),
+                                style: {
+                                    ...inp,
+                                    width: "100%"
+                                }
                             })
                         ]
                     })
                 ]
             }),
-            _jsx("div", {
-                className: "overflow-x-auto border rounded",
-                children: _jsxs("table", {
-                    className: "min-w-full text-sm",
+            /*#__PURE__*/ _jsx("div", {
+                style: {
+                    overflowX: "auto"
+                },
+                children: /*#__PURE__*/ _jsxs("table", {
+                    style: {
+                        width: "100%",
+                        fontSize: 12,
+                        borderCollapse: "collapse"
+                    },
                     children: [
-                        _jsx("thead", {
-                            children: _jsxs("tr", {
-                                className: "bg-gray-100",
+                        /*#__PURE__*/ _jsx("thead", {
+                            children: /*#__PURE__*/ _jsxs("tr", {
+                                style: {
+                                    background: "#1e3a6e",
+                                    color: "white"
+                                },
                                 children: [
-                                    _jsx("th", {
-                                        className: "p-2 text-left",
+                                    /*#__PURE__*/ _jsx("th", {
+                                        style: th,
                                         children: "Pos"
                                     }),
-                                    _jsx("th", {
-                                        className: "p-2 text-left",
+                                    /*#__PURE__*/ _jsx("th", {
+                                        style: {
+                                            ...th,
+                                            textAlign: "left"
+                                        },
                                         children: "Pupil"
                                     }),
-                                    NURSERY_SUBJECTS.map((sub)=>_jsx("th", {
-                                            className: "p-2 text-center",
+                                    NURSERY_SUBJECTS.map((sub)=>/*#__PURE__*/ _jsx("th", {
+                                            style: th,
                                             children: sub
                                         }, sub)),
-                                    _jsx("th", {
-                                        className: "p-2 text-center",
+                                    /*#__PURE__*/ _jsx("th", {
+                                        style: th,
                                         children: "Total"
                                     })
                                 ]
                             })
                         }),
-                        _jsx("tbody", {
-                            children: displayRows.map((r)=>_jsxs("tr", {
-                                    className: "border-t align-top",
+                        /*#__PURE__*/ _jsx("tbody", {
+                            children: displayRows.map((r, i)=>/*#__PURE__*/ _jsxs("tr", {
+                                    style: {
+                                        background: i % 2 === 0 ? "white" : "#f8fafc"
+                                    },
                                     children: [
-                                        _jsx("td", {
-                                            className: "p-2",
-                                            children: r.pos
+                                        /*#__PURE__*/ _jsx("td", {
+                                            style: td,
+                                            children: /*#__PURE__*/ _jsx(PositionBadge, {
+                                                pos: r.pos
+                                            })
                                         }),
-                                        _jsx("td", {
-                                            className: "p-2 font-medium whitespace-nowrap",
+                                        /*#__PURE__*/ _jsx("td", {
+                                            style: {
+                                                ...td,
+                                                textAlign: "left",
+                                                fontWeight: 600,
+                                                whiteSpace: "nowrap"
+                                            },
                                             children: r.s.name
                                         }),
-                                        r.perSub.map((p)=>_jsxs("td", {
-                                                className: "p-2",
+                                        r.perSub.map((p)=>/*#__PURE__*/ _jsxs("td", {
+                                                style: {
+                                                    ...td,
+                                                    verticalAlign: "top"
+                                                },
                                                 children: [
-                                                    _jsx("input", {
+                                                    /*#__PURE__*/ _jsx("input", {
                                                         type: "number",
                                                         min: 0,
                                                         max: 100,
-                                                        className: "border rounded w-16 px-1 py-0.5 text-center",
+                                                        style: markInput,
                                                         value: p.mark === undefined ? "" : p.mark,
                                                         onChange: (e)=>{
                                                             const raw = e.target.value;
                                                             updateNurseryMark(r.s.id, tk, period, p.sub, "mark", raw === "" ? undefined : Number(raw));
                                                         }
                                                     }),
-                                                    period === "End of Term" && p.band && _jsx("div", {
-                                                        className: "text-xs mt-1 px-1 rounded text-white text-center",
+                                                    period === "End of Term" && p.band && /*#__PURE__*/ _jsx("div", {
                                                         style: {
-                                                            backgroundColor: p.band.color
+                                                            fontSize: 10,
+                                                            marginTop: 3,
+                                                            padding: "1px 4px",
+                                                            borderRadius: 4,
+                                                            color: "white",
+                                                            textAlign: "center",
+                                                            background: p.band.color
                                                         },
                                                         title: p.band.label,
                                                         children: p.band.label
                                                     }),
-                                                    period === "End of Term" && _jsx("input", {
+                                                    period === "End of Term" && /*#__PURE__*/ _jsx("input", {
                                                         type: "text",
                                                         placeholder: "Comment",
-                                                        className: "border rounded w-24 px-1 py-0.5 text-xs mt-1",
                                                         value: p.comment,
-                                                        onChange: (e)=>updateNurseryMark(r.s.id, tk, period, p.sub, "comment", e.target.value)
+                                                        onChange: (e)=>updateNurseryMark(r.s.id, tk, period, p.sub, "comment", e.target.value),
+                                                        style: {
+                                                            ...markInput,
+                                                            width: 90,
+                                                            marginTop: 3,
+                                                            fontSize: 10,
+                                                            textAlign: "left"
+                                                        }
                                                     })
                                                 ]
                                             }, p.sub)),
-                                        _jsx("td", {
-                                            className: "p-2 text-center font-semibold",
+                                        /*#__PURE__*/ _jsx("td", {
+                                            style: {
+                                                ...td,
+                                                fontWeight: 700
+                                            },
                                             children: r.total || "-"
                                         })
                                     ]
@@ -9593,85 +9681,208 @@ function AssessmentEntry(param) {
         subjects,
         bands
     ]);
-    const positions = useMemo(()=>rankWithTies(rows.map((r)=>r.total > 0 ? r.total : null), rows.map(()=>null)), [
-        rows
-    ]);
     const displayRows = useMemo(()=>{
-        const withPos = rows.map((r, i)=>({
-                ...r,
-                pos: positions[i]
-            }));
-        if (!search.trim()) return withPos;
+        if (!search.trim()) return rows;
         const q = search.trim().toLowerCase();
-        return withPos.filter((r)=>r.s.name.toLowerCase().includes(q));
+        return rows.filter((r)=>r.s.name.toLowerCase().includes(q));
     }, [
         rows,
-        positions,
         search
     ]);
-    return <div className="p-4">
-            <h2 className="text-xl font-bold mb-4">Assessments</h2>
-            <div className="flex flex-wrap gap-3 mb-4 items-end">
-                <div>
-                    <label className="block text-sm font-medium mb-1">Class</label>
-                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
-                        {allClasses.map((c)=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Term</label>
-                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
-                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Year</label>
-                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Assessment</label>
-                    <select className="border rounded px-2 py-1" value={assessment} onChange={(e)=>setAssessment(e.target.value)}>
-                        {MIDTERM_ASSESSMENTS.map((a)=><option key={a} value={a}>{a}</option>)}
-                    </select>
-                </div>
-                <div className="flex-1 min-w-[160px]">
-                    <label className="block text-sm font-medium mb-1">Search</label>
-                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
-                </div>
-            </div>
-            <div className="overflow-x-auto border rounded">
-                <table className="min-w-full text-sm">
-                    <thead>
-                        <tr className="bg-gray-100">
-                            <th className="p-2 text-left">Pos</th>
-                            <th className="p-2 text-left">Pupil</th>
-                            {subjects.map((sub)=><th key={sub} className="p-2 text-center">{sub}</th>)}
-                            <th className="p-2 text-center">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {displayRows.map((r)=><tr key={r.s.id} className="border-t align-top">
-                                <td className="p-2">{r.pos}</td>
-                                <td className="p-2 font-medium whitespace-nowrap">{r.s.name}</td>
-                                {r.perSub.map((p)=><td key={p.sub} className="p-2">
-                                        <input type="number" min={0} max={100} className="border rounded w-16 px-1 py-0.5 text-center" value={p.mark === undefined ? "" : p.mark} onChange={(e)=>{
-                                        const raw = e.target.value;
-                                        const val = raw === "" ? undefined : Number(raw);
-                                        if (isNursery) updateNurseryMark(r.s.id, tk, assessment, p.sub, "mark", val);
-                                        else updateTermMark(r.s.id, tk, assessment, p.sub, val);
-                                    }} />
-                                        {isNursery && p.band && <div className="text-xs mt-1 px-1 rounded text-white text-center" style={{
-                                        backgroundColor: p.band.color
-                                    }} title={p.band.label}>{p.band.label}</div>}
-                                        {isNursery && <input type="text" placeholder="Comment" className="border rounded w-24 px-1 py-0.5 text-xs mt-1" value={p.comment} onChange={(e)=>updateNurseryMark(r.s.id, tk, assessment, p.sub, "comment", e.target.value)} />}
-                                        {!isNursery && p.grade && <div className="text-xs mt-1 text-center font-semibold">{p.grade}</div>}
-                                    </td>)}
-                                <td className="p-2 text-center font-semibold">{r.total || "-"}</td>
-                            </tr>)}
-                    </tbody>
-                </table>
-            </div>
-        </div>;
+    return /*#__PURE__*/ _jsxs("div", {
+        children: [
+            /*#__PURE__*/ _jsxs("div", {
+                className: "no-print",
+                style: {
+                    display: "flex",
+                    gap: 10,
+                    marginBottom: 16,
+                    flexWrap: "wrap",
+                    alignItems: "flex-end"
+                },
+                children: [
+                    /*#__PURE__*/ _jsx(Sel, {
+                        label: "Class",
+                        value: cls,
+                        onChange: setCls,
+                        opts: allClasses
+                    }),
+                    /*#__PURE__*/ _jsx(Sel, {
+                        label: "Term",
+                        value: term,
+                        onChange: setTerm,
+                        opts: TERMS
+                    }),
+                    /*#__PURE__*/ _jsxs("div", {
+                        children: [
+                            /*#__PURE__*/ _jsx("label", {
+                                style: lbl,
+                                children: "Year"
+                            }),
+                            /*#__PURE__*/ _jsx("input", {
+                                type: "number",
+                                value: year,
+                                onChange: (e)=>setYear(e.target.value),
+                                style: {
+                                    ...inp,
+                                    width: 90
+                                }
+                            })
+                        ]
+                    }),
+                    /*#__PURE__*/ _jsx(Sel, {
+                        label: "Assessment",
+                        value: assessment,
+                        onChange: setAssessment,
+                        opts: MIDTERM_ASSESSMENTS
+                    }),
+                    /*#__PURE__*/ _jsxs("div", {
+                        style: {
+                            flex: 1,
+                            minWidth: 180
+                        },
+                        children: [
+                            /*#__PURE__*/ _jsx("label", {
+                                style: lbl,
+                                children: "Search Pupil"
+                            }),
+                            /*#__PURE__*/ _jsx("input", {
+                                type: "text",
+                                placeholder: "Type a name...",
+                                value: search,
+                                onChange: (e)=>setSearch(e.target.value),
+                                style: {
+                                    ...inp,
+                                    width: "100%"
+                                }
+                            })
+                        ]
+                    })
+                ]
+            }),
+            /*#__PURE__*/ _jsx("div", {
+                style: {
+                    overflowX: "auto"
+                },
+                children: /*#__PURE__*/ _jsxs("table", {
+                    style: {
+                        width: "100%",
+                        fontSize: 12,
+                        borderCollapse: "collapse"
+                    },
+                    children: [
+                        /*#__PURE__*/ _jsx("thead", {
+                            children: /*#__PURE__*/ _jsxs("tr", {
+                                style: {
+                                    background: "#1e3a6e",
+                                    color: "white"
+                                },
+                                children: [
+                                    /*#__PURE__*/ _jsx("th", {
+                                        style: {
+                                            ...th,
+                                            textAlign: "left"
+                                        },
+                                        children: "Pupil"
+                                    }),
+                                    subjects.map((sub)=>/*#__PURE__*/ _jsx("th", {
+                                            style: th,
+                                            children: sub
+                                        }, sub)),
+                                    /*#__PURE__*/ _jsx("th", {
+                                        style: th,
+                                        children: "Total"
+                                    })
+                                ]
+                            })
+                        }),
+                        /*#__PURE__*/ _jsx("tbody", {
+                            children: displayRows.map((r, i)=>/*#__PURE__*/ _jsxs("tr", {
+                                    style: {
+                                        background: i % 2 === 0 ? "white" : "#f8fafc"
+                                    },
+                                    children: [
+                                        /*#__PURE__*/ _jsx("td", {
+                                            style: {
+                                                ...td,
+                                                textAlign: "left",
+                                                fontWeight: 600,
+                                                whiteSpace: "nowrap"
+                                            },
+                                            children: r.s.name
+                                        }),
+                                        r.perSub.map((p)=>/*#__PURE__*/ _jsxs("td", {
+                                                style: {
+                                                    ...td,
+                                                    verticalAlign: "top"
+                                                },
+                                                children: [
+                                                    /*#__PURE__*/ _jsx("input", {
+                                                        type: "number",
+                                                        min: 0,
+                                                        max: 100,
+                                                        style: markInput,
+                                                        value: p.mark === undefined ? "" : p.mark,
+                                                        onChange: (e)=>{
+                                                            const raw = e.target.value;
+                                                            const val = raw === "" ? undefined : Number(raw);
+                                                            if (isNursery) updateNurseryMark(r.s.id, tk, assessment, p.sub, "mark", val);
+                                                            else updateTermMark(r.s.id, tk, assessment, p.sub, val);
+                                                        }
+                                                    }),
+                                                    isNursery && p.band && /*#__PURE__*/ _jsx("div", {
+                                                        style: {
+                                                            fontSize: 10,
+                                                            marginTop: 3,
+                                                            padding: "1px 4px",
+                                                            borderRadius: 4,
+                                                            color: "white",
+                                                            textAlign: "center",
+                                                            background: p.band.color
+                                                        },
+                                                        title: p.band.label,
+                                                        children: p.band.label
+                                                    }),
+                                                    isNursery && /*#__PURE__*/ _jsx("input", {
+                                                        type: "text",
+                                                        placeholder: "Comment",
+                                                        value: p.comment,
+                                                        onChange: (e)=>updateNurseryMark(r.s.id, tk, assessment, p.sub, "comment", e.target.value),
+                                                        style: {
+                                                            ...markInput,
+                                                            width: 90,
+                                                            marginTop: 3,
+                                                            fontSize: 10,
+                                                            textAlign: "left"
+                                                        }
+                                                    }),
+                                                    !isNursery && p.grade && /*#__PURE__*/ _jsx("div", {
+                                                        style: {
+                                                            fontSize: 11,
+                                                            marginTop: 3,
+                                                            fontWeight: 700,
+                                                            textAlign: "center",
+                                                            color: "#1e3a6e"
+                                                        },
+                                                        children: p.grade
+                                                    })
+                                                ]
+                                            }, p.sub)),
+                                        /*#__PURE__*/ _jsx("td", {
+                                            style: {
+                                                ...td,
+                                                fontWeight: 700
+                                            },
+                                            children: r.total || "-"
+                                        })
+                                    ]
+                                }, r.s.id))
+                        })
+                    ]
+                })
+            })
+        ]
+    });
 }
 // ─── NURSERY REPORT CARD ────────────────────────────────────────────────────
 // Matches the paper report card layout: a Mid Term row (marks + total +
@@ -9740,347 +9951,98 @@ function NurseryReportCard(param) {
         nurseryMarks,
         tk
     ]);
-    return _jsxs("div", {
-        className: "p-4",
-        children: [
-            _jsx("h2", {
-                className: "text-xl font-bold mb-4 print:hidden",
-                children: "Nursery Report Cards"
-            }),
-            _jsxs("div", {
-                className: "flex flex-wrap gap-3 mb-4 items-end print:hidden",
-                children: [
-                    _jsxs("div", {
-                        children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
-                                children: "Class"
-                            }),
-                            _jsx("select", {
-                                className: "border rounded px-2 py-1",
-                                value: cls,
-                                onChange: (e)=>setCls(e.target.value),
-                                children: NURSERY_CLASSES.map((c)=>_jsx("option", {
-                                        value: c,
-                                        children: c
-                                    }, c))
-                            })
-                        ]
-                    }),
-                    _jsxs("div", {
-                        children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
-                                children: "Term"
-                            }),
-                            _jsx("select", {
-                                className: "border rounded px-2 py-1",
-                                value: term,
-                                onChange: (e)=>setTerm(e.target.value),
-                                children: TERMS.map((t)=>_jsx("option", {
-                                        value: t,
-                                        children: t
-                                    }, t))
-                            })
-                        ]
-                    }),
-                    _jsxs("div", {
-                        children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
-                                children: "Year"
-                            }),
-                            _jsx("input", {
-                                className: "border rounded px-2 py-1 w-24",
-                                value: year,
-                                onChange: (e)=>setYear(e.target.value)
-                            })
-                        ]
-                    }),
-                    _jsxs("div", {
-                        className: "flex-1 min-w-[160px]",
-                        children: [
-                            _jsx("label", {
-                                className: "block text-sm font-medium mb-1",
-                                children: "Search"
-                            }),
-                            _jsx("input", {
-                                className: "border rounded px-2 py-1 w-full",
-                                placeholder: "Search pupil...",
-                                value: search,
-                                onChange: (e)=>setSearch(e.target.value)
-                            })
-                        ]
-                    }),
-                    _jsx("button", {
-                        className: "bg-blue-600 text-white rounded px-4 py-2",
-                        onClick: ()=>window.print(),
-                        children: "Print"
-                    })
-                ]
-            }),
-            cards.map((c)=>_jsxs("div", {
-                    className: "border-4 border-red-300 rounded p-4 mb-6 max-w-2xl mx-auto bg-white print:break-after-page",
-                    children: [
-                        _jsxs("div", {
-                            className: "flex items-center justify-between",
-                            children: [
-                                school.logo && _jsx("img", {
-                                    src: school.logo,
-                                    alt: "logo",
-                                    className: "w-16 h-16 object-contain"
-                                }),
-                                _jsxs("div", {
-                                    className: "text-center flex-1",
-                                    children: [
-                                        _jsx("div", {
-                                            className: "text-lg font-bold tracking-wide",
-                                            children: school.name || "SCHOOL NAME"
-                                        }),
-                                        school.poBox && _jsx("div", {
-                                            className: "text-xs",
-                                            children: school.poBox
-                                        }),
-                                        school.tel && _jsxs("div", {
-                                            className: "text-xs",
-                                            children: [
-                                                "Tel. ",
-                                                school.tel
-                                            ]
-                                        })
-                                    ]
-                                }),
-                                school.logo && _jsx("img", {
-                                    src: school.logo,
-                                    alt: "logo",
-                                    className: "w-16 h-16 object-contain"
-                                })
-                            ]
-                        }),
-                        _jsxs("div", {
-                            className: "mt-3 text-sm",
-                            children: [
-                                _jsxs("div", {
-                                    children: [
-                                        _jsx("span", {
-                                            className: "font-semibold",
-                                            children: "PUPILS NAME: "
-                                        }),
-                                        c.s.name,
-                                        "\u00A0\u00A0\u00A0",
-                                        _jsx("span", {
-                                            className: "font-semibold",
-                                            children: "CLASS: "
-                                        }),
-                                        cls
-                                    ]
-                                }),
-                                _jsxs("div", {
-                                    children: [
-                                        _jsx("span", {
-                                            className: "font-semibold",
-                                            children: "GRADE: "
-                                        }),
-                                        c.end.grade,
-                                        "\u00A0\u00A0\u00A0",
-                                        _jsx("span", {
-                                            className: "font-semibold",
-                                            children: "TOTAL IN CLASS: "
-                                        }),
-                                        classSize,
-                                        "\u00A0\u00A0\u00A0",
-                                        _jsx("span", {
-                                            className: "font-semibold",
-                                            children: "TERM: "
-                                        }),
-                                        term,
-                                        "\u00A0\u00A0\u00A0",
-                                        _jsx("span", {
-                                            className: "font-semibold",
-                                            children: "YEAR: "
-                                        }),
-                                        year
-                                    ]
-                                })
-                            ]
-                        }),
-                        _jsx("div", {
-                            className: "text-center font-semibold mt-3 mb-1",
-                            children: "MID TERM PERFORMANCE"
-                        }),
-                        _jsx("table", {
-                            className: "w-full text-xs border-collapse border",
-                            children: _jsxs("tbody", {
-                                children: [
-                                    _jsx("tr", {
-                                        children: [
-                                            ...NURSERY_SUBJECTS.map((sub)=>_jsx("th", {
-                                                    className: "border p-1",
-                                                    children: sub
-                                                }, sub)),
-                                            _jsx("th", {
-                                                className: "border p-1",
-                                                children: "TOTAL"
-                                            }),
-                                            _jsx("th", {
-                                                className: "border p-1",
-                                                children: "GRADE"
-                                            })
-                                        ]
-                                    }),
-                                    _jsxs("tr", {
-                                        children: [
-                                            ...c.mid.perSub.map((p)=>_jsx("td", {
-                                                    className: "border p-1 text-center",
-                                                    children: p.mark === undefined ? "-" : p.mark
-                                                }, p.sub)),
-                                            _jsx("td", {
-                                                className: "border p-1 text-center font-semibold",
-                                                children: c.mid.total || "-"
-                                            }),
-                                            _jsx("td", {
-                                                className: "border p-1 text-center font-semibold",
-                                                children: c.mid.grade
-                                            })
-                                        ]
-                                    })
-                                ]
-                            })
-                        }),
-                        _jsx("div", {
-                            className: "text-center font-semibold mt-3 mb-1",
-                            children: "END OF TERM PERFORMANCE"
-                        }),
-                        _jsxs("table", {
-                            className: "w-full text-xs border-collapse border",
-                            children: [
-                                _jsx("thead", {
-                                    children: _jsxs("tr", {
-                                        children: [
-                                            _jsx("th", {
-                                                className: "border p-1",
-                                                children: "SUBJECT"
-                                            }),
-                                            _jsx("th", {
-                                                className: "border p-1",
-                                                children: "MARKS"
-                                            }),
-                                            _jsx("th", {
-                                                className: "border p-1",
-                                                children: "COLOUR"
-                                            }),
-                                            _jsx("th", {
-                                                className: "border p-1",
-                                                children: "COMMENT"
-                                            }),
-                                            _jsx("th", {
-                                                className: "border p-1",
-                                                children: "INITIALS"
-                                            })
-                                        ]
-                                    })
-                                }),
-                                _jsxs("tbody", {
-                                    children: [
-                                        c.end.perSub.map((p)=>_jsxs("tr", {
-                                                children: [
-                                                    _jsx("td", {
-                                                        className: "border p-1",
-                                                        children: p.sub
-                                                    }),
-                                                    _jsx("td", {
-                                                        className: "border p-1 text-center",
-                                                        children: p.mark === undefined ? "-" : p.mark
-                                                    }),
-                                                    _jsx("td", {
-                                                        className: "border p-1",
-                                                        style: p.band ? {
-                                                            backgroundColor: p.band.color,
-                                                            // Without these, browsers drop cell backgrounds when printing
-                                                            // (default "Background graphics" = off) and the colour column
-                                                            // comes out blank on paper.
-                                                            WebkitPrintColorAdjust: "exact",
-                                                            printColorAdjust: "exact"
-                                                        } : undefined
-                                                    }),
-                                                    _jsx("td", {
-                                                        className: "border p-1",
-                                                        children: p.comment
-                                                    }),
-                                                    _jsx("td", {
-                                                        className: "border p-1"
-                                                    })
-                                                ]
-                                            }, p.sub)),
-                                        _jsxs("tr", {
-                                            children: [
-                                                _jsx("td", {
-                                                    className: "border p-1 font-semibold",
-                                                    children: "TOTAL"
-                                                }),
-                                                _jsx("td", {
-                                                    className: "border p-1 text-center font-semibold",
-                                                    children: c.end.total || "-"
-                                                }),
-                                                _jsx("td", {
-                                                    className: "border p-1"
-                                                }),
-                                                _jsx("td", {
-                                                    className: "border p-1"
-                                                }),
-                                                _jsx("td", {
-                                                    className: "border p-1"
-                                                })
-                                            ]
-                                        })
-                                    ]
-                                })
-                            ]
-                        }),
-                        _jsxs("div", {
-                            className: "mt-2 text-[10px]",
-                            children: [
-                                _jsx("span", {
-                                    className: "font-semibold underline",
-                                    children: "KEY"
-                                }),
-                                ": ",
-                                NURSERY_COLOR_BANDS.map((b)=>"".concat(b.label, " - ").concat(b.color[0].toUpperCase() + b.color.slice(1))).join("    ")
-                            ]
-                        }),
-                        _jsxs("div", {
-                            className: "mt-3 text-xs space-y-1",
-                            children: [
-                                _jsx("div", {
-                                    children: "CONDUCT: __________________  HEALTH: __________________  ATTENDANCE: __________________"
-                                }),
-                                _jsx("div", {
-                                    children: "CLASS TEACHER'S REPORT: ______________________________________________________"
-                                }),
-                                _jsx("div", {
-                                    children: "NEXT TERM BEGINS ON: _______________  ENDS ON: _______________"
-                                }),
-                                _jsx("div", {
-                                    children: "HEADTEACHER'S COMMENT: ______________________________________________________"
-                                }),
-                                _jsx("div", {
-                                    children: "SIGNATURE: __________________"
-                                })
-                            ]
-                        }),
-                        school.motto && _jsxs("div", {
-                            className: "text-center italic text-xs mt-3",
-                            children: [
-                                "MOTTO: ",
-                                school.motto
-                            ]
-                        })
-                    ]
-                }, c.s.id))
-        ]
-    });
+    return <div>
+            <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <Sel label="Class" value={cls} onChange={setCls} opts={NURSERY_CLASSES} />
+                <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
+                <div>
+                    <label style={lbl}>Year</label>
+                    <input type="number" value={year} onChange={(e)=>setYear(e.target.value)} style={{ ...inp, width: 90 }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                    <label style={lbl}>Search Pupil</label>
+                    <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
+                </div>
+                <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
+            </div>
+            {cards.map((c)=><div key={c.s.id} className="print-break" style={{ marginBottom: 24, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+                    <ReportCardFrame subtitle={"".concat(cls, " \u2014 ").concat(term, " ").concat(year)}>
+                    <div style={{ fontSize: 13, marginBottom: 4 }}>
+                        <b>PUPIL'S NAME:</b> {c.s.name}&nbsp;&nbsp;&nbsp;<b>CLASS:</b> {cls}
+                    </div>
+                    <div style={{ fontSize: 13, marginBottom: 10 }}>
+                        <b>GRADE:</b> {c.end.grade}&nbsp;&nbsp;&nbsp;
+                        <b>TOTAL IN CLASS:</b> {classSize}&nbsp;&nbsp;&nbsp;
+                        <b>TERM:</b> {term}&nbsp;&nbsp;&nbsp;
+                        <b>YEAR:</b> {year}
+                    </div>
+                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 10, marginBottom: 4, fontSize: 13 }}>MID TERM PERFORMANCE</div>
+                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                        <thead>
+                            <tr style={{ background: "#1e3a6e", color: "white" }}>
+                                {NURSERY_SUBJECTS.map((sub)=><th key={sub} style={th}>{sub}</th>)}
+                                <th style={th}>TOTAL</th>
+                                <th style={th}>GRADE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                {c.mid.perSub.map((p)=><td key={p.sub} style={td}>{p.mark === undefined ? "-" : p.mark}</td>)}
+                                <td style={{ ...td, fontWeight: 700 }}>{c.mid.total || "-"}</td>
+                                <td style={{ ...td, fontWeight: 700 }}>{c.mid.grade}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 14, marginBottom: 4, fontSize: 13 }}>END OF TERM PERFORMANCE</div>
+                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                        <thead>
+                            <tr style={{ background: "#1e3a6e", color: "white" }}>
+                                <th style={{ ...th, textAlign: "left" }}>SUBJECT</th>
+                                <th style={th}>MARKS</th>
+                                <th style={th}>COLOUR</th>
+                                <th style={{ ...th, textAlign: "left" }}>COMMENT</th>
+                                <th style={th}>INITIALS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {c.end.perSub.map((p, i)=><tr key={p.sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                                    <td style={{ ...td, textAlign: "left" }}>{p.sub}</td>
+                                    <td style={td}>{p.mark === undefined ? "-" : p.mark}</td>
+                                    <td style={{
+                                        ...td,
+                                        background: p.band ? p.band.color : undefined,
+                                        // Without these, browsers drop cell backgrounds when printing
+                                        // (default "Background graphics" = off) and the colour column
+                                        // comes out blank on paper.
+                                        WebkitPrintColorAdjust: "exact",
+                                        printColorAdjust: "exact"
+                                    }}></td>
+                                    <td style={{ ...td, textAlign: "left" }}>{p.comment}</td>
+                                    <td style={td}></td>
+                                </tr>)}
+                            <tr>
+                                <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                <td style={{ ...td, fontWeight: 700 }}>{c.end.total || "-"}</td>
+                                <td style={td}></td>
+                                <td style={td}></td>
+                                <td style={td}></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style={{ marginTop: 8, fontSize: 10, color: "#374151" }}>
+                        <b style={{ textDecoration: "underline" }}>KEY</b>: {NURSERY_COLOR_BANDS.map((b)=>"".concat(b.label, " - ").concat(b.color[0].toUpperCase() + b.color.slice(1))).join("    ")}
+                    </div>
+                    <div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.9, color: "#374151" }}>
+                        <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
+                        <div>CLASS TEACHER'S REPORT: ______________________________________________________</div>
+                        <div>NEXT TERM BEGINS ON: _______________&nbsp;&nbsp;ENDS ON: _______________</div>
+                        <div>HEADTEACHER'S COMMENT: ______________________________________________________</div>
+                        <div>SIGNATURE: __________________</div>
+                    </div>
+                    </ReportCardFrame>
+                </div>)}
+        </div>;
 }
-// ─── MOCK INFO ───────────────────────────────────────────────────────────────
 const MOCK_TYPES = flattenExamOptions(MOCK_EXAM_OPTIONS);
 function MockInfo(param) {
     let { students, school, bands: defaultBands, specialBands, divisions, markEditing, role, examOptions = MOCK_EXAM_OPTIONS, classOptions = MOCK_CLASSES, examLabel = "Mock Exam", resultsLabel = "Mock", customExamName = false } = param;
@@ -11988,72 +11950,58 @@ function Slips(param) {
         subjects,
         bands
     ]);
-    return <div className="p-4">
-            <h2 className="text-xl font-bold mb-4 print:hidden">Slips</h2>
-            <div className="flex flex-wrap gap-3 mb-4 items-end print:hidden">
+    return <div>
+            <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <Sel label="Class" value={cls} onChange={setCls} opts={allClasses} />
+                <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
                 <div>
-                    <label className="block text-sm font-medium mb-1">Class</label>
-                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
-                        {allClasses.map((c)=><option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <label style={lbl}>Year</label>
+                    <input type="number" value={year} onChange={(e)=>setYear(e.target.value)} style={{ ...inp, width: 90 }} />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Term</label>
-                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
-                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
-                    </select>
+                <Sel label="Assessment" value={assessment} onChange={setAssessment} opts={MIDTERM_ASSESSMENTS} />
+                <div style={{ flex: 1, minWidth: 180 }}>
+                    <label style={lbl}>Search Pupil</label>
+                    <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Year</label>
-                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Assessment</label>
-                    <select className="border rounded px-2 py-1" value={assessment} onChange={(e)=>setAssessment(e.target.value)}>
-                        {MIDTERM_ASSESSMENTS.map((a)=><option key={a} value={a}>{a}</option>)}
-                    </select>
-                </div>
-                <div className="flex-1 min-w-[160px]">
-                    <label className="block text-sm font-medium mb-1">Search</label>
-                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
-                </div>
-                <button className="bg-blue-600 text-white rounded px-4 py-2" onClick={()=>window.print()}>Print</button>
+                <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:block">
-                {slips.map((sl)=><div key={sl.s.id} className="border-2 border-gray-300 rounded p-3 bg-white print:break-inside-avoid print:mb-4">
-                        <div className="flex items-center justify-between mb-1">
-                            <img src={RAVEN_BADGE} alt="Raven Junior School badge" className="w-10 h-10 object-contain" />
-                            <div className="text-center flex-1">
-                                <div className="font-bold text-sm">{RAVEN_SCHOOL_NAME}</div>
-                                <div className="text-[10px] italic">"{RAVEN_SCHOOL_MOTTO}"</div>
-                                <div className="text-[10px]">{assessment} Result Slip</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                {slips.map((sl)=><div key={sl.s.id} className="print-break" style={{ border: "1.5px solid #d1d5db", borderRadius: 8, padding: 10, background: "white" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+                            <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={36} height={36} style={{ width: 36, height: 36, minWidth: 36, maxWidth: 36, maxHeight: 36, objectFit: "contain", flexShrink: 0 }} />
+                            <div style={{ textAlign: "center" }}>
+                                <div style={{ fontWeight: 800, fontSize: 12, color: "#1e3a6e" }}>{RAVEN_SCHOOL_NAME}</div>
+                                <div style={{ fontSize: 9, fontStyle: "italic", color: "#374151" }}>"{RAVEN_SCHOOL_MOTTO}"</div>
+                                <div style={{ fontSize: 9, color: "#374151" }}>{assessment} Result Slip</div>
                             </div>
                         </div>
-                        <div className="text-xs mb-1"><span className="font-semibold">Name: </span>{sl.s.name}&nbsp;&nbsp;<span className="font-semibold">Class: </span>{cls}</div>
-                        <div className="text-xs mb-1"><span className="font-semibold">Term: </span>{term}&nbsp;&nbsp;<span className="font-semibold">Year: </span>{year}</div>
-                        <table className="w-full text-[10px] border-collapse border">
+                        <div style={{ fontSize: 11, marginBottom: 2 }}><b>Name:</b> {sl.s.name}&nbsp;&nbsp;<b>Class:</b> {cls}</div>
+                        <div style={{ fontSize: 11, marginBottom: 6 }}><b>Term:</b> {term}&nbsp;&nbsp;<b>Year:</b> {year}</div>
+                        <table style={{ width: "100%", fontSize: 10, borderCollapse: "collapse" }}>
                             <thead>
-                                <tr>
-                                    <th className="border p-0.5">Subject</th>
-                                    <th className="border p-0.5">Mark</th>
-                                    <th className="border p-0.5">{isNursery ? "Comment" : "Grade"}</th>
+                                <tr style={{ background: "#1e3a6e", color: "white" }}>
+                                    <th style={{ ...th, padding: "3px 4px", textAlign: "left" }}>Subject</th>
+                                    <th style={{ ...th, padding: "3px 4px" }}>Mark</th>
+                                    <th style={{ ...th, padding: "3px 4px" }}>{isNursery ? "Comment" : "Grade"}</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {sl.perSub.map((p)=><tr key={p.sub}>
-                                        <td className="border p-0.5">{p.sub}</td>
-                                        <td className="border p-0.5 text-center">{p.mark === undefined ? "-" : p.mark}</td>
-                                        <td className="border p-0.5 text-center" style={isNursery && p.band ? {
-                                            backgroundColor: p.band.color,
-                                            color: "white",
+                                {sl.perSub.map((p, i)=><tr key={p.sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                                        <td style={{ ...td, padding: "3px 4px", textAlign: "left" }}>{p.sub}</td>
+                                        <td style={{ ...td, padding: "3px 4px" }}>{p.mark === undefined ? "-" : p.mark}</td>
+                                        <td style={{
+                                            ...td,
+                                            padding: "3px 4px",
+                                            background: isNursery && p.band ? p.band.color : undefined,
+                                            color: isNursery && p.band ? "white" : undefined,
                                             WebkitPrintColorAdjust: "exact",
                                             printColorAdjust: "exact"
-                                        } : undefined}>{isNursery ? p.band ? p.band.label : "" : p.grade || "-"}</td>
+                                        }}>{isNursery ? p.band ? p.band.label : "" : p.grade || "-"}</td>
                                     </tr>)}
                                 <tr>
-                                    <td className="border p-0.5 font-semibold">TOTAL</td>
-                                    <td className="border p-0.5 text-center font-semibold">{sl.total || "-"}</td>
-                                    <td className="border p-0.5"></td>
+                                    <td style={{ ...td, padding: "3px 4px", textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                    <td style={{ ...td, padding: "3px 4px", fontWeight: 700 }}>{sl.total || "-"}</td>
+                                    <td style={{ ...td, padding: "3px 4px" }}></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -17949,183 +17897,164 @@ function ReportCards(param) {
         divisions,
         isLower
     ]);
-    return <div className="p-4">
-            <h2 className="text-xl font-bold mb-4 print:hidden">Report Cards</h2>
-            <div className="flex flex-wrap gap-3 mb-4 items-end print:hidden">
+    return <div>
+            <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <Sel label="Class" value={cls} onChange={setCls} opts={ALL_CLASSES} />
+                <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
                 <div>
-                    <label className="block text-sm font-medium mb-1">Class</label>
-                    <select className="border rounded px-2 py-1" value={cls} onChange={(e)=>setCls(e.target.value)}>
-                        {ALL_CLASSES.map((c)=><option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <label style={lbl}>Year</label>
+                    <input type="number" value={year} onChange={(e)=>setYear(e.target.value)} style={{ ...inp, width: 90 }} />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Term</label>
-                    <select className="border rounded px-2 py-1" value={term} onChange={(e)=>setTerm(e.target.value)}>
-                        {TERMS.map((t)=><option key={t} value={t}>{t}</option>)}
-                    </select>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                    <label style={lbl}>Search Pupil</label>
+                    <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Year</label>
-                    <input className="border rounded px-2 py-1 w-24" value={year} onChange={(e)=>setYear(e.target.value)} />
-                </div>
-                <div className="flex-1 min-w-[160px]">
-                    <label className="block text-sm font-medium mb-1">Search</label>
-                    <input className="border rounded px-2 py-1 w-full" placeholder="Search pupil..." value={search} onChange={(e)=>setSearch(e.target.value)} />
-                </div>
-                <button className="bg-blue-600 text-white rounded px-4 py-2" onClick={()=>window.print()}>Print</button>
+                <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
             </div>
-            {chooserApplies && doneExams.length > 1 && <div className="mb-4 border border-amber-300 bg-amber-50 rounded p-3 print:hidden">
-                    <div className="text-sm font-semibold mb-1">P7 has {doneExams.length} exams recorded for {year}. Choose the one that counts as the Term II end-of-term result:</div>
-                    <div className="flex flex-wrap gap-x-5 gap-y-1">
-                        {doneExams.map((id)=><label key={id} className="flex items-center gap-1 text-sm cursor-pointer">
+            {chooserApplies && doneExams.length > 1 && <div className="no-print" style={{ marginBottom: 16, border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8, padding: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>P7 has {doneExams.length} exams recorded for {year}. Choose the one that counts as the Term II end-of-term result:</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", columnGap: 20, rowGap: 4 }}>
+                        {doneExams.map((id)=><label key={id} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, cursor: "pointer" }}>
                                 <input type="radio" name="end-of-term-exam" checked={endExam === id} onChange={()=>chooseEndExam(id)} />
                                 {examDisplayName(id)}
                             </label>)}
                     </div>
-                    <div className="text-xs text-gray-600 mt-1">This choice is used for the End of Term Performance table below and for P7's Term II results on the Dashboard. Mid Term and BOT are not affected.</div>
+                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>This choice is used for the End of Term Performance table below and for P7's Term II results on the Dashboard. Mid Term and BOT are not affected.</div>
                 </div>}
-            {cards.map((c)=><div key={c.s.id} className="border-4 border-red-300 rounded p-4 mb-6 max-w-2xl mx-auto bg-white print:break-after-page">
-                    <div className="flex items-center justify-between">
-                        {school.logo && <img src={school.logo} alt="logo" className="w-16 h-16 object-contain" />}
-                        <div className="text-center flex-1">
-                            <div className="text-lg font-bold tracking-wide">{school.name || "SCHOOL NAME"}</div>
-                            {school.poBox && <div className="text-xs">{school.poBox}</div>}
-                            {school.tel && <div className="text-xs">Tel. {school.tel}</div>}
-                        </div>
-                        {school.logo && <img src={school.logo} alt="logo" className="w-16 h-16 object-contain" />}
+            {cards.map((c)=><div key={c.s.id} className="print-break" style={{ marginBottom: 24, maxWidth: 700, marginLeft: "auto", marginRight: "auto" }}>
+                    <ReportCardFrame subtitle={undefined}>
+                    <div style={{ fontSize: 13, marginTop: 6, marginBottom: 4 }}>
+                        <b>PUPILS NAME:</b> {c.s.name}&nbsp;&nbsp;&nbsp;<b>CLASS:</b> {cls}
                     </div>
-                    <div className="mt-3 text-sm">
-                        <div><span className="font-semibold">PUPILS NAME: </span>{c.s.name}&nbsp;&nbsp;&nbsp;<span className="font-semibold">CLASS: </span>{cls}</div>
-                        <div>
-                            <span className="font-semibold">AGG: </span>{c.end.totalAgg ?? "-"}&nbsp;&nbsp;&nbsp;
-                            <span className="font-semibold">DIV: </span>{c.end.div}&nbsp;&nbsp;&nbsp;
-                            <span className="font-semibold">TOTAL IN CLASS: </span>{classSize}&nbsp;&nbsp;&nbsp;
-                            <span className="font-semibold">TERM: </span>{term}&nbsp;&nbsp;&nbsp;
-                            <span className="font-semibold">YEAR: </span>{year}
-                        </div>
+                    <div style={{ fontSize: 13, marginBottom: 10 }}>
+                        <b>AGG:</b> {c.end.totalAgg ?? "-"}&nbsp;&nbsp;&nbsp;
+                        <b>DIV:</b> {c.end.div}&nbsp;&nbsp;&nbsp;
+                        <b>TOTAL IN CLASS:</b> {classSize}&nbsp;&nbsp;&nbsp;
+                        <b>TERM:</b> {term}&nbsp;&nbsp;&nbsp;
+                        <b>YEAR:</b> {year}
                     </div>
-                    <div className="text-center font-semibold mt-3 mb-1">MID TERM PERFORMANCE</div>
-                    <table className="w-full text-xs border-collapse border">
+                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 8, marginBottom: 4, fontSize: 13 }}>MID TERM PERFORMANCE</div>
+                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
                         <tbody>
                             {isLower ? <>
-                                    <tr>
-                                        <th className="border p-1">ENG</th>
-                                        <th className="border p-1">AGG</th>
-                                        <th className="border p-1">MATHS</th>
-                                        <th className="border p-1">AGG</th>
-                                        <th className="border p-1">LIT I</th>
-                                        <th className="border p-1">LIT II</th>
-                                        <th className="border p-1">AGG</th>
-                                        <th className="border p-1">RE</th>
-                                        <th className="border p-1">AGG</th>
-                                        <th className="border p-1">TOT MARK</th>
-                                        <th className="border p-1">TOT AGG</th>
-                                        <th className="border p-1">DIV</th>
+                                    <tr style={{ background: "#1e3a6e", color: "white" }}>
+                                        <th style={th}>ENG</th>
+                                        <th style={th}>AGG</th>
+                                        <th style={th}>MATHS</th>
+                                        <th style={th}>AGG</th>
+                                        <th style={th}>LIT I</th>
+                                        <th style={th}>LIT II</th>
+                                        <th style={th}>AGG</th>
+                                        <th style={th}>RE</th>
+                                        <th style={th}>AGG</th>
+                                        <th style={th}>TOT MARK</th>
+                                        <th style={th}>TOT AGG</th>
+                                        <th style={th}>DIV</th>
                                     </tr>
                                     <tr>
-                                        <td className="border p-1 text-center">{c.midLower.eng.mark ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.eng.agg ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.maths.mark ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.maths.agg ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.litI.mark ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.litII.mark ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.litAgg ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.re.mark ?? "-"}</td>
-                                        <td className="border p-1 text-center">{c.midLower.re.agg ?? "-"}</td>
-                                        <td className="border p-1 text-center font-semibold">{c.midLower.total || "-"}</td>
-                                        <td className="border p-1 text-center font-semibold">{c.midLower.totalAgg ?? "-"}</td>
-                                        <td className="border p-1 text-center font-semibold">{c.midLower.div}</td>
+                                        <td style={td}>{c.midLower.eng.mark ?? "-"}</td>
+                                        <td style={td}>{c.midLower.eng.agg ?? "-"}</td>
+                                        <td style={td}>{c.midLower.maths.mark ?? "-"}</td>
+                                        <td style={td}>{c.midLower.maths.agg ?? "-"}</td>
+                                        <td style={td}>{c.midLower.litI.mark ?? "-"}</td>
+                                        <td style={td}>{c.midLower.litII.mark ?? "-"}</td>
+                                        <td style={td}>{c.midLower.litAgg ?? "-"}</td>
+                                        <td style={td}>{c.midLower.re.mark ?? "-"}</td>
+                                        <td style={td}>{c.midLower.re.agg ?? "-"}</td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.midLower.total || "-"}</td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.midLower.totalAgg ?? "-"}</td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.midLower.div}</td>
                                     </tr>
                                 </> : <>
-                                    <tr>
+                                    <tr style={{ background: "#1e3a6e", color: "white" }}>
                                         {UPPER_MIDTERM_ORDER.map((sub)=>{
                                             return <React.Fragment key={sub}>
-                                                    <th className="border p-1">{upperSubjectLabel(sub)}</th>
-                                                    <th className="border p-1">AGG</th>
+                                                    <th style={th}>{upperSubjectLabel(sub)}</th>
+                                                    <th style={th}>AGG</th>
                                                 </React.Fragment>;
                                         })}
-                                        <th className="border p-1">TOT MARK</th>
-                                        <th className="border p-1">TOT AGG</th>
-                                        <th className="border p-1">DIV</th>
+                                        <th style={th}>TOT MARK</th>
+                                        <th style={th}>TOT AGG</th>
+                                        <th style={th}>DIV</th>
                                     </tr>
                                     <tr>
                                         {UPPER_MIDTERM_ORDER.map((sub)=>{
                                             const p = c.mid.perSub.find((x)=>x.sub === sub);
                                             return <React.Fragment key={sub}>
-                                                    <td className="border p-1 text-center">{p?.mark === undefined ? "-" : p.mark}</td>
-                                                    <td className="border p-1 text-center">{p?.agg ?? "-"}</td>
+                                                    <td style={td}>{p?.mark === undefined ? "-" : p.mark}</td>
+                                                    <td style={td}>{p?.agg ?? "-"}</td>
                                                 </React.Fragment>;
                                         })}
-                                        <td className="border p-1 text-center font-semibold">{c.mid.total || "-"}</td>
-                                        <td className="border p-1 text-center font-semibold">{c.mid.totalAgg ?? "-"}</td>
-                                        <td className="border p-1 text-center font-semibold">{c.mid.div}</td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.mid.total || "-"}</td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.mid.totalAgg ?? "-"}</td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.mid.div}</td>
                                     </tr>
                                 </>}
                         </tbody>
                     </table>
-                    <div className="text-center font-semibold mt-3 mb-1">END OF TERM PERFORMANCE{endExam !== END_EXAM_MARK_ENTRY ? ` (${examDisplayName(endExam)})` : ""}</div>
-                    <table className="w-full text-xs border-collapse border">
+                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 14, marginBottom: 4, fontSize: 13 }}>END OF TERM PERFORMANCE{endExam !== END_EXAM_MARK_ENTRY ? ` (${examDisplayName(endExam)})` : ""}</div>
+                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
                         <thead>
-                            <tr>
-                                <th className="border p-1">SUBJECT</th>
-                                <th className="border p-1">FULL MARK</th>
-                                <th className="border p-1">SCORE</th>
-                                <th className="border p-1">AGG</th>
-                                <th className="border p-1">{isLower ? "COMMENT" : "COMMENTS"}</th>
-                                <th className="border p-1">INITIALS</th>
+                            <tr style={{ background: "#1e3a6e", color: "white" }}>
+                                <th style={{ ...th, textAlign: "left" }}>SUBJECT</th>
+                                <th style={th}>FULL MARK</th>
+                                <th style={th}>SCORE</th>
+                                <th style={th}>AGG</th>
+                                <th style={{ ...th, textAlign: "left" }}>{isLower ? "COMMENT" : "COMMENTS"}</th>
+                                <th style={th}>INITIALS</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLower ? <>
-                                    {LOWER_MIDTERM_ORDER.map((sub)=>{
+                                    {LOWER_MIDTERM_ORDER.map((sub, i)=>{
                                         const p = c.end.perSub.find((x)=>x.sub === sub);
-                                        return <tr key={sub}>
-                                                <td className="border p-1">{sub}</td>
-                                                <td className="border p-1 text-center">{lowerSubjectMax(sub)}</td>
-                                                <td className="border p-1 text-center">{p?.mark === undefined ? "-" : p.mark}</td>
-                                                <td className="border p-1 text-center">{p?.agg ?? "-"}</td>
-                                                <td className="border p-1"></td>
-                                                <td className="border p-1"></td>
+                                        return <tr key={sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                                                <td style={{ ...td, textAlign: "left" }}>{sub}</td>
+                                                <td style={td}>{lowerSubjectMax(sub)}</td>
+                                                <td style={td}>{p?.mark === undefined ? "-" : p.mark}</td>
+                                                <td style={td}>{p?.agg ?? "-"}</td>
+                                                <td style={{ ...td, textAlign: "left" }}></td>
+                                                <td style={td}></td>
                                             </tr>;
                                     })}
                                     <tr>
-                                        <td className="border p-1 font-semibold">TOTAL</td>
-                                        <td className="border p-1"></td>
-                                        <td className="border p-1 text-center font-semibold">{c.end.total || "-"}</td>
-                                        <td className="border p-1" colSpan={3}></td>
+                                        <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                        <td style={td}></td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.end.total || "-"}</td>
+                                        <td style={td} colSpan={3}></td>
                                     </tr>
                                 </> : <>
-                                    {UPPER_MIDTERM_ORDER.map((sub)=>{
+                                    {UPPER_MIDTERM_ORDER.map((sub, i)=>{
                                         const p = c.end.perSub.find((x)=>x.sub === sub);
-                                        return <tr key={sub}>
-                                                <td className="border p-1">{upperSubjectLabel(sub)}</td>
-                                                <td className="border p-1 text-center">100</td>
-                                                <td className="border p-1 text-center">{p?.mark === undefined ? "-" : p.mark}</td>
-                                                <td className="border p-1 text-center">{p?.agg ?? "-"}</td>
-                                                <td className="border p-1"></td>
-                                                <td className="border p-1"></td>
+                                        return <tr key={sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                                                <td style={{ ...td, textAlign: "left" }}>{upperSubjectLabel(sub)}</td>
+                                                <td style={td}>100</td>
+                                                <td style={td}>{p?.mark === undefined ? "-" : p.mark}</td>
+                                                <td style={td}>{p?.agg ?? "-"}</td>
+                                                <td style={{ ...td, textAlign: "left" }}></td>
+                                                <td style={td}></td>
                                             </tr>;
                                     })}
                                     <tr>
-                                        <td className="border p-1 font-semibold">TOTAL</td>
-                                        <td className="border p-1"></td>
-                                        <td className="border p-1 text-center font-semibold">{c.end.total || "-"}</td>
-                                        <td className="border p-1" colSpan={3}></td>
+                                        <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                        <td style={td}></td>
+                                        <td style={{ ...td, fontWeight: 700 }}>{c.end.total || "-"}</td>
+                                        <td style={td} colSpan={3}></td>
                                     </tr>
                                 </>}
                         </tbody>
                     </table>
-                    <div className="mt-3 text-xs space-y-1">
+                    <div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.9, color: "#374151" }}>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         <div>CLASS TEACHER'S REPORT: ______________________________________________________&nbsp;&nbsp;Sign: __________</div>
                         <div>NEXT TERM BEGINS ON: _______________&nbsp;&nbsp;ENDS ON: _______________</div>
                         <div>HEADTEACHER'S COMMENT: ______________________________________________________</div>
                         <div>SIGNATURE: __________________</div>
                     </div>
-                    <div className="mt-2 text-[10px]">
-                        <span className="font-semibold underline">SCHOOL REQUIREMENTS</span>: 1 ream (photocopying), 1 bar of soap (white star), 2kg of sugar, 2 rolls of toilet paper, 1 broom, 1 hard brush and 1 bag of cement per parent.
+                    <div style={{ marginTop: 8, fontSize: 10, color: "#374151" }}>
+                        <b style={{ textDecoration: "underline" }}>SCHOOL REQUIREMENTS</b>: 1 ream (photocopying), 1 bar of soap (white star), 2kg of sugar, 2 rolls of toilet paper, 1 broom, 1 hard brush and 1 bag of cement per parent.
                     </div>
-                    {school.motto && <div className="text-center italic text-xs mt-3">MOTTO: {school.motto}</div>}
+                    </ReportCardFrame>
                 </div>)}
         </div>;
 }
