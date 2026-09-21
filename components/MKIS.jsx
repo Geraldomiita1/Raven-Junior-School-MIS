@@ -802,15 +802,163 @@ function ExamHeading(param) {
         </div>;
 }
 // ── Shared report-card frame ──────────────────────────────────────────────
-// Matches the physical Raven report card templates exactly: a bordered card
-// with the badge repeated on BOTH sides of the centred title (not just one,
-// like ExamHeading above -- that's for printable sheets/slips, this is
-// specifically for report cards). Used by every report card -- Nursery and
-// Primary alike -- so there's one place to fix the look, not one per class
-// band. The badge size is capped with BOTH the width/height HTML attributes
-// and matching inline style, deliberately redundant: a single className-only
-// size constraint is what let the logo render at its full native resolution
-// (thousands of pixels wide) instead of a small badge before this fix.
+// Every report card -- Nursery and Primary alike -- is drawn on the blue
+// "REPORT CARD" template: a sky-blue border around a white panel, a big
+// "REPORT CARD" title (with the lightbulb beside it), decorative shapes
+// (atom, molecule, gear, clock + books, set-square, striped bars, bubbles),
+// light-blue rounded tables with blue header rows, and thin light-blue rules
+// under the pupil-detail lines. The school badge/name/contacts, the tables and
+// every field on the card are unchanged -- only the look is the template's.
+// Used by every report card so there's one place to fix the look, not one per
+// class band. The badge size is capped with BOTH the width/height HTML
+// attributes and matching inline style, deliberately redundant: a single
+// className-only size constraint is what let the logo render at its full
+// native resolution (thousands of pixels wide) instead of a small badge.
+const RC_BLUE = "#6da5d1";
+const RC_BLUE_DARK = "#4a8bc2";
+const RC_LIGHT = "#e1edf9";
+const RC_LIGHTER = "#eef5fc";
+const RC_LINE = "#cfe0f2";
+const RC_PERI_1 = "#aab1f3";
+const RC_PERI_2 = "#8b92e7";
+const RC_SANS = "'Trebuchet MS','Segoe UI',Arial,sans-serif";
+// Table cell styles used ONLY on report cards (the shared th/td above are used
+// by dozens of other tables, so they are left alone). Background colours come
+// from REPORT_CARD_CSS (.rc-table) so alternate rows can be tinted; an inline
+// background on a single cell (e.g. the Nursery colour column) still wins.
+const rcTh = {
+    padding: "7px 4px",
+    fontWeight: 700,
+    textAlign: "center",
+    fontSize: 11,
+    whiteSpace: "nowrap",
+    border: "1px solid #ffffff",
+    background: RC_BLUE,
+    color: "#ffffff"
+};
+const rcTd = {
+    padding: "6px 4px",
+    textAlign: "center",
+    fontSize: 12,
+    border: "1px solid #ffffff",
+    color: "#1f2937"
+};
+// Pupil-detail lines (name / class / AGG / DIV ...) get the template's thin
+// light-blue rule underneath, like its FULL NAME / AGE / CLASS lines.
+const RC_INFO_LINE = {
+    fontSize: 13,
+    paddingBottom: 5,
+    marginBottom: 8,
+    borderBottom: "1px solid ".concat(RC_LINE),
+    color: "#111827"
+};
+// Scoped CSS for the report-card template. Print colours are forced on so the
+// blue frame, light-blue tables and decorations survive "Background graphics"
+// being off, and each pupil's card fills one A4 page (never split across two).
+const REPORT_CARD_CSS = "\n.rc-frame, .rc-frame * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n.rc-table-wrap { border-radius: 12px; overflow: hidden; background: ".concat(RC_LIGHT, "; }\n.rc-table td { background: ").concat(RC_LIGHT, "; }\n.rc-table tbody tr:nth-child(even) td { background: ").concat(RC_LIGHTER, "; }\n@media print {\n  .rc-sheet { break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always; margin: 0 auto !important; }\n  .rc-sheet:last-child { break-after: auto; page-break-after: auto; }\n  .rc-sheet .rc-frame { min-height: 272mm; }\n}\n");
+// Rounded light-blue table shell shared by every report-card table.
+function RCTable(param) {
+    let { children } = param;
+    return <div className="rc-table-wrap">
+            <table className="rc-table" style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>{children}</table>
+        </div>;
+}
+// Section heading ("MID TERM PERFORMANCE" ...) with the template's thin
+// light-blue rules either side.
+function RCHeading(param) {
+    let { children } = param;
+    return <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 6px" }}>
+            <div style={{ flex: 1, height: 1, background: RC_LINE }} />
+            <div style={{ fontWeight: 800, fontSize: 13, color: RC_BLUE_DARK, letterSpacing: 0.5, textAlign: "center" }}>{children}</div>
+            <div style={{ flex: 1, height: 1, background: RC_LINE }} />
+        </div>;
+}
+// The template's illustrations, drawn as inline SVG/CSS (no image files) and
+// pinned to the frame's corners and edges. They sit behind the card's text.
+function RCDecorations() {
+    const abs = { position: "absolute", zIndex: 1, pointerEvents: "none" };
+    const bubble = (extra)=>({
+            ...abs,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, ".concat(RC_PERI_1, ", ").concat(RC_PERI_2, ")"),
+            ...extra
+        });
+    const stripes = (
+        <>
+            {Array.from({ length: 10 }).map((_, i)=><rect key={i} x="1" y={i * 20 + 6} width="20" height="7" rx="1.5" fill="#8f96e8" transform={"rotate(60 11 ".concat(i * 20 + 9.5, ")")} />)}
+        </>
+    );
+    return <>
+            {/* bubbles */}
+            <div style={bubble({ top: -46, left: -46, width: 124, height: 124 })} />
+            <div style={bubble({ top: -22, right: 120, width: 50, height: 50, background: "linear-gradient(135deg, #b9aaf1, #9a8fe6)" })} />
+            <div style={bubble({ top: "57%", left: -46, width: 92, height: 92 })} />
+            <div style={bubble({ top: "34%", right: -48, width: 96, height: 96 })} />
+            {/* atom + molecule, top right */}
+            <svg width="120" height="150" viewBox="0 0 120 150" style={{ ...abs, top: 4, right: -6 }}>
+                <g fill="none" stroke="#dbe8f6" strokeWidth="2">
+                    <ellipse cx="66" cy="40" rx="44" ry="14" transform="rotate(-25 66 40)" />
+                    <ellipse cx="66" cy="40" rx="44" ry="14" transform="rotate(35 66 40)" />
+                    <ellipse cx="66" cy="40" rx="44" ry="14" transform="rotate(95 66 40)" />
+                </g>
+                <circle cx="82" cy="24" r="14" fill="#ef5a22" />
+                <circle cx="77" cy="19" r="4" fill="#ffa070" opacity="0.85" />
+                <line x1="30" y1="112" x2="64" y2="92" stroke="#8a97a6" strokeWidth="3" />
+                <line x1="30" y1="112" x2="90" y2="122" stroke="#ef5a3c" strokeWidth="3" />
+                <circle cx="30" cy="112" r="13" fill="#3d1751" />
+                <circle cx="64" cy="92" r="11" fill="#0f9d3a" />
+                <circle cx="90" cy="122" r="15" fill="#f59e0b" />
+                <circle cx="26" cy="108" r="3.5" fill="#fff" opacity="0.35" />
+                <circle cx="61" cy="88" r="3" fill="#fff" opacity="0.4" />
+                <circle cx="85" cy="117" r="4" fill="#fff" opacity="0.4" />
+            </svg>
+            {/* striped bars */}
+            <svg width="22" height="200" viewBox="0 0 22 200" style={{ ...abs, left: 32, top: 170 }}>{stripes}</svg>
+            <svg width="22" height="200" viewBox="0 0 22 200" style={{ ...abs, right: 32, bottom: 170 }}>{stripes}</svg>
+            {/* gear */}
+            <svg width="76" height="76" viewBox="-38 -38 76 76" style={{ ...abs, right: -14, top: "50%" }}>
+                <g fill="#0d9a3f">
+                    <circle r="24" />
+                    {[0, 45, 90, 135].map((a)=><rect key={a} x="-6" y="-33" width="12" height="66" rx="2" transform={"rotate(".concat(a, ")")} />)}
+                </g>
+                <circle r="10" fill="#ffffff" />
+            </svg>
+            {/* alarm clock on a stack of books, bottom left */}
+            <svg width="112" height="119" viewBox="0 0 132 140" style={{ ...abs, left: 6, bottom: 4 }}>
+                <rect x="6" y="108" width="122" height="24" rx="5" fill="#fbf3dc" stroke="#1f4d4a" strokeWidth="3" />
+                <rect x="6" y="108" width="20" height="24" rx="5" fill="#1f4d4a" />
+                <path d="M32 116 H120 M32 124 H120" stroke="#d9cfae" strokeWidth="2" />
+                <rect x="36" y="130" width="11" height="10" fill="#f59e0b" />
+                <rect x="14" y="88" width="104" height="20" rx="4" fill="#f3c531" stroke="#1f4d4a" strokeWidth="3" />
+                <rect x="14" y="88" width="14" height="20" rx="4" fill="#1f4d4a" />
+                <rect x="24" y="106" width="10" height="14" fill="#d94b3d" />
+                <circle cx="22" cy="24" r="10" fill="#f5c518" stroke="#d9a406" strokeWidth="2" />
+                <circle cx="70" cy="24" r="10" fill="#f5c518" stroke="#d9a406" strokeWidth="2" />
+                <line x1="30" y1="86" x2="24" y2="94" stroke="#d9a406" strokeWidth="4" strokeLinecap="round" />
+                <line x1="62" y1="86" x2="68" y2="94" stroke="#d9a406" strokeWidth="4" strokeLinecap="round" />
+                <circle cx="46" cy="56" r="32" fill="#f5c518" stroke="#d9a406" strokeWidth="2.5" />
+                <circle cx="46" cy="56" r="25" fill="#fdeee4" />
+                {Array.from({ length: 12 }).map((_, i)=>{
+                    const ang = i * 30 * Math.PI / 180;
+                    return <circle key={i} cx={46 + 20 * Math.sin(ang)} cy={56 - 20 * Math.cos(ang)} r="1.9" fill="#e11d48" />;
+                })}
+                <line x1="46" y1="56" x2="46" y2="38" stroke="#333" strokeWidth="2.4" strokeLinecap="round" />
+                <line x1="46" y1="56" x2="59" y2="60" stroke="#333" strokeWidth="2.4" strokeLinecap="round" />
+                <circle cx="46" cy="56" r="3" fill="#e11d48" />
+            </svg>
+            {/* set-square + small molecule, bottom right */}
+            <svg width="118" height="108" viewBox="0 0 118 108" style={{ ...abs, right: 0, bottom: 0 }}>
+                <circle cx="98" cy="102" r="42" fill="#9aa1ea" />
+                <polygon points="6,98 112,46 112,98" fill="#f6d9a8" stroke="#e3a13d" strokeWidth="3" strokeLinejoin="round" />
+                <polygon points="34,90 100,58 100,90" fill="#fdf3df" />
+                <line x1="86" y1="24" x2="98" y2="12" stroke="#8a97a6" strokeWidth="2" />
+                <line x1="86" y1="24" x2="106" y2="32" stroke="#ef5a3c" strokeWidth="2" />
+                <circle cx="86" cy="24" r="8" fill="#3d1751" />
+                <circle cx="98" cy="11" r="6" fill="#0f9d3a" />
+                <circle cx="107" cy="32" r="9" fill="#f59e0b" />
+            </svg>
+        </>;
+}
 function ReportCardFrame(param) {
     let { children, subtitle, badgeSize = 52 } = param;
     const badgeStyle = {
@@ -822,22 +970,30 @@ function ReportCardFrame(param) {
         objectFit: "contain",
         flexShrink: 0
     };
-    return <div style={{
-        border: "3px double #1e3a6e",
-        borderRadius: 10,
-        padding: "14px 18px",
-        background: "white"
+    const inset = 24; // thickness of the blue border
+    return <div className="rc-frame" style={{
+        position: "relative",
+        overflow: "hidden",
+        background: RC_BLUE,
+        padding: inset,
+        borderRadius: 4,
+        display: "flex",
+        flexDirection: "column"
     }}>
-            <div style={{
+            <div style={{ position: "absolute", top: inset, left: inset, right: inset, bottom: inset, background: "white" }} />
+            <RCDecorations />
+            <div style={{ position: "relative", zIndex: 2, padding: "14px 36px 0", flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 12,
+        padding: "0 26px",
         marginBottom: 4
     }}>
-                <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={badgeSize} height={badgeSize} style={badgeStyle} />
-                <div style={{ textAlign: "center" }}>
-                    <div style={{
+                    <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={badgeSize} height={badgeSize} style={badgeStyle} />
+                    <div style={{ textAlign: "center" }}>
+                        <div style={{
         fontWeight: 900,
         fontSize: 16,
         color: "#1e3a6e",
@@ -845,30 +1001,57 @@ function ReportCardFrame(param) {
         letterSpacing: 0.5,
         fontFamily: RAVEN_HEADING_FONT
     }}>{RAVEN_SCHOOL_NAME}</div>
-                    <div style={{
+                        <div style={{
         fontSize: 10,
         color: "#374151",
         marginTop: 1,
         fontFamily: RAVEN_HEADING_FONT
     }}>P.O. Box 731, Tororo &nbsp;|&nbsp; 📞 +256776745781 / +256789113131</div>
+                    </div>
+                    <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={badgeSize} height={badgeSize} style={badgeStyle} />
                 </div>
-                <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={badgeSize} height={badgeSize} style={badgeStyle} />
-            </div>
-            {subtitle ? <div style={{
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 6 }}>
+                    <svg width="34" height="46" viewBox="0 0 34 46" style={{ transform: "rotate(-12deg)", flexShrink: 0 }}>
+                        <path d="M17 2 C8 2 2 9 2 17 C2 23 5 26 8 30 C10 32.5 10 34 10 36 L24 36 C24 34 24 32.5 26 30 C29 26 32 23 32 17 C32 9 26 2 17 2 Z" fill="#f6a52b" />
+                        <ellipse cx="11" cy="12" rx="4" ry="6" fill="#ffd27a" opacity="0.75" transform="rotate(20 11 12)" />
+                        <rect x="10" y="36" width="14" height="4" rx="1.5" fill="#555" />
+                        <rect x="12" y="40" width="10" height="4" rx="1.5" fill="#3a3a3a" />
+                    </svg>
+                    <div style={{
+        fontFamily: RC_SANS,
+        fontWeight: 800,
+        fontSize: 40,
+        lineHeight: 1,
+        letterSpacing: 0.5,
+        color: RC_BLUE
+    }}>REPORT CARD</div>
+                    <span style={{ width: 14, height: 14, borderRadius: "50%", background: "#ffe100", alignSelf: "flex-start", flexShrink: 0 }} />
+                </div>
+                {subtitle ? <div style={{
+        fontFamily: RC_SANS,
         fontWeight: 800,
         fontSize: 13,
-        color: "#1e3a6e",
+        color: "#111827",
         textAlign: "center",
-        marginBottom: 8
+        textTransform: "uppercase",
+        letterSpacing: 0.4,
+        marginTop: 8
     }}>{subtitle}</div> : null}
-            {children}
-            <div style={{
+                <div style={{ height: 1, background: RC_LINE, margin: "12px 0 10px" }} />
+                {children}
+                <div style={{
+        minHeight: 78,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         textAlign: "center",
         fontSize: 11,
         fontStyle: "italic",
         color: "#374151",
-        marginTop: 10
+        marginTop: "auto",
+        paddingTop: 6
     }}>MOTTO: {RAVEN_SCHOOL_MOTTO}</div>
+            </div>
         </div>;
 }
 // Exam types the Special Grading Scale can be scoped to. A class's special
@@ -9952,6 +10135,7 @@ function NurseryReportCard(param) {
         tk
     ]);
     return <div>
+            <style>{REPORT_CARD_CSS}</style>
             <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
                 <Sel label="Class" value={cls} onChange={setCls} opts={NURSERY_CLASSES} />
                 <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
@@ -9965,51 +10149,51 @@ function NurseryReportCard(param) {
                 </div>
                 <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
             </div>
-            {cards.map((c)=><div key={c.s.id} className="print-break" style={{ marginBottom: 24, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+            {cards.map((c)=><div key={c.s.id} className="print-break rc-sheet" style={{ marginBottom: 24, maxWidth: 700, marginLeft: "auto", marginRight: "auto" }}>
                     <ReportCardFrame subtitle={"".concat(cls, " \u2014 ").concat(term, " ").concat(year)}>
-                    <div style={{ fontSize: 13, marginBottom: 4 }}>
+                    <div style={{ ...RC_INFO_LINE, marginBottom: 6 }}>
                         <b>PUPIL'S NAME:</b> {c.s.name}&nbsp;&nbsp;&nbsp;<b>CLASS:</b> {cls}
                     </div>
-                    <div style={{ fontSize: 13, marginBottom: 10 }}>
+                    <div style={RC_INFO_LINE}>
                         <b>GRADE:</b> {c.end.grade}&nbsp;&nbsp;&nbsp;
                         <b>TOTAL IN CLASS:</b> {classSize}&nbsp;&nbsp;&nbsp;
                         <b>TERM:</b> {term}&nbsp;&nbsp;&nbsp;
                         <b>YEAR:</b> {year}
                     </div>
-                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 10, marginBottom: 4, fontSize: 13 }}>MID TERM PERFORMANCE</div>
-                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                    <RCHeading>MID TERM PERFORMANCE</RCHeading>
+                    <RCTable>
                         <thead>
-                            <tr style={{ background: "#1e3a6e", color: "white" }}>
-                                {NURSERY_SUBJECTS.map((sub)=><th key={sub} style={th}>{sub}</th>)}
-                                <th style={th}>TOTAL</th>
-                                <th style={th}>GRADE</th>
+                            <tr>
+                                {NURSERY_SUBJECTS.map((sub)=><th key={sub} style={rcTh}>{sub}</th>)}
+                                <th style={rcTh}>TOTAL</th>
+                                <th style={rcTh}>GRADE</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                {c.mid.perSub.map((p)=><td key={p.sub} style={td}>{p.mark === undefined ? "-" : p.mark}</td>)}
-                                <td style={{ ...td, fontWeight: 700 }}>{c.mid.total || "-"}</td>
-                                <td style={{ ...td, fontWeight: 700 }}>{c.mid.grade}</td>
+                                {c.mid.perSub.map((p)=><td key={p.sub} style={rcTd}>{p.mark === undefined ? "-" : p.mark}</td>)}
+                                <td style={{ ...rcTd, fontWeight: 700 }}>{c.mid.total || "-"}</td>
+                                <td style={{ ...rcTd, fontWeight: 700 }}>{c.mid.grade}</td>
                             </tr>
                         </tbody>
-                    </table>
-                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 14, marginBottom: 4, fontSize: 13 }}>END OF TERM PERFORMANCE</div>
-                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                    </RCTable>
+                    <RCHeading>END OF TERM PERFORMANCE</RCHeading>
+                    <RCTable>
                         <thead>
-                            <tr style={{ background: "#1e3a6e", color: "white" }}>
-                                <th style={{ ...th, textAlign: "left" }}>SUBJECT</th>
-                                <th style={th}>MARKS</th>
-                                <th style={th}>COLOUR</th>
-                                <th style={{ ...th, textAlign: "left" }}>COMMENT</th>
-                                <th style={th}>INITIALS</th>
+                            <tr>
+                                <th style={{ ...rcTh, textAlign: "left" }}>SUBJECT</th>
+                                <th style={rcTh}>MARKS</th>
+                                <th style={rcTh}>COLOUR</th>
+                                <th style={{ ...rcTh, textAlign: "left" }}>COMMENT</th>
+                                <th style={rcTh}>INITIALS</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {c.end.perSub.map((p, i)=><tr key={p.sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
-                                    <td style={{ ...td, textAlign: "left" }}>{p.sub}</td>
-                                    <td style={td}>{p.mark === undefined ? "-" : p.mark}</td>
+                            {c.end.perSub.map((p, i)=><tr key={p.sub}>
+                                    <td style={{ ...rcTd, textAlign: "left" }}>{p.sub}</td>
+                                    <td style={rcTd}>{p.mark === undefined ? "-" : p.mark}</td>
                                     <td style={{
-                                        ...td,
+                                        ...rcTd,
                                         background: p.band ? p.band.color : undefined,
                                         // Without these, browsers drop cell backgrounds when printing
                                         // (default "Background graphics" = off) and the colour column
@@ -10017,22 +10201,22 @@ function NurseryReportCard(param) {
                                         WebkitPrintColorAdjust: "exact",
                                         printColorAdjust: "exact"
                                     }}></td>
-                                    <td style={{ ...td, textAlign: "left" }}>{p.comment}</td>
-                                    <td style={td}></td>
+                                    <td style={{ ...rcTd, textAlign: "left" }}>{p.comment}</td>
+                                    <td style={rcTd}></td>
                                 </tr>)}
                             <tr>
-                                <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
-                                <td style={{ ...td, fontWeight: 700 }}>{c.end.total || "-"}</td>
-                                <td style={td}></td>
-                                <td style={td}></td>
-                                <td style={td}></td>
+                                <td style={{ ...rcTd, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                <td style={{ ...rcTd, fontWeight: 700 }}>{c.end.total || "-"}</td>
+                                <td style={rcTd}></td>
+                                <td style={rcTd}></td>
+                                <td style={rcTd}></td>
                             </tr>
                         </tbody>
-                    </table>
+                    </RCTable>
                     <div style={{ marginTop: 8, fontSize: 10, color: "#374151" }}>
                         <b style={{ textDecoration: "underline" }}>KEY</b>: {NURSERY_COLOR_BANDS.map((b)=>"".concat(b.label, " - ").concat(b.color[0].toUpperCase() + b.color.slice(1))).join("    ")}
                     </div>
-                    <div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.9, color: "#374151" }}>
+                    <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         <div>CLASS TEACHER'S REPORT: ______________________________________________________</div>
                         <div>NEXT TERM BEGINS ON: _______________&nbsp;&nbsp;ENDS ON: _______________</div>
@@ -17898,6 +18082,7 @@ function ReportCards(param) {
         isLower
     ]);
     return <div>
+            <style>{REPORT_CARD_CSS}</style>
             <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
                 <Sel label="Class" value={cls} onChange={setCls} opts={ALL_CLASSES} />
                 <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
@@ -17921,132 +18106,132 @@ function ReportCards(param) {
                     </div>
                     <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>This choice is used for the End of Term Performance table below and for P7's Term II results on the Dashboard. Mid Term and BOT are not affected.</div>
                 </div>}
-            {cards.map((c)=><div key={c.s.id} className="print-break" style={{ marginBottom: 24, maxWidth: 700, marginLeft: "auto", marginRight: "auto" }}>
+            {cards.map((c)=><div key={c.s.id} className="print-break rc-sheet" style={{ marginBottom: 24, maxWidth: 700, marginLeft: "auto", marginRight: "auto" }}>
                     <ReportCardFrame subtitle={undefined}>
-                    <div style={{ fontSize: 13, marginTop: 6, marginBottom: 4 }}>
+                    <div style={{ ...RC_INFO_LINE, marginBottom: 6 }}>
                         <b>PUPILS NAME:</b> {c.s.name}&nbsp;&nbsp;&nbsp;<b>CLASS:</b> {cls}
                     </div>
-                    <div style={{ fontSize: 13, marginBottom: 10 }}>
+                    <div style={RC_INFO_LINE}>
                         <b>AGG:</b> {c.end.totalAgg ?? "-"}&nbsp;&nbsp;&nbsp;
                         <b>DIV:</b> {c.end.div}&nbsp;&nbsp;&nbsp;
                         <b>TOTAL IN CLASS:</b> {classSize}&nbsp;&nbsp;&nbsp;
                         <b>TERM:</b> {term}&nbsp;&nbsp;&nbsp;
                         <b>YEAR:</b> {year}
                     </div>
-                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 8, marginBottom: 4, fontSize: 13 }}>MID TERM PERFORMANCE</div>
-                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                    <RCHeading>MID TERM PERFORMANCE</RCHeading>
+                    <RCTable>
                         <tbody>
                             {isLower ? <>
-                                    <tr style={{ background: "#1e3a6e", color: "white" }}>
-                                        <th style={th}>ENG</th>
-                                        <th style={th}>AGG</th>
-                                        <th style={th}>MATHS</th>
-                                        <th style={th}>AGG</th>
-                                        <th style={th}>LIT I</th>
-                                        <th style={th}>LIT II</th>
-                                        <th style={th}>AGG</th>
-                                        <th style={th}>RE</th>
-                                        <th style={th}>AGG</th>
-                                        <th style={th}>TOT MARK</th>
-                                        <th style={th}>TOT AGG</th>
-                                        <th style={th}>DIV</th>
+                                    <tr>
+                                        <th style={rcTh}>ENG</th>
+                                        <th style={rcTh}>AGG</th>
+                                        <th style={rcTh}>MATHS</th>
+                                        <th style={rcTh}>AGG</th>
+                                        <th style={rcTh}>LIT I</th>
+                                        <th style={rcTh}>LIT II</th>
+                                        <th style={rcTh}>AGG</th>
+                                        <th style={rcTh}>RE</th>
+                                        <th style={rcTh}>AGG</th>
+                                        <th style={rcTh}>TOT MARK</th>
+                                        <th style={rcTh}>TOT AGG</th>
+                                        <th style={rcTh}>DIV</th>
                                     </tr>
                                     <tr>
-                                        <td style={td}>{c.midLower.eng.mark ?? "-"}</td>
-                                        <td style={td}>{c.midLower.eng.agg ?? "-"}</td>
-                                        <td style={td}>{c.midLower.maths.mark ?? "-"}</td>
-                                        <td style={td}>{c.midLower.maths.agg ?? "-"}</td>
-                                        <td style={td}>{c.midLower.litI.mark ?? "-"}</td>
-                                        <td style={td}>{c.midLower.litII.mark ?? "-"}</td>
-                                        <td style={td}>{c.midLower.litAgg ?? "-"}</td>
-                                        <td style={td}>{c.midLower.re.mark ?? "-"}</td>
-                                        <td style={td}>{c.midLower.re.agg ?? "-"}</td>
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.midLower.total || "-"}</td>
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.midLower.totalAgg ?? "-"}</td>
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.midLower.div}</td>
+                                        <td style={rcTd}>{c.midLower.eng.mark ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.eng.agg ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.maths.mark ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.maths.agg ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.litI.mark ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.litII.mark ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.litAgg ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.re.mark ?? "-"}</td>
+                                        <td style={rcTd}>{c.midLower.re.agg ?? "-"}</td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.midLower.total || "-"}</td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.midLower.totalAgg ?? "-"}</td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.midLower.div}</td>
                                     </tr>
                                 </> : <>
-                                    <tr style={{ background: "#1e3a6e", color: "white" }}>
+                                    <tr>
                                         {UPPER_MIDTERM_ORDER.map((sub)=>{
                                             return <React.Fragment key={sub}>
-                                                    <th style={th}>{upperSubjectLabel(sub)}</th>
-                                                    <th style={th}>AGG</th>
+                                                    <th style={rcTh}>{upperSubjectLabel(sub)}</th>
+                                                    <th style={rcTh}>AGG</th>
                                                 </React.Fragment>;
                                         })}
-                                        <th style={th}>TOT MARK</th>
-                                        <th style={th}>TOT AGG</th>
-                                        <th style={th}>DIV</th>
+                                        <th style={rcTh}>TOT MARK</th>
+                                        <th style={rcTh}>TOT AGG</th>
+                                        <th style={rcTh}>DIV</th>
                                     </tr>
                                     <tr>
                                         {UPPER_MIDTERM_ORDER.map((sub)=>{
                                             const p = c.mid.perSub.find((x)=>x.sub === sub);
                                             return <React.Fragment key={sub}>
-                                                    <td style={td}>{p?.mark === undefined ? "-" : p.mark}</td>
-                                                    <td style={td}>{p?.agg ?? "-"}</td>
+                                                    <td style={rcTd}>{p?.mark === undefined ? "-" : p.mark}</td>
+                                                    <td style={rcTd}>{p?.agg ?? "-"}</td>
                                                 </React.Fragment>;
                                         })}
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.mid.total || "-"}</td>
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.mid.totalAgg ?? "-"}</td>
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.mid.div}</td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.mid.total || "-"}</td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.mid.totalAgg ?? "-"}</td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.mid.div}</td>
                                     </tr>
                                 </>}
                         </tbody>
-                    </table>
-                    <div style={{ textAlign: "center", fontWeight: 800, color: "#1e3a6e", marginTop: 14, marginBottom: 4, fontSize: 13 }}>END OF TERM PERFORMANCE{endExam !== END_EXAM_MARK_ENTRY ? ` (${examDisplayName(endExam)})` : ""}</div>
-                    <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                    </RCTable>
+                    <RCHeading>END OF TERM PERFORMANCE{endExam !== END_EXAM_MARK_ENTRY ? ` (${examDisplayName(endExam)})` : ""}</RCHeading>
+                    <RCTable>
                         <thead>
-                            <tr style={{ background: "#1e3a6e", color: "white" }}>
-                                <th style={{ ...th, textAlign: "left" }}>SUBJECT</th>
-                                <th style={th}>FULL MARK</th>
-                                <th style={th}>SCORE</th>
-                                <th style={th}>AGG</th>
-                                <th style={{ ...th, textAlign: "left" }}>{isLower ? "COMMENT" : "COMMENTS"}</th>
-                                <th style={th}>INITIALS</th>
+                            <tr>
+                                <th style={{ ...rcTh, textAlign: "left" }}>SUBJECT</th>
+                                <th style={rcTh}>FULL MARK</th>
+                                <th style={rcTh}>SCORE</th>
+                                <th style={rcTh}>AGG</th>
+                                <th style={{ ...rcTh, textAlign: "left" }}>{isLower ? "COMMENT" : "COMMENTS"}</th>
+                                <th style={rcTh}>INITIALS</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLower ? <>
                                     {LOWER_MIDTERM_ORDER.map((sub, i)=>{
                                         const p = c.end.perSub.find((x)=>x.sub === sub);
-                                        return <tr key={sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
-                                                <td style={{ ...td, textAlign: "left" }}>{sub}</td>
-                                                <td style={td}>{lowerSubjectMax(sub)}</td>
-                                                <td style={td}>{p?.mark === undefined ? "-" : p.mark}</td>
-                                                <td style={td}>{p?.agg ?? "-"}</td>
-                                                <td style={{ ...td, textAlign: "left" }}></td>
-                                                <td style={td}></td>
+                                        return <tr key={sub}>
+                                                <td style={{ ...rcTd, textAlign: "left" }}>{sub}</td>
+                                                <td style={rcTd}>{lowerSubjectMax(sub)}</td>
+                                                <td style={rcTd}>{p?.mark === undefined ? "-" : p.mark}</td>
+                                                <td style={rcTd}>{p?.agg ?? "-"}</td>
+                                                <td style={{ ...rcTd, textAlign: "left" }}></td>
+                                                <td style={rcTd}></td>
                                             </tr>;
                                     })}
                                     <tr>
-                                        <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
-                                        <td style={td}></td>
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.end.total || "-"}</td>
-                                        <td style={td} colSpan={3}></td>
+                                        <td style={{ ...rcTd, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                        <td style={rcTd}></td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.end.total || "-"}</td>
+                                        <td style={rcTd} colSpan={3}></td>
                                     </tr>
                                 </> : <>
                                     {UPPER_MIDTERM_ORDER.map((sub, i)=>{
                                         const p = c.end.perSub.find((x)=>x.sub === sub);
-                                        return <tr key={sub} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
-                                                <td style={{ ...td, textAlign: "left" }}>{upperSubjectLabel(sub)}</td>
-                                                <td style={td}>100</td>
-                                                <td style={td}>{p?.mark === undefined ? "-" : p.mark}</td>
-                                                <td style={td}>{p?.agg ?? "-"}</td>
-                                                <td style={{ ...td, textAlign: "left" }}></td>
-                                                <td style={td}></td>
+                                        return <tr key={sub}>
+                                                <td style={{ ...rcTd, textAlign: "left" }}>{upperSubjectLabel(sub)}</td>
+                                                <td style={rcTd}>100</td>
+                                                <td style={rcTd}>{p?.mark === undefined ? "-" : p.mark}</td>
+                                                <td style={rcTd}>{p?.agg ?? "-"}</td>
+                                                <td style={{ ...rcTd, textAlign: "left" }}></td>
+                                                <td style={rcTd}></td>
                                             </tr>;
                                     })}
                                     <tr>
-                                        <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
-                                        <td style={td}></td>
-                                        <td style={{ ...td, fontWeight: 700 }}>{c.end.total || "-"}</td>
-                                        <td style={td} colSpan={3}></td>
+                                        <td style={{ ...rcTd, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
+                                        <td style={rcTd}></td>
+                                        <td style={{ ...rcTd, fontWeight: 700 }}>{c.end.total || "-"}</td>
+                                        <td style={rcTd} colSpan={3}></td>
                                     </tr>
                                 </>}
                         </tbody>
-                    </table>
-                    <div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.9, color: "#374151" }}>
+                    </RCTable>
+                    <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
-                        <div>CLASS TEACHER'S REPORT: ______________________________________________________&nbsp;&nbsp;Sign: __________</div>
+                        <div>CLASS TEACHER'S REPORT: ________________________________________________&nbsp;&nbsp;Sign: __________</div>
                         <div>NEXT TERM BEGINS ON: _______________&nbsp;&nbsp;ENDS ON: _______________</div>
                         <div>HEADTEACHER'S COMMENT: ______________________________________________________</div>
                         <div>SIGNATURE: __________________</div>
