@@ -852,12 +852,21 @@ const RC_INFO_LINE = {
     borderBottom: "1px solid ".concat(RC_LINE),
     color: "#111827"
 };
-// Auto-generated Class Teacher's Report / Headteacher's Comment text.
+// Auto-generated Class Teacher's Report text.
 const RC_COMMENT = {
     fontWeight: 700,
     fontStyle: "italic",
     color: "#1e3a6e"
 };
+// Headteacher's Comment text specifically: bold black (label itself is bold red).
+const RC_COMMENT_HEAD = {
+    fontWeight: 700,
+    fontStyle: "italic",
+    color: "#000000"
+};
+// Font used ONLY for the school name + contacts heading at the top of the
+// report card (ReportCardFrame) -- not the rest of the report card's font.
+const RC_HEADING_FONT = "'Bookman Old Style','Bookman Old Style MT',Georgia,serif";
 // Scoped CSS for the report-card template. Print colours are forced on so the
 // blue frame, light-blue tables and decorations survive "Background graphics"
 // being off, and each pupil's card fills one A4 page (never split across two).
@@ -1064,17 +1073,17 @@ function ReportCardFrame(param) {
                     <div style={{ textAlign: "center" }}>
                         <div style={{
         fontWeight: 900,
-        fontSize: 16,
+        fontSize: 28,
         color: "#1e3a6e",
         textTransform: "uppercase",
         letterSpacing: 0.5,
-        fontFamily: RAVEN_HEADING_FONT
+        fontFamily: RC_HEADING_FONT
     }}>{RAVEN_SCHOOL_NAME}</div>
                         <div style={{
-        fontSize: 10,
+        fontSize: 12,
         color: "#374151",
         marginTop: 1,
-        fontFamily: RAVEN_HEADING_FONT
+        fontFamily: RC_HEADING_FONT
     }}>P.O. Box 731, Tororo &nbsp;|&nbsp; 📞 +256776745781 / +256789113131</div>
                     </div>
                     <img src={RAVEN_BADGE} alt="Raven Junior School badge" width={badgeSize} height={badgeSize} style={badgeStyle} />
@@ -2056,6 +2065,165 @@ function exportResultSheetWord(param) {
     body += "<p>Head Teacher's Comment: .............................................................................. Sign: ......................</p>";
     downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"));
 }
+// ── Nursery Result Sheet Excel/Word exports ──────────────────────────────────
+// Nursery has no CA/Exam split, aggregate or division -- each subject is a
+// single mark plus an automatic colour band, so the sheet shows MARK + BAND
+// per subject (instead of SCORE/AGG) and ranks by total mark only.
+const NURSERY_BAND_LABELS = NURSERY_COLOR_BANDS.map((b)=>b.label);
+function exportNurseryResultSheetExcel(param) {
+    let { school, cls, term, year, sortedRows, best, worst, avg, subjectAnalysis, bandCounts, classCount } = param;
+    var _sortedRows_;
+    const headerRow = [
+        "S/N",
+        "NAME OF PUPIL",
+        ...NURSERY_SUBJECTS.flatMap((s)=>[
+                "".concat(s, " MARK"),
+                "".concat(s, " BAND")
+            ]),
+        "TOTAL",
+        "POS"
+    ];
+    const dataRows = sortedRows.map((r, i)=>[
+            i + 1,
+            r.s.name,
+            ...r.perSub.flatMap((p)=>{
+                var _p_mark;
+                return [
+                    (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-",
+                    p.band ? p.band.label : "-"
+                ];
+            }),
+            r.total || "-",
+            r.pos
+        ]);
+    const numCols = headerRow.length;
+    const aoa = [
+        [
+            RAVEN_SCHOOL_NAME
+        ],
+        [
+            RAVEN_SCHOOL_MOTTO
+        ],
+        [
+            "END OF ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls, " RESULT SHEET")
+        ],
+        [],
+        headerRow,
+        ...dataRows,
+        [],
+        [
+            "Highest: ".concat(best || "-", "    Lowest: ").concat(worst || "-", "    Class Average: ").concat(avg || "-", "    Best Pupil: ").concat(((_sortedRows_ = sortedRows[0]) === null || _sortedRows_ === void 0 ? void 0 : _sortedRows_.s.name) || "-")
+        ],
+        [],
+        [
+            "A. SUBJECT PERFORMANCE ANALYSIS"
+        ],
+        [
+            "SUBJECT",
+            ...NURSERY_BAND_LABELS,
+            "X",
+            "TOTAL"
+        ],
+        ...subjectAnalysis.map((sa)=>[
+                sa.sub,
+                ...NURSERY_BAND_LABELS.map((g)=>sa.bandCounts[g] || 0),
+                sa.xCount || 0,
+                sa.total
+            ]),
+        [],
+        [
+            "B. GENERAL PERFORMANCE ANALYSIS"
+        ],
+        [
+            "NO. OF PUPILS",
+            ...NURSERY_BAND_LABELS
+        ],
+        [
+            classCount,
+            ...NURSERY_BAND_LABELS.map((g)=>bandCounts[g] || 0)
+        ]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!merges"] = [
+        0,
+        1,
+        2
+    ].map((r)=>({
+            s: {
+                r,
+                c: 0
+            },
+            e: {
+                r,
+                c: numCols - 1
+            }
+        }));
+    ws["!cols"] = headerRow.map((h, i)=>i === 1 ? {
+            wch: 26
+        } : {
+            wch: 11
+        });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Result Sheet");
+    XLSX.writeFile(wb, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.xlsx"));
+}
+function exportNurseryResultSheetWord(param) {
+    let { school, cls, term, year, sortedRows, best, worst, avg, subjectAnalysis, bandCounts, classCount } = param;
+    var _sortedRows_;
+    let body = titleBlockHtml(school, "END OF ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls, " RESULT SHEET"));
+    const headerRow = [
+        "S/N",
+        "NAME OF PUPIL",
+        ...NURSERY_SUBJECTS.flatMap((s)=>[
+                "".concat(s, " MARK"),
+                "".concat(s, " BAND")
+            ]),
+        "TOTAL",
+        "POS"
+    ];
+    const dataRows = sortedRows.map((r, i)=>[
+            i + 1,
+            r.s.name,
+            ...r.perSub.flatMap((p)=>{
+                var _p_mark;
+                return [
+                    (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-",
+                    p.band ? p.band.label : "-"
+                ];
+            }),
+            r.total || "-",
+            r.pos !== "-" ? "".concat(r.pos).concat(ordinalSuffix(r.pos)) : "-"
+        ]);
+    body += htmlTable(headerRow, dataRows);
+    body += "<p><b>Highest:</b> ".concat(escapeHtml(best || "-"), " &nbsp; <b>Lowest:</b> ").concat(escapeHtml(worst || "-"), " &nbsp; <b>Class Average:</b> ").concat(escapeHtml(avg || "-"), " &nbsp; <b>Best Pupil:</b> ").concat(escapeHtml(((_sortedRows_ = sortedRows[0]) === null || _sortedRows_ === void 0 ? void 0 : _sortedRows_.s.name) || "-"), "</p>");
+    const aHead = [
+        "SUBJECT",
+        ...NURSERY_BAND_LABELS,
+        "X",
+        "TOTAL"
+    ];
+    const aRows = subjectAnalysis.map((sa)=>[
+            sa.sub,
+            ...NURSERY_BAND_LABELS.map((g)=>sa.bandCounts[g] || 0),
+            sa.xCount || 0,
+            sa.total
+        ]);
+    const gHead = [
+        "NO. OF PUPILS",
+        ...NURSERY_BAND_LABELS
+    ];
+    const gRow = [
+        classCount,
+        ...NURSERY_BAND_LABELS.map((g)=>bandCounts[g] || 0)
+    ];
+    body += '<div class="section-title">A. Subject Performance Analysis</div>'.concat(htmlTable(aHead, aRows));
+    body += '<div class="section-title">B. General Performance Analysis</div>'.concat(htmlTable(gHead, [
+        gRow
+    ]));
+    body += "<p>Class Teacher's Report: .............................................................................. Sign: ......................</p>";
+    body += "<p>Head Teacher's Comment: .............................................................................. Sign: ......................</p>";
+    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"));
+}
 // ── Termly Report Card Word export ──
 function exportReportCardsWord(param) {
     let { school, cls, term, year, isLower, rows, allPositions, totalInClass, bands, divisions, initials } = param;
@@ -2111,7 +2279,7 @@ function exportReportCardsWord(param) {
         if (!isLower) body += '<b>DIVISION:</b> <b style="color:#dc2626;">'.concat(hasX ? "X" : totMk ? div : "-", "</b>&nbsp;&nbsp;&nbsp;");
         body += "</p>";
         body += "<div style=\"font-family:'Times New Roman',Times,serif;\">";
-        body += '<p style="font-size:11pt;line-height:2;"><b>CONDUCT:</b> ...........................................................................................</p>\n      <p style="font-size:12pt;line-height:2;"><b>Class Teacher\'s Report:</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">'.concat(escapeHtml(comments.teacher) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:12pt;line-height:2;"><b>Head Teacher\'s Comment:</b> <span style="font-weight:bold;font-style:italic;color:#dc2626;">').concat(escapeHtml(comments.head) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:11pt;line-height:2;"><b>Next Term begins on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextOpens || "......................."), '</span> <b>Ends on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextEnds || "......................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Requirements:</b> <span style="font-weight:bold;font-style:italic;color:#15803d;">').concat(escapeHtml(school.requirements || "..........................................................................................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Parent\'s Signature after reading:</b> ...................................................................</p>');
+        body += '<p style="font-size:11pt;line-height:2;"><b>CONDUCT:</b> ...........................................................................................</p>\n      <p style="font-size:12pt;line-height:2;"><b>Class Teacher\'s Report:</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">'.concat(escapeHtml(comments.teacher) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:12pt;line-height:2;"><b style="color:#dc2626;">Head Teacher\'s Comment:</b> <span style="font-weight:bold;font-style:italic;color:#000000;">').concat(escapeHtml(comments.head) || "..............................................................................", '</span> <b>Sign:</b> ......................</p>\n      <p style="font-size:11pt;line-height:2;"><b>Next Term begins on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextOpens || "......................."), '</span> <b>Ends on</b> <span style="font-weight:bold;font-style:italic;color:#1d4ed8;">').concat(escapeHtml(school.nextEnds || "......................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Requirements:</b> <span style="font-weight:bold;font-style:italic;color:#15803d;">').concat(escapeHtml(school.requirements || "..........................................................................................."), '</span></p>\n      <p style="font-size:11pt;line-height:2;"><b>Parent\'s Signature after reading:</b> ...................................................................</p>');
         body += "</div>";
         // Grading Scale + Division Scale, side by side as pill badges, at the
         // very bottom of the card, after the comments/signature section.
@@ -9744,10 +9912,6 @@ function NurseryMarkEntry(param) {
                                 },
                                 children: [
                                     /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "Pos"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
                                         style: {
                                             ...th,
                                             textAlign: "left"
@@ -9771,12 +9935,6 @@ function NurseryMarkEntry(param) {
                                         background: i % 2 === 0 ? "white" : "#f8fafc"
                                     },
                                     children: [
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: td,
-                                            children: /*#__PURE__*/ _jsx(PositionBadge, {
-                                                pos: r.pos
-                                            })
-                                        }),
                                         /*#__PURE__*/ _jsx("td", {
                                             style: {
                                                 ...td,
@@ -10301,7 +10459,7 @@ function NurseryReportCard(param) {
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         <div>CLASS TEACHER'S REPORT: {c.comments.teacher ? <span style={RC_COMMENT}>{c.comments.teacher}</span> : "______________________________________________________"}</div>
                         <div>NEXT TERM BEGINS ON: {school.nextOpens ? <span style={RC_COMMENT}>{school.nextOpens}</span> : "_______________"}&nbsp;&nbsp;ENDS ON: {school.nextEnds ? <span style={RC_COMMENT}>{school.nextEnds}</span> : "_______________"}</div>
-                        <div>HEADTEACHER'S COMMENT: {c.comments.head ? <span style={RC_COMMENT}>{c.comments.head}</span> : "______________________________________________________"}</div>
+                        <div><span style={{ fontWeight: 700, color: "#dc2626" }}>HEADTEACHER'S COMMENT:</span> {c.comments.head ? <span style={RC_COMMENT_HEAD}>{c.comments.head}</span> : "______________________________________________________"}</div>
                         <div>SIGNATURE: __________________</div>
                     </div>
                     </ReportCardFrame>
@@ -17163,7 +17321,7 @@ function PleInfo(param) {
     });
 }
 function ResultSheets(param) {
-    let { students, termMarks, bands: defaultBands, specialBands, divisions, school } = param;
+    let { students, termMarks, nurseryMarks, bands: defaultBands, specialBands, divisions, school } = param;
     var _sortedRows_;
     const [cls, setCls] = useState("P4");
     const [term, setTerm] = useState("Term I");
@@ -17171,8 +17329,106 @@ function ResultSheets(param) {
     const [pdfBusy, setPdfBusy] = useState(false);
     const sheetCardRef = useRef(null);
     const analysisCardRef = useRef(null);
+    const isNursery = NURSERY_CLASSES.includes(cls);
     const isLower = LOWER_CLASSES.includes(cls);
     const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
+    // ── Nursery result sheet data (Baby/Middle/Top) ──────────────────────────
+    // Nursery has no CA/Exam split, no aggregates and no divisions -- each
+    // subject is a single mark (0-100) plus an automatic performance band
+    // (Excellent/Very Good/Good/Fair/Below Average), exactly as entered in
+    // Nursery Mark Entry and shown on the Nursery Report Card. Computed
+    // unconditionally (cheap, and keeps hook order stable) but only used
+    // below when isNursery is true.
+    const nurseryClassStudents = useMemo(()=>students.filter((s)=>s.className === cls).sort((a, b)=>a.name.localeCompare(b.name)), [
+        students,
+        cls
+    ]);
+    const nurseryRowsRaw = useMemo(()=>nurseryClassStudents.map((s)=>{
+            var _nurseryMarks_s_id, _nurseryMarks_s_id_tk;
+            const m = ((_nurseryMarks_s_id = (nurseryMarks || {})[s.id]) === null || _nurseryMarks_s_id === void 0 ? void 0 : (_nurseryMarks_s_id_tk = _nurseryMarks_s_id["".concat(term, "__").concat(year)]) === null || _nurseryMarks_s_id_tk === void 0 ? void 0 : _nurseryMarks_s_id_tk["End of Term"]) || {};
+            const perSub = NURSERY_SUBJECTS.map((sub)=>{
+                var _m_sub;
+                const mark = (_m_sub = m[sub]) === null || _m_sub === void 0 ? void 0 : _m_sub.mark;
+                return {
+                    sub,
+                    mark,
+                    band: nurseryColorForMark(mark)
+                };
+            });
+            const enteredCount = perSub.filter((p)=>typeof p.mark === "number").length;
+            const total = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
+            const avg = enteredCount ? total / enteredCount : undefined;
+            return {
+                s,
+                perSub,
+                total,
+                enteredCount,
+                avgBand: nurseryColorForMark(avg)
+            };
+        }).filter((r)=>r.enteredCount > 0), [
+        nurseryClassStudents,
+        nurseryMarks,
+        term,
+        year
+    ]);
+    const nurseryPositions = useMemo(()=>rankWithTies(nurseryRowsRaw.map((r)=>r.total > 0 ? r.total : null), nurseryRowsRaw.map(()=>null)), [
+        nurseryRowsRaw
+    ]);
+    const nurserySortedRows = useMemo(()=>{
+        const indexed = nurseryRowsRaw.map((r, i)=>({
+                ...r,
+                pos: nurseryPositions[i]
+            }));
+        return [
+            ...indexed
+        ].sort((a, b)=>{
+            if (a.pos === "-") return 1;
+            if (b.pos === "-") return -1;
+            return a.pos - b.pos;
+        });
+    }, [
+        nurseryRowsRaw,
+        nurseryPositions
+    ]);
+    const nurseryTotals = nurserySortedRows.map((r)=>r.total).filter((v)=>v > 0);
+    const nurseryBest = Math.max(...nurseryTotals, 0), nurseryWorst = Math.min(...nurseryTotals) || 0;
+    const nurseryAvg = nurseryTotals.length ? Math.round(nurseryTotals.reduce((a, b)=>a + b, 0) / nurseryTotals.length) : 0;
+    // Subject Performance Analysis, using the colour-band labels in place of
+    // letter grades (Excellent/Very Good/Good/Fair/Below Average).
+    const nurserySubjectAnalysis = useMemo(()=>NURSERY_SUBJECTS.map((sub)=>{
+            const bandCounts = {};
+            NURSERY_COLOR_BANDS.forEach((b)=>{
+                bandCounts[b.label] = 0;
+            });
+            let xCount = 0;
+            nurseryRowsRaw.forEach((r)=>{
+                const p = r.perSub.find((p)=>p.sub === sub);
+                if (p && typeof p.mark === "number" && p.band) bandCounts[p.band.label] = (bandCounts[p.band.label] || 0) + 1;
+                else xCount++;
+            });
+            return {
+                sub,
+                bandCounts,
+                xCount,
+                total: nurseryRowsRaw.length
+            };
+        }), [
+        nurseryRowsRaw
+    ]);
+    // General Performance Analysis: how many pupils fall into each overall
+    // performance band, based on their average mark across all subjects.
+    const nurseryBandCounts = useMemo(()=>{
+        const counts = {};
+        NURSERY_COLOR_BANDS.forEach((b)=>{
+            counts[b.label] = 0;
+        });
+        nurserySortedRows.forEach((r)=>{
+            if (r.avgBand) counts[r.avgBand.label] = (counts[r.avgBand.label] || 0) + 1;
+        });
+        return counts;
+    }, [
+        nurserySortedRows
+    ]);
     // Special Grading Scale override for the selected class, if any.
     const bands = useMemo(()=>bandsForClass(cls, defaultBands, specialBands, "End of Term", year, term), [
         cls,
@@ -17296,6 +17552,139 @@ function ResultSheets(param) {
         else if (divCounts[d] !== undefined) divCounts[d]++;
         else divCounts.U++;
     });
+    if (isNursery) {
+        return <div>
+            <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <Sel label="Class" value={cls} onChange={setCls} opts={[...ALL_CLASSES, ...NURSERY_CLASSES]} />
+                    <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
+                    <div>
+                        <label style={lbl}>Year</label>
+                        <input type="number" value={year} onChange={(e)=>setYear(e.target.value)} style={{ ...inp, width: 90 }} />
+                    </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button style={btnExcel} onClick={()=>exportNurseryResultSheetExcel({
+                        school, cls, term, year,
+                        sortedRows: nurserySortedRows,
+                        best: nurseryBest, worst: nurseryWorst, avg: nurseryAvg,
+                        subjectAnalysis: nurserySubjectAnalysis,
+                        bandCounts: nurseryBandCounts,
+                        classCount: nurseryClassStudents.length
+                    })}>📊 Download Excel</button>
+                    <button style={btnWord} onClick={()=>exportNurseryResultSheetWord({
+                        school, cls, term, year,
+                        sortedRows: nurserySortedRows,
+                        best: nurseryBest, worst: nurseryWorst, avg: nurseryAvg,
+                        subjectAnalysis: nurserySubjectAnalysis,
+                        bandCounts: nurseryBandCounts,
+                        classCount: nurseryClassStudents.length
+                    })}>📄 Download Word</button>
+                    <button disabled={pdfBusy} style={pdfBusy ? btnPdfBusy : btnPdf} onClick={async ()=>{
+                        setPdfBusy(true);
+                        try {
+                            await downloadNodesAsPdf([sheetCardRef.current, analysisCardRef.current], `${safeFileName(cls)}_${safeFileName(term)}_${year}_Result_Sheet.pdf`, "landscape");
+                        } finally {
+                            setPdfBusy(false);
+                        }
+                    }}>{pdfBusy ? "⏳ Generating..." : "📕 Download PDF"}</button>
+                    <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print Result Sheet</button>
+                </div>
+            </div>
+            {nurseryClassStudents.length > 0 && nurserySortedRows.length === 0 && <div style={{ background: "#fffbeb", borderRadius: 12, padding: 24, textAlign: "center", color: "#92400e", border: "1px solid #fde68a", marginBottom: 16 }}>
+                No {cls} learners have any {term} {year} marks recorded yet.
+            </div>}
+            <div ref={sheetCardRef} style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 24 }}>
+                <div style={{ background: "#1e3a6e", color: "white", padding: "12px 16px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                    <img src={RAVEN_BADGE} alt="Raven Junior School badge" style={{ width: 44, height: 44, objectFit: "contain", flexShrink: 0, background: "white", borderRadius: 6 }} />
+                    <div>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>{RAVEN_SCHOOL_NAME}</div>
+                        <div style={{ fontSize: 12, opacity: 0.9, marginTop: 2 }}>"{RAVEN_SCHOOL_MOTTO}" | END OF {term.toUpperCase()} {year} - {cls} RESULT SHEET</div>
+                    </div>
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", fontSize: 12, minWidth: 800 }}>
+                        <thead>
+                            <tr style={{ background: "#1e40af", color: "white" }}>
+                                <th style={th} rowSpan={2}>S/N</th>
+                                <th style={{ ...th, textAlign: "left", minWidth: 160 }} rowSpan={2}>NAME OF PUPIL</th>
+                                {NURSERY_SUBJECTS.map((s)=><th key={s} style={th} colSpan={2}>{s}</th>)}
+                                <th style={th} rowSpan={2}>TOTAL</th>
+                                <th style={th} rowSpan={2}>POS</th>
+                            </tr>
+                            <tr style={{ background: "#2563eb", color: "white", fontSize: 11 }}>
+                                {NURSERY_SUBJECTS.map((s)=><React.Fragment key={s}>
+                                    <th style={{ ...th, background: "#dcfce7", color: "#14532d" }}>MARK</th>
+                                    <th style={{ ...th, background: "#fed7aa", color: "#7c2d12" }}>BAND</th>
+                                </React.Fragment>)}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {nurserySortedRows.map((r, i)=><tr key={r.s.id} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                                <td style={td}>{padSN(i + 1)}</td>
+                                <td style={{ ...td, fontWeight: 600, textAlign: "left" }}>{r.s.name}</td>
+                                {r.perSub.map((p)=><React.Fragment key={p.sub}>
+                                    <td style={{ ...td, background: "#f0fdf4" }}>{p.mark ?? "-"}</td>
+                                    <td style={{ ...td, background: "#fff7ed", color: p.band ? p.band.color : "inherit", fontWeight: p.band ? 700 : 400 }}>{p.band ? p.band.label : "-"}</td>
+                                </React.Fragment>)}
+                                <td style={{ ...td, fontWeight: 700, background: "#ede9fe" }}>{r.total || "-"}</td>
+                                <td style={td}>{r.pos !== "-" ? <PositionBadge pos={r.pos} size={13} /> : "-"}</td>
+                            </tr>)}
+                        </tbody>
+                        <tfoot>
+                            <tr style={{ background: "#dbeafe", fontWeight: 700, fontSize: 12 }}>
+                                <td colSpan={NURSERY_SUBJECTS.length * 2 + 4} style={{ ...td, textAlign: "left", padding: "8px 12px", color: "#1e3a6e" }}>
+                                    📈 Highest: <b>{nurseryBest || "-"}</b> &nbsp;|&nbsp; Lowest: <b>{nurseryWorst || "-"}</b> &nbsp;|&nbsp; Class Avg: <b>{nurseryAvg || "-"}</b> &nbsp;|&nbsp; Best Pupil: <b>{nurserySortedRows[0]?.s.name || "-"}</b>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div ref={analysisCardRef} style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 24 }}>
+                <div style={{ background: "#0f766e", color: "white", padding: "10px 16px", fontWeight: 700 }}>📊 Performance Analysis - {cls} {term} {year}</div>
+                <div style={{ padding: 16 }}>
+                    <h4 style={{ margin: "0 0 8px", color: "#0f766e", fontSize: 13 }}>A. Subject Performance Analysis</h4>
+                    <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                        <table style={{ width: "100%", fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ background: "#ccfbf1" }}>
+                                    <th style={{ ...th, textAlign: "left", padding: "8px 10px", color: "#0f766e" }}>Subject</th>
+                                    {NURSERY_BAND_LABELS.map((g)=><th key={g} style={{ ...th, padding: "8px 10px", color: "#0f766e" }}>{g}</th>)}
+                                    <th style={{ ...th, padding: "8px 10px", color: "#dc2626" }}>X</th>
+                                    <th style={{ ...th, padding: "8px 10px", color: "#0f766e" }}>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {nurserySubjectAnalysis.map((sa, i)=><tr key={sa.sub} style={{ background: i % 2 === 0 ? "white" : "#f0fdfa" }}>
+                                    <td style={{ ...td, fontWeight: 700, textAlign: "left" }}>{sa.sub}</td>
+                                    {NURSERY_BAND_LABELS.map((g)=><td key={g} style={td}>{sa.bandCounts[g] || 0}</td>)}
+                                    <td style={{ ...td, fontWeight: 700, color: "#dc2626" }}>{sa.xCount || 0}</td>
+                                    <td style={{ ...td, fontWeight: 700 }}>{sa.total}</td>
+                                </tr>)}
+                            </tbody>
+                        </table>
+                    </div>
+                    <h4 style={{ margin: "0 0 8px", color: "#0f766e", fontSize: 13 }}>B. General Performance Analysis</h4>
+                    <div style={{ overflowX: "auto", marginBottom: 16 }}>
+                        <table style={{ width: "100%", fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ background: "#ccfbf1" }}>
+                                    {["No. of Pupils", ...NURSERY_BAND_LABELS].map((h)=><th key={h} style={{ ...th, padding: "8px 10px", color: "#0f766e" }}>{h}</th>)}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style={{ ...td, fontWeight: 700 }}>{nurseryClassStudents.length}</td>
+                                    {NURSERY_BAND_LABELS.map((g)=><td key={g} style={td}>{nurseryBandCounts[g] || 0}</td>)}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>;
+    }
     return /*#__PURE__*/ _jsxs("div", {
         children: [
             /*#__PURE__*/ _jsxs("div", {
@@ -17321,7 +17710,10 @@ function ResultSheets(param) {
                                 label: "Class",
                                 value: cls,
                                 onChange: setCls,
-                                opts: ALL_CLASSES
+                                opts: [
+                                    ...ALL_CLASSES,
+                                    ...NURSERY_CLASSES
+                                ]
                             }),
                             /*#__PURE__*/ _jsx(Sel, {
                                 label: "Term",
@@ -18028,6 +18420,8 @@ function ReportCards(param) {
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
     const [search, setSearch] = useState("");
+    const [pdfBusy, setPdfBusy] = useState(false);
+    const cardsWrapRef = useRef(null);
     const isLower = LOWER_CLASSES.includes(cls);
     const subjects = isLower ? LOWER_SUBJECTS : UPPER_SUBJECTS;
     const tk = `${term}__${year}`;
@@ -18261,6 +18655,15 @@ function ReportCards(param) {
                     <label style={lbl}>Search Pupil</label>
                     <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
                 </div>
+                <button disabled={pdfBusy} onClick={async ()=>{
+                    setPdfBusy(true);
+                    try {
+                        const nodes = Array.from(cardsWrapRef.current?.querySelectorAll(".rc-sheet") || []);
+                        await downloadNodesAsPdf(nodes, `${safeFileName(cls)}_${safeFileName(term)}_${year}_Report_Cards.pdf`);
+                    } finally {
+                        setPdfBusy(false);
+                    }
+                }} style={pdfBusy ? btnPdfBusy : btnPdf}>{pdfBusy ? "⏳ Generating..." : "📕 Download PDF"}</button>
                 <button style={btnPrimary} onClick={()=>window.print()}>🖨️ Print</button>
             </div>
             {chooserApplies && doneExams.length > 1 && <div className="no-print" style={{ marginBottom: 16, border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8, padding: 12 }}>
@@ -18273,6 +18676,7 @@ function ReportCards(param) {
                     </div>
                     <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>This choice is used for the End of Term Performance table below and for P7's Term II results on the Dashboard. Mid Term and BOT are not affected.</div>
                 </div>}
+            <div ref={cardsWrapRef}>
             {cards.map((c)=><div key={c.s.id} className="print-break rc-sheet" style={{ marginBottom: 24, maxWidth: 700, marginLeft: "auto", marginRight: "auto" }}>
                     <ReportCardFrame subtitle={undefined}>
                     <div style={{ ...RC_INFO_LINE, marginBottom: 6 }}>
@@ -18403,7 +18807,7 @@ function ReportCards(param) {
                             <div style={{ whiteSpace: "nowrap" }}>Sign: __________</div>
                         </div> : <div>CLASS TEACHER'S REPORT: ________________________________________________&nbsp;&nbsp;Sign: __________</div>}
                         <div>NEXT TERM BEGINS ON: {school.nextOpens ? <span style={RC_COMMENT}>{school.nextOpens}</span> : "_______________"}&nbsp;&nbsp;ENDS ON: {school.nextEnds ? <span style={RC_COMMENT}>{school.nextEnds}</span> : "_______________"}</div>
-                        <div>HEADTEACHER'S COMMENT: {c.comments.head ? <span style={RC_COMMENT}>{c.comments.head}</span> : "______________________________________________________"}</div>
+                        <div><span style={{ fontWeight: 700, color: "#dc2626" }}>HEADTEACHER'S COMMENT:</span> {c.comments.head ? <span style={RC_COMMENT_HEAD}>{c.comments.head}</span> : "______________________________________________________"}</div>
                         <div>SIGNATURE: __________________</div>
                     </div>
                     <div style={{ marginTop: 8, fontSize: 10, color: "#374151" }}>
@@ -18412,6 +18816,7 @@ function ReportCards(param) {
                     <RCScales scales={scaleSets} divisions={divisions} />
                     </ReportCardFrame>
                 </div>)}
+            </div>
         </div>;
 }
 // ─── REPORTS (Performance Analysis & Graphs) ─────────────────────────────────
@@ -20674,8 +21079,10 @@ function SubjectInitialsManager(param) {
     const [selSubject, setSelSubject] = useState("");
     const [inputVal, setInputVal] = useState("");
     const [msg, setMsg] = useState("");
-    // Nursery classes are included so their report cards can show initials too.
-    const initialsSubjectsFor = (c)=>NURSERY_CLASSES.includes(c) ? NURSERY_SUBJECTS : LOWER_CLASSES.includes(c) ? LOWER_SUBJECTS : UPPER_SUBJECTS;
+    // Primary only -- Nursery (Baby/Middle/Top) has its own section below
+    // (NurserySubjectInitialsManager), matching Nursery Mark Entry/Report
+    // Cards each having their own dedicated page rather than sharing Primary's.
+    const initialsSubjectsFor = (c)=>LOWER_CLASSES.includes(c) ? LOWER_SUBJECTS : UPPER_SUBJECTS;
     const subjects = initialsSubjectsFor(selClass);
     // Auto-select first subject when class changes
     const handleClassChange = (cls)=>{
@@ -20768,7 +21175,6 @@ function SubjectInitialsManager(param) {
                                     width: 90
                                 },
                                 children: [
-        ...NURSERY_CLASSES,
         ...ALL_CLASSES
     ].map((c)=>/*#__PURE__*/ _jsx("option", {
                                         children: c
@@ -20953,7 +21359,6 @@ function SubjectInitialsManager(param) {
                             gap: 8
                         },
                         children: [
-        ...NURSERY_CLASSES,
         ...ALL_CLASSES
     ].filter((c)=>Object.keys((initials || {})[c] || {}).length > 0).map((c)=>/*#__PURE__*/ _jsxs("div", {
                                 style: {
@@ -20985,6 +21390,109 @@ function SubjectInitialsManager(param) {
             })
         ]
     });
+}
+// ── Nursery Subject Initials (Baby/Middle/Top) ──────────────────────────────
+// A dedicated sibling to SubjectInitialsManager above, matching the app's
+// convention of keeping Nursery separate from Primary (see Nursery Mark
+// Entry / Nursery Report Cards). Nursery always uses NURSERY_SUBJECTS, so
+// there's no isLower/isUpper branching needed here.
+function NurserySubjectInitialsManager(param) {
+    let { initials, setInitials } = param;
+    const [selClass, setSelClass] = useState("Baby");
+    const [selSubject, setSelSubject] = useState(NURSERY_SUBJECTS[0]);
+    const [inputVal, setInputVal] = useState("");
+    const [msg, setMsg] = useState("");
+    const subjects = NURSERY_SUBJECTS;
+    const handleClassChange = (cls)=>{
+        setSelClass(cls);
+        setSelSubject(subjects[0] || "");
+        setInputVal("");
+        setMsg("");
+    };
+    const classInitials = (initials || {})[selClass] || {};
+    const handleAdd = ()=>{
+        const sub = selSubject || subjects[0];
+        const val = inputVal.trim().toUpperCase();
+        if (!val) {
+            setMsg("Please enter an initial.");
+            return;
+        }
+        if (val.length > 6) {
+            setMsg("Keep initials short (max 6 chars).");
+            return;
+        }
+        setInitials((prev)=>({
+                ...prev,
+                [selClass]: {
+                    ...prev[selClass] || {},
+                    [sub]: val
+                }
+            }));
+        setInputVal("");
+        setMsg("✅ Saved!");
+        setTimeout(()=>setMsg(""), 2000);
+    };
+    const handleRemove = (sub)=>{
+        setInitials((prev)=>{
+            const updated = {
+                ...prev[selClass] || {}
+            };
+            delete updated[sub];
+            return {
+                ...prev,
+                [selClass]: updated
+            };
+        });
+    };
+    return <div style={{ background: "white", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb", marginTop: 20 }}>
+        <h3 style={{ margin: "0 0 4px", color: "#1e3a6e", fontSize: 15, fontWeight: 700 }}>🧸 Nursery Subject Initials</h3>
+        <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6b7280" }}>Set the teacher's initials per Nursery class and subject (Baby, Middle, Top). These appear in the INITIALS column on printed Nursery report cards.</p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 16 }}>
+            <div>
+                <label style={lbl}>Class</label>
+                <select value={selClass} onChange={(e)=>handleClassChange(e.target.value)} style={{ ...inp, width: 90 }}>
+                    {NURSERY_CLASSES.map((c)=><option key={c}>{c}</option>)}
+                </select>
+            </div>
+            <div>
+                <label style={lbl}>Subject</label>
+                <select value={selSubject || subjects[0]} onChange={(e)=>setSelSubject(e.target.value)} style={{ ...inp, width: 120 }}>
+                    {subjects.map((s)=><option key={s}>{s}</option>)}
+                </select>
+            </div>
+            <div>
+                <label style={lbl}>Initial(s)</label>
+                <input value={inputVal} onChange={(e)=>setInputVal(e.target.value)} onKeyDown={(e)=>e.key === "Enter" && handleAdd()} placeholder="e.g. JK" maxLength={6} style={{ ...inp, width: 90, textTransform: "uppercase" }} />
+            </div>
+            <button onClick={handleAdd} style={btnPrimary}>Set Initial</button>
+        </div>
+        {msg && <div style={{ fontSize: 12, marginBottom: 12, color: msg.startsWith("✅") ? "#16a34a" : "#dc2626" }}>{msg}</div>}
+        <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 8 }}>Current initials for <span style={{ color: "#1e3a6e" }}>{selClass}</span>:</div>
+            {subjects.filter((s)=>classInitials[s]).length === 0 ? <div style={{ fontSize: 12, color: "#9ca3af", fontStyle: "italic" }}>No initials set for {selClass} yet.</div> : <table style={{ fontSize: 13, borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                    <tr style={{ background: "#dbeafe" }}>
+                        {["Subject", "Initial", ""].map((h)=><th key={h} style={{ padding: "6px 10px", textAlign: "left", color: "#1e3a6e", fontWeight: 700 }}>{h}</th>)}
+                    </tr>
+                </thead>
+                <tbody>
+                    {subjects.filter((s)=>classInitials[s]).map((s, i)=><tr key={s} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                        <td style={{ padding: "5px 10px", fontWeight: 600 }}>{s}</td>
+                        <td style={{ padding: "5px 10px", color: "#7c3aed", fontWeight: 700 }}>{classInitials[s]}</td>
+                        <td style={{ padding: "5px 10px" }}><button onClick={()=>handleRemove(s)} style={{ ...btnDanger, padding: "3px 8px", fontSize: 11 }}>Remove</button></td>
+                    </tr>)}
+                </tbody>
+            </table>}
+        </div>
+        {Object.keys(initials || {}).filter((c)=>NURSERY_CLASSES.includes(c) && Object.keys((initials || {})[c] || {}).length > 0).length > 0 && <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #f3f4f6" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 8 }}>All Nursery classes with initials set:</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {NURSERY_CLASSES.filter((c)=>Object.keys((initials || {})[c] || {}).length > 0).map((c)=><div key={c} style={{ background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 8, padding: "6px 12px", fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: "#5b21b6" }}>{c}</span> — <span style={{ color: "#374151" }}>{Object.keys((initials || {})[c] || {}).join(", ")}</span>
+                </div>)}
+            </div>
+        </div>}
+    </div>;
 }
 // ─── MANAGE REQUESTS (admin only) ─────────────────────────────────────────────
 // Whenever a teacher changes a mark that already had a value, the edit lands
@@ -23050,6 +23558,10 @@ function Settings(param) {
                 ]
             }),
             /*#__PURE__*/ _jsx(SubjectInitialsManager, {
+                initials: initials,
+                setInitials: setInitials
+            }),
+            /*#__PURE__*/ _jsx(NurserySubjectInitialsManager, {
                 initials: initials,
                 setInitials: setInitials
             }),
