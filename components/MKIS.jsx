@@ -744,15 +744,36 @@ const RAVEN_BADGE = RAVEN_LOGO;
 // header branding across headings, printed documents and the school-name
 // bar shown at the top of every page.
 const RAVEN_HEADING_FONT = "Georgia,'Times New Roman',serif";
+// "Old Bookman" style font used for every Result Sheet (Primary + Nursery):
+// on screen, in print/PDF, and in the Word download. Bookman Old Style ships
+// with Microsoft Office; the fallbacks cover Mac/Linux/Android machines that
+// don't have it installed.
+const RESULT_SHEET_FONT = "'Bookman Old Style','Bookman Old Style MT','URW Bookman','URW Bookman L','ITC Bookman',Bookman,Georgia,serif";
+// The badge PNG is 329 x 350 px. Word ignores CSS width/height on images and
+// falls back to the picture's full native size, so Word exports must also
+// carry real width/height attributes -- kept in proportion using this ratio.
+const RAVEN_LOGO_ASPECT = 329 / 350;
+// Badge height (px) on the on-screen Result Sheet header bar; the Word
+// download uses the same size so the logo looks identical before and after.
+const RESULT_SHEET_LOGO_PX = 44;
 // Heading for Word/print exports of every exam or test sheet: badge, school
 // name, motto, then the sheet's own title line.
 function examHeadingHtml(subtitle) {
+    let opts = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
+    // Logo height in px (default 70, unchanged for other sheets). Width/height
+    // are written as real HTML attributes as well as CSS because Word's HTML
+    // import ignores the CSS size and would otherwise show the logo at its
+    // full native pixel size.
+    const logoH = opts.logoSize || 70;
+    const logoW = Math.round(logoH * RAVEN_LOGO_ASPECT);
+    const headFont = opts.fontFamily || RAVEN_HEADING_FONT;
+    const ff = opts.fontFamily ? "font-family:".concat(opts.fontFamily, ";") : "";
     let html = '<div style="text-align:center;">';
-    html += '<img src="'.concat(RAVEN_BADGE, '" alt="Raven Junior School badge" style="width:70px;height:70px;object-fit:contain;display:block;margin:0 auto 6px;"/>');
-    html += '<div class="title" style="font-family:'.concat(RAVEN_HEADING_FONT, ';">').concat(escapeHtml(RAVEN_SCHOOL_NAME), "</div>");
-    html += '<div class="addr" style="font-family:'.concat(RAVEN_HEADING_FONT, ';">P.O. Box 731, Tororo &nbsp;|&nbsp; \u{1F4DE} +256776745781 / +256789113131</div>');
-    html += '<div class="motto">"'.concat(escapeHtml(RAVEN_SCHOOL_MOTTO), '"</div>');
-    if (subtitle) html += '<div class="subtitle">'.concat(escapeHtml(subtitle), "</div>");
+    html += '<img src="'.concat(RAVEN_BADGE, '" alt="Raven Junior School badge" width="').concat(logoW, '" height="').concat(logoH, '" style="width:').concat(logoW, "px;height:").concat(logoH, 'px;object-fit:contain;display:block;margin:0 auto 6px;"/>');
+    html += '<div class="title" style="font-family:'.concat(headFont, ';">').concat(escapeHtml(RAVEN_SCHOOL_NAME), "</div>");
+    html += '<div class="addr" style="font-family:'.concat(headFont, ';">P.O. Box 731, Tororo &nbsp;|&nbsp; \u{1F4DE} +256776745781 / +256789113131</div>');
+    html += '<div class="motto" style="'.concat(ff, '">"').concat(escapeHtml(RAVEN_SCHOOL_MOTTO), '"</div>');
+    if (subtitle) html += '<div class="subtitle" style="'.concat(ff, '">').concat(escapeHtml(subtitle), "</div>");
     html += "</div>";
     return html;
 }
@@ -862,6 +883,7 @@ const RC_COMMENT = {
 const RC_COMMENT_CLASS = {
     fontWeight: 700,
     fontStyle: "italic",
+    fontSize: 12,
     color: "#000000"
 };
 // Headteacher's Comment text specifically: bold red (the label itself is
@@ -869,6 +891,7 @@ const RC_COMMENT_CLASS = {
 const RC_COMMENT_HEAD = {
     fontWeight: 700,
     fontStyle: "italic",
+    fontSize: 12,
     color: "#dc2626"
 };
 // Font used ONLY for the school name + contacts heading at the top of the
@@ -1760,6 +1783,10 @@ function downloadWordHtml(title, bodyHtml, filename) {
     // preview instead of defaulting to landscape.
     const pageSize = opts.pageSize || "297mm 210mm";
     const pageMargin = opts.margin || "14mm";
+    // Optional font override (used by Result Sheets for "Bookman Old Style").
+    // Applied to every element type Word imports so table cells and
+    // paragraphs don't fall back to the default body font.
+    const fontOverrideCss = opts.fontFamily ? "  body, p, div, span, table, th, td { font-family: ".concat(opts.fontFamily, "; }\n") : "";
     // Word doesn't reliably infer orientation from the @page width/height alone
     // (older/activation-limited Word builds in particular can still open the
     // file as portrait). Spelling it out explicitly via mso-page-orientation
@@ -1767,7 +1794,8 @@ function downloadWordHtml(title, bodyHtml, filename) {
     // page size we're asking for.
     const [wStr, hStr] = pageSize.split(" ");
     const orientation = parseFloat(wStr) >= parseFloat(hStr) ? "landscape" : "portrait";
-    const html = '<!DOCTYPE html>\n<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n<head>\n<meta charset="utf-8">\n<title>'.concat(escapeHtml(title), "</title>\n<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->\n<style>\n  @page { size: ").concat(pageSize, "; margin: ").concat(pageMargin, "; mso-page-orientation: ").concat(orientation, "; }\n  body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; color:#111; }\n  table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }\n  th, td { border: 1px solid #999; padding: 4px 6px; font-size: 9.5pt; text-align: center; }\n  th { background:#1e3a6e; color:#fff; font-weight:bold; }\n  .title { text-align:center; font-size:16pt; font-weight:bold; }\n  .motto { text-align:center; font-style:italic; font-size:10pt; }\n  .addr { text-align:center; font-size:10pt; margin-bottom:4px; }\n  .subtitle { text-align:center; font-weight:bold; font-size:12pt; margin:6px 0 10px; }\n  .section-title { font-weight:bold; font-size:11pt; margin:14px 0 6px; }\n  .name-cell { text-align:left; font-weight:600; }\n  tr:nth-child(even) td { background:#eff6ff; }\n  /* Keep each pupil's full report card together as one block in the\n     downloaded file -- never split a table/section across two pages. */\n  .report-card-block, .report-card-block table, .report-card-block tr {\n    page-break-inside: avoid;\n    mso-pagination: none;\n  }\n</style>\n</head>\n<body>\n").concat(bodyHtml, "\n</body>\n</html>");
+    let html = '<!DOCTYPE html>\n<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n<head>\n<meta charset="utf-8">\n<title>'.concat(escapeHtml(title), "</title>\n<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->\n<style>\n  @page { size: ").concat(pageSize, "; margin: ").concat(pageMargin, "; mso-page-orientation: ").concat(orientation, "; }\n  body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; color:#111; }\n  table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }\n  th, td { border: 1px solid #999; padding: 4px 6px; font-size: 9.5pt; text-align: center; }\n  th { background:#1e3a6e; color:#fff; font-weight:bold; }\n  .title { text-align:center; font-size:16pt; font-weight:bold; }\n  .motto { text-align:center; font-style:italic; font-size:10pt; }\n  .addr { text-align:center; font-size:10pt; margin-bottom:4px; }\n  .subtitle { text-align:center; font-weight:bold; font-size:12pt; margin:6px 0 10px; }\n  .section-title { font-weight:bold; font-size:11pt; margin:14px 0 6px; }\n  .name-cell { text-align:left; font-weight:600; }\n  tr:nth-child(even) td { background:#eff6ff; }\n  /* Keep each pupil's full report card together as one block in the\n     downloaded file -- never split a table/section across two pages. */\n  .report-card-block, .report-card-block table, .report-card-block tr {\n    page-break-inside: avoid;\n    mso-pagination: none;\n  }\n</style>\n</head>\n<body>\n").concat(bodyHtml, "\n</body>\n</html>");
+    if (fontOverrideCss) html = html.replace("</style>", "".concat(fontOverrideCss, "</style>"));
     // Word's HTML/RTF importer is unreliable with <img src="data:..."> --
     // the logo renders fine in a browser preview, but once the file is
     // actually opened in Word it's frequently shown as a broken "linked
@@ -1837,7 +1865,7 @@ function htmlTable(headerRow, dataRows) {
 // number alone was silently dropping it.
 function resultSheetHtmlTable(param) {
     let { subjects, isLower, sortedRows } = param;
-    const thTop = "border:1px solid #999;padding:5px;font-size:9pt;";
+    const thTop = "border:1px solid #999;padding:5px;font-size:9pt;font-family:".concat(RESULT_SHEET_FONT, ";");
     // Both Lower and Upper now have a second header row (the SCORE/AGG
     // sub-row below), so rowspan="2" always has a row to absorb it.
     const rs = ' rowspan="2"';
@@ -1856,7 +1884,7 @@ function resultSheetHtmlTable(param) {
         head += '<th style="'.concat(thTop, 'background:#fed7aa;color:#7c2d12;">AGG</th>');
     });
     head += "</tr>";
-    const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9.5pt;";
+    const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9.5pt;font-family:".concat(RESULT_SHEET_FONT, ";");
     let body = "";
     sortedRows.forEach((r, i)=>{
         // Alternating light-blue / white row banding (matches the requested sample).
@@ -1877,11 +1905,52 @@ function resultSheetHtmlTable(param) {
     });
     return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
 }
+// Word-export table for the Nursery Result Sheet. Same look as the Primary
+// one above (navy header, green MARK sub-header, green mark cells, purple
+// TOTAL cells, alternating row banding, ordinal POS) so the downloaded file
+// keeps the colored cells instead of falling back to a plain table. Nursery
+// has NO band column here -- the performance band only appears on Report
+// Cards and in Mark Entry.
+function nurseryResultSheetHtmlTable(param) {
+    let { sortedRows } = param;
+    const thTop = "border:1px solid #999;padding:5px;font-size:9pt;font-family:".concat(RESULT_SHEET_FONT, ";");
+    const rs = ' rowspan="2"';
+    let head = '<tr style="background:#1e40af;color:white;">';
+    head += '<th style="'.concat(thTop, '"').concat(rs, ">S/N</th>");
+    head += '<th style="'.concat(thTop, 'text-align:left;min-width:150px;"').concat(rs, ">NAME OF PUPIL</th>");
+    NURSERY_SUBJECTS.forEach((sub)=>{
+        head += '<th style="'.concat(thTop, '">').concat(escapeHtml(sub), "</th>");
+    });
+    head += '<th style="'.concat(thTop, '"').concat(rs, ">TOTAL</th>");
+    head += '<th style="'.concat(thTop, '"').concat(rs, ">POS</th></tr>");
+    head += '<tr style="background:#2563eb;color:white;font-size:8pt;">';
+    NURSERY_SUBJECTS.forEach(()=>{
+        head += '<th style="'.concat(thTop, 'background:#dcfce7;color:#14532d;">MARK</th>');
+    });
+    head += "</tr>";
+    const td = "border:1px solid #999;padding:4px;text-align:center;font-size:9.5pt;font-family:".concat(RESULT_SHEET_FONT, ";");
+    let body = "";
+    sortedRows.forEach((r, i)=>{
+        const rowBg = i % 2 === 0 ? "#ffffff" : "#eff6ff";
+        body += '<tr style="background:'.concat(rowBg, ';">');
+        body += '<td style="'.concat(td, '">').concat(padSN(i + 1), "</td>");
+        body += '<td style="'.concat(td, 'text-align:left;font-weight:600;">').concat(escapeHtml(r.s.name), "</td>");
+        r.perSub.forEach((p)=>{
+            var _p_mark;
+            body += '<td style="'.concat(td, 'background:#f0fdf4;">').concat((_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-", "</td>");
+        });
+        body += '<td style="'.concat(td, 'font-weight:700;background:#ede9fe;">').concat(r.total || "-", "</td>");
+        body += '<td style="'.concat(td, '">').concat(r.pos && r.pos !== "-" ? ordinal(r.pos) : "-", "</td>");
+        body += "</tr>";
+    });
+    return '<table style="border-collapse:collapse;width:100%;">'.concat(head).concat(body, "</table>");
+}
 // Heading for every exam/test document built through this helper (result
 // sheets, monthly/test sheets, group test sheets): Raven Junior School badge,
 // name and motto. The school argument is kept for the existing call sites.
 function titleBlockHtml(school, subtitle) {
-    return examHeadingHtml(subtitle);
+    let opts = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {};
+    return examHeadingHtml(subtitle, opts);
 }
 // ── End-of-term Result Sheet: row builders shared by Excel + Word ──
 function resultSheetHeaderRow(isLower, subjects) {
@@ -2025,7 +2094,10 @@ function exportResultSheetExcel(param) {
 function exportResultSheetWord(param) {
     let { school, cls, term, year, isLower, subjects, sortedRows, best, worst, avg, subjectAnalysis, gradeKeys, divCounts, classCount } = param;
     var _sortedRows_;
-    let body = titleBlockHtml(school, "END OF ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls, " RESULT SHEET"));
+    let body = titleBlockHtml(school, "END OF ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls, " RESULT SHEET"), {
+        fontFamily: RESULT_SHEET_FONT,
+        logoSize: RESULT_SHEET_LOGO_PX
+    });
     body += resultSheetHtmlTable({
         subjects,
         isLower,
@@ -2070,7 +2142,9 @@ function exportResultSheetWord(param) {
     }
     body += "<p>Class Teacher's Report: .............................................................................. Sign: ......................</p>";
     body += "<p>Head Teacher's Comment: .............................................................................. Sign: ......................</p>";
-    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"));
+    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"), {
+        fontFamily: RESULT_SHEET_FONT
+    });
 }
 // ── Nursery Result Sheet Excel/Word exports ──────────────────────────────────
 // Nursery has no CA/Exam split, aggregate or division -- each subject is a
@@ -2080,25 +2154,21 @@ const NURSERY_BAND_LABELS = NURSERY_COLOR_BANDS.map((b)=>b.label);
 function exportNurseryResultSheetExcel(param) {
     let { school, cls, term, year, sortedRows, best, worst, avg, subjectAnalysis, bandCounts, classCount } = param;
     var _sortedRows_;
+    // No band column: the performance band lives on Report Cards and in Mark
+    // Entry only. The Result Sheet shows just each subject's mark.
     const headerRow = [
         "S/N",
         "NAME OF PUPIL",
-        ...NURSERY_SUBJECTS.flatMap((s)=>[
-                "".concat(s, " MARK"),
-                "".concat(s, " BAND")
-            ]),
+        ...NURSERY_SUBJECTS,
         "TOTAL",
         "POS"
     ];
     const dataRows = sortedRows.map((r, i)=>[
             i + 1,
             r.s.name,
-            ...r.perSub.flatMap((p)=>{
+            ...r.perSub.map((p)=>{
                 var _p_mark;
-                return [
-                    (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-",
-                    p.band ? p.band.label : "-"
-                ];
+                return (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-";
             }),
             r.total || "-",
             r.pos
@@ -2177,31 +2247,13 @@ function exportNurseryResultSheetExcel(param) {
 function exportNurseryResultSheetWord(param) {
     let { school, cls, term, year, sortedRows, best, worst, avg, subjectAnalysis, bandCounts, classCount } = param;
     var _sortedRows_;
-    let body = titleBlockHtml(school, "END OF ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls, " RESULT SHEET"));
-    const headerRow = [
-        "S/N",
-        "NAME OF PUPIL",
-        ...NURSERY_SUBJECTS.flatMap((s)=>[
-                "".concat(s, " MARK"),
-                "".concat(s, " BAND")
-            ]),
-        "TOTAL",
-        "POS"
-    ];
-    const dataRows = sortedRows.map((r, i)=>[
-            i + 1,
-            r.s.name,
-            ...r.perSub.flatMap((p)=>{
-                var _p_mark;
-                return [
-                    (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-",
-                    p.band ? p.band.label : "-"
-                ];
-            }),
-            r.total || "-",
-            r.pos !== "-" ? "".concat(r.pos).concat(ordinalSuffix(r.pos)) : "-"
-        ]);
-    body += htmlTable(headerRow, dataRows);
+    let body = titleBlockHtml(school, "END OF ".concat(term.toUpperCase(), " ").concat(year, " - ").concat(cls, " RESULT SHEET"), {
+        fontFamily: RESULT_SHEET_FONT,
+        logoSize: RESULT_SHEET_LOGO_PX
+    });
+    body += nurseryResultSheetHtmlTable({
+        sortedRows
+    });
     body += "<p><b>Highest:</b> ".concat(escapeHtml(best || "-"), " &nbsp; <b>Lowest:</b> ").concat(escapeHtml(worst || "-"), " &nbsp; <b>Class Average:</b> ").concat(escapeHtml(avg || "-"), " &nbsp; <b>Best Pupil:</b> ").concat(escapeHtml(((_sortedRows_ = sortedRows[0]) === null || _sortedRows_ === void 0 ? void 0 : _sortedRows_.s.name) || "-"), "</p>");
     const aHead = [
         "SUBJECT",
@@ -2229,7 +2281,9 @@ function exportNurseryResultSheetWord(param) {
     ]));
     body += "<p>Class Teacher's Report: .............................................................................. Sign: ......................</p>";
     body += "<p>Head Teacher's Comment: .............................................................................. Sign: ......................</p>";
-    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"));
+    downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Result Sheet"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Result_Sheet.doc"), {
+        fontFamily: RESULT_SHEET_FONT
+    });
 }
 // ── Termly Report Card Word export ──
 function exportReportCardsWord(param) {
@@ -5623,7 +5677,8 @@ export default function App() {
                                     }),
                                     page === "ATTENDANCE TRACKER" && role === "admin" && /*#__PURE__*/ _jsx(TeacherAttendance, {
                                         role: role,
-                                        currentUser: currentUser
+                                        currentUser: currentUser,
+                                        school: school
                                     }),
                                     page === "MOCK INFO" && /*#__PURE__*/ _jsx(MockInfo, {
                                         students: students,
@@ -8929,8 +8984,17 @@ const ATTENDANCE_STATUSES = [
     "Present",
     "Absent",
     "Late",
-    "Half-day"
+    "Half-day",
+    "Public Holiday"
 ];
+// Statuses that count toward hours-based attendance percentages. Public
+// Holiday is deliberately excluded -- tapping it for a day removes that day
+// from both the numerator and denominator of every percentage (daily,
+// weekly, monthly) for that teacher: a holiday shouldn't drag anyone's
+// attendance score down, but it shouldn't hand out free credit either.
+const ATTENDANCE_PERCENT_EXCLUDED_STATUSES = new Set([
+    "Public Holiday"
+]);
 // One-time database setup for the Attendance Tracker. Shown inside the page
 // (with a Copy button) when Supabase reports the tables don't exist yet.
 // Run it once in Supabase -> SQL Editor. Policies allow read / add / edit but
@@ -8983,6 +9047,7 @@ const ATTENDANCE_STATUS_STYLE = {
     Absent: { solid: "#dc2626", bg: "#fee2e2", fg: "#991b1b", border: "#fca5a5", icon: "❌" },
     Late: { solid: "#d97706", bg: "#fef3c7", fg: "#92400e", border: "#fcd34d", icon: "⏰" },
     "Half-day": { solid: "#2563eb", bg: "#dbeafe", fg: "#1e40af", border: "#93c5fd", icon: "🌗" },
+    "Public Holiday": { solid: "#7c3aed", bg: "#ede9fe", fg: "#5b21b6", border: "#c4b5fd", icon: "🎌" },
     "Not marked": { solid: "#64748b", bg: "#f1f5f9", fg: "#475569", border: "#cbd5e1", icon: "➖" }
 };
 const ATTENDANCE_BANNER_TONE = {
@@ -9115,6 +9180,95 @@ function attendanceRecord(date, teacherId, r) {
         remarks: (r.remarks || "").trim() || null
     };
 }
+// ── Hours-based attendance percentages ──
+// Official school day: clock in no later than 08:00, clock out at 17:00 --
+// 9 hours -- is 100% for one day. A 5-day week is therefore 45 hours = 100%.
+// Arriving early or leaving late earns no extra credit; arriving late or
+// leaving early reduces the day's credited minutes accordingly.
+const CLOCK_IN_LATEST = "08:00";
+const CLOCK_OUT_TIME = "17:00";
+const DAILY_TARGET_MINUTES = 9 * 60; // 540
+function timeToMinutes(t) {
+    if (!t) return null;
+    const m = String(t).match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    return Number(m[1]) * 60 + Number(m[2]);
+}
+// Minutes credited toward attendance for one day's row, or null if the day
+// should be left out of every percentage entirely (no status yet, or a
+// Public Holiday). Absent is 0 credited minutes (counts against the
+// percentage); Public Holiday / unmarked are excluded from both sides of
+// the fraction instead.
+function creditedMinutesForRow(row) {
+    if (!row || !row.status) return null;
+    if (ATTENDANCE_PERCENT_EXCLUDED_STATUSES.has(row.status)) return null;
+    if (row.status === "Absent") return 0;
+    const inMin = timeToMinutes(row.time_in);
+    const outMin = timeToMinutes(row.time_out);
+    if (inMin === null || outMin === null) {
+        // No clock times recorded for this row -- fall back to a flat
+        // estimate from the status alone so a teacher marked Present/
+        // Half-day without typed times isn't scored as if absent.
+        if (row.status === "Half-day") return DAILY_TARGET_MINUTES / 2;
+        return DAILY_TARGET_MINUTES; // Present / Late with no times given
+    }
+    const openMin = timeToMinutes(CLOCK_IN_LATEST);
+    const closeMin = timeToMinutes(CLOCK_OUT_TIME);
+    const start = Math.max(inMin, openMin);
+    const end = Math.min(outMin, closeMin);
+    return Math.max(0, end - start);
+}
+function attendancePercent(minutes, targetMinutes) {
+    if (minutes === null || minutes === undefined || !targetMinutes) return null;
+    return Math.max(0, Math.min(100, Math.round(minutes / targetMinutes * 100)));
+}
+// Aggregates a set of a single teacher's rows (any date range) into one
+// percentage: total credited minutes over (days counted × 9 hours). Days
+// with no status yet, or Public Holiday, don't count toward either side --
+// this is what makes a tapped holiday "lose the track percentage" rather
+// than counting as a missed day.
+function aggregateAttendancePercent(rows) {
+    let minutes = 0, days = 0;
+    (rows || []).forEach((row)=>{
+        const m = creditedMinutesForRow(row);
+        if (m === null) return;
+        minutes += m;
+        days += 1;
+    });
+    if (days === 0) return null;
+    return attendancePercent(minutes, days * DAILY_TARGET_MINUTES);
+}
+// Color for a percentage tile/bar: green ≥90%, amber 75-89%, red below.
+function attendancePercentColor(v) {
+    if (v === null || v === undefined) return "#94a3b8";
+    if (v >= 90) return "#16a34a";
+    if (v >= 75) return "#d97706";
+    return "#dc2626";
+}
+// Monday-Sunday ISO week containing `iso`.
+function isoWeekRange(iso) {
+    const d = new Date(`${iso}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return null;
+    const dow = (d.getDay() + 6) % 7; // Mon=0 ... Sun=6
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - dow);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const toIso = (x)=>`${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`;
+    return {
+        from: toIso(monday),
+        to: toIso(sunday)
+    };
+}
+// Calendar month containing `iso`.
+function calendarMonthRange(iso) {
+    if (!iso) return null;
+    const [y, m] = iso.slice(0, 7).split("-").map(Number);
+    return {
+        from: `${iso.slice(0, 7)}-01`,
+        to: `${iso.slice(0, 7)}-${pad2(new Date(y, m, 0).getDate())}`
+    };
+}
 // Never throws. Resolves { rows: { [teacherId]: row }, error: "" | message }.
 async function fetchAttendanceForDate(date) {
     try {
@@ -9135,6 +9289,33 @@ async function fetchAttendanceForDate(date) {
         return {
             rows: {},
             error: e && e.message || "Could not load the saved attendance."
+        };
+    }
+}
+// Never throws. Resolves { rows: [{teacher_id, date, status, time_in, time_out, remarks}], error }.
+// Used for the weekly/monthly percentage rollups and the attendance graph --
+// deliberately a flat list (not keyed by date) since it spans many dates at
+// once, unlike fetchAttendanceForDate above.
+async function fetchAttendanceRange(from, to) {
+    try {
+        const { data, error } = await supabase.from("teacher_attendance").select("teacher_id, date, status, time_in, time_out, remarks").gte("date", from).lte("date", to);
+        if (error) return {
+            rows: [],
+            error: error.message || "Could not load the attendance history."
+        };
+        const rows = (data || []).map((r)=>({
+                teacher_id: r.teacher_id,
+                date: r.date,
+                ...rowFromAttendanceRecord(r)
+            }));
+        return {
+            rows,
+            error: ""
+        };
+    } catch (e) {
+        return {
+            rows: [],
+            error: e && e.message || "Could not load the attendance history."
         };
     }
 }
@@ -9213,8 +9394,56 @@ function writeAttendanceQueue(queue) {
     // nothing more we can do locally
     }
 }
+// Exports the register for one date, plus each teacher's Today/Week/Month
+// attendance percentages, to a Word document -- same HTML-to-.doc approach
+// used by every other export in this file (downloadWordHtml above).
+function exportAttendanceWord(param) {
+    let { school, date, teachers, rowsByTeacher, statsByTeacher } = param;
+    const th = "border:1px solid #999;padding:6px;font-size:9.5pt;background:#1e3a6e;color:white;";
+    const td = "border:1px solid #999;padding:5px;font-size:9.5pt;";
+    const pctCell = (v)=>v === null || v === undefined ? "-" : `${v}%`;
+    let head = "<tr>" + [
+        "#",
+        "TEACHER",
+        "STATUS",
+        "TIME IN",
+        "TIME OUT",
+        "REMARKS",
+        "TODAY %",
+        "WEEK %",
+        "MONTH %"
+    ].map((h)=>`<th style="${th}">${h}</th>`).join("") + "</tr>";
+    let body = "";
+    teachers.forEach((t, i)=>{
+        const r = rowsByTeacher[t.id] || BLANK_ATTENDANCE_ROW;
+        const s = statsByTeacher[t.id] || {};
+        const rowBg = i % 2 === 0 ? "#ffffff" : "#eff6ff";
+        body += `<tr style="background:${rowBg};">`;
+        body += `<td style="${td}text-align:center;">${i + 1}</td>`;
+        body += `<td style="${td}text-align:left;font-weight:600;">${escapeHtml(t.name)}</td>`;
+        body += `<td style="${td}text-align:center;">${escapeHtml(r.status || "Not marked")}</td>`;
+        body += `<td style="${td}text-align:center;">${escapeHtml(r.time_in || "-")}</td>`;
+        body += `<td style="${td}text-align:center;">${escapeHtml(r.time_out || "-")}</td>`;
+        body += `<td style="${td}text-align:left;">${escapeHtml(r.remarks || "-")}</td>`;
+        body += `<td style="${td}text-align:center;">${escapeHtml(pctCell(s.daily))}</td>`;
+        body += `<td style="${td}text-align:center;">${escapeHtml(pctCell(s.weekly))}</td>`;
+        body += `<td style="${td}text-align:center;">${escapeHtml(pctCell(s.monthly))}</td>`;
+        body += "</tr>";
+    });
+    const table = `<table style="border-collapse:collapse;width:100%;">${head}${body}</table>`;
+    let bodyHtml = '<div style="text-align:center;">';
+    bodyHtml += `<div class="title">${escapeHtml((school === null || school === void 0 ? void 0 : school.name) || "")}</div>`;
+    if (school === null || school === void 0 ? void 0 : school.motto) bodyHtml += `<div class="motto">"${escapeHtml(school.motto)}"</div>`;
+    bodyHtml += `<div class="subtitle">TEACHER ATTENDANCE REGISTER — ${escapeHtml(prettyAttendanceDate(date))}</div>`;
+    bodyHtml += '<div style="font-size:9pt;margin-bottom:10px;">Daily target: 9 hrs (08:00–17:00) · Weekly target: 45 hrs · Percentages exclude Public Holidays</div>';
+    bodyHtml += "</div>";
+    bodyHtml += table;
+    downloadWordHtml(`Teacher Attendance — ${date}`, bodyHtml, `Teacher_Attendance_${safeFileName(date)}.doc`, {
+        pageSize: "297mm 210mm"
+    });
+}
 function TeacherAttendance(param) {
-    let { role, currentUser } = param;
+    let { role, currentUser, school } = param;
     const [teachers, setTeachers] = useState([]);
     const [loadingTeachers, setLoadingTeachers] = useState(true);
     const [teacherLoadError, setTeacherLoadError] = useState("");
@@ -9235,10 +9464,18 @@ function TeacherAttendance(param) {
     const [submitAttempted, setSubmitAttempted] = useState(false);
     const [message, setMessage] = useState(null); // { type: "success" | "error" | "info", text }
     const [confirmAllPresent, setConfirmAllPresent] = useState(0); // # of rows that would be overwritten
+    const [confirmAllHoliday, setConfirmAllHoliday] = useState(0); // # of rows that would be overwritten
     const [confirmDiscard, setConfirmDiscard] = useState(false);
     const [monthFilter, setMonthFilter] = useState(thisMonthIso());
     const [monthSummary, setMonthSummary] = useState(null);
     const [monthSummaryLoading, setMonthSummaryLoading] = useState(false);
+    // Attendance-percentage rollups: rows for every date in the ISO week and
+    // calendar month containing `date` (fetched as one range, since the two
+    // usually overlap), used to compute each teacher's Today / Week / Month
+    // percentages below.
+    const [rangeRows, setRangeRows] = useState([]);
+    const [rangeError, setRangeError] = useState("");
+    const [rangeLoading, setRangeLoading] = useState(false);
     // Teacher roster management (add / rename teachers without leaving MKIS).
     const [showRoster, setShowRoster] = useState(false);
     const [newTeacherText, setNewTeacherText] = useState("");
@@ -9489,6 +9726,7 @@ function TeacherAttendance(param) {
             Absent: 0,
             Late: 0,
             "Half-day": 0,
+            "Public Holiday": 0,
             "Not marked": 0
         };
         teachers.forEach((t)=>{
@@ -9502,6 +9740,99 @@ function TeacherAttendance(param) {
         teachers,
         draft,
         saved
+    ]);
+    // ── Attendance percentages (Today / This Week / This Month) ──
+    // The ISO week and calendar month containing `date`, plus the combined
+    // range to fetch in one request (they usually overlap). Never reaches
+    // past today, since future dates have nothing recorded.
+    const periodRange = useMemo(()=>{
+        const week = isoWeekRange(date) || {
+            from: date,
+            to: date
+        };
+        const month = calendarMonthRange(date) || {
+            from: date,
+            to: date
+        };
+        const today = todayIso();
+        const from = week.from < month.from ? week.from : month.from;
+        const toRaw = week.to > month.to ? week.to : month.to;
+        return {
+            week,
+            month,
+            from,
+            to: toRaw > today ? today : toRaw
+        };
+    }, [
+        date
+    ]);
+    useEffect(()=>{
+        if (role !== "admin" || teachers.length === 0) return;
+        let alive = true;
+        setRangeLoading(true);
+        fetchAttendanceRange(periodRange.from, periodRange.to).then((param)=>{
+            let { rows, error } = param;
+            if (!alive) return;
+            setRangeRows(rows);
+            setRangeError(error);
+            setRangeLoading(false);
+        });
+        return ()=>{
+            alive = false;
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        role,
+        teachers.length,
+        periodRange.from,
+        periodRange.to,
+        reloadTick
+    ]);
+    // Every teacher's rows across the fetched range, keyed by date, with the
+    // selected date overlaid by what's on screen (draft-over-saved) so
+    // editing today's register updates the percentages live without waiting
+    // on a re-fetch.
+    const teacherRowsByDate = useMemo(()=>{
+        const byTeacher = {};
+        teachers.forEach((t)=>{
+            byTeacher[t.id] = {};
+        });
+        rangeRows.forEach((r)=>{
+            if (!byTeacher[r.teacher_id]) byTeacher[r.teacher_id] = {};
+            byTeacher[r.teacher_id][r.date] = r;
+        });
+        teachers.forEach((t)=>{
+            const live = draft.rows[t.id] || saved[t.id];
+            if (live) byTeacher[t.id][date] = live;
+        });
+        return byTeacher;
+    }, [
+        teachers,
+        rangeRows,
+        draft,
+        saved,
+        date
+    ]);
+    // { [teacherId]: { daily, weekly, monthly } } -- each a 0-100 integer or
+    // null (no data yet, or every day in that period was a Public Holiday).
+    const teacherStats = useMemo(()=>{
+        const stats = {};
+        teachers.forEach((t)=>{
+            const byDate = teacherRowsByDate[t.id] || {};
+            const weekRows = Object.keys(byDate).filter((d)=>d >= periodRange.week.from && d <= periodRange.week.to).map((d)=>byDate[d]);
+            const monthRows = Object.keys(byDate).filter((d)=>d >= periodRange.month.from && d <= periodRange.month.to).map((d)=>byDate[d]);
+            stats[t.id] = {
+                daily: attendancePercent(creditedMinutesForRow(byDate[date]), DAILY_TARGET_MINUTES),
+                weekly: aggregateAttendancePercent(weekRows),
+                monthly: aggregateAttendancePercent(monthRows)
+            };
+        });
+        return stats;
+    }, [
+        teachers,
+        teacherRowsByDate,
+        date,
+        periodRange
     ]);
     const setRowField = (teacherId, field, value)=>{
         const base = draft.rows[teacherId] || saved[teacherId] || BLANK_ATTENDANCE_ROW;
@@ -9550,6 +9881,37 @@ function TeacherAttendance(param) {
         }).length;
         if (wouldOverwrite > 0) setConfirmAllPresent(wouldOverwrite);
         else applyMarkAllPresent();
+    };
+    // Whole-school Public Holiday, e.g. Christmas, Eid, a national holiday --
+    // clears any clock-in/out times, since a holiday has none.
+    const applyMarkAllHoliday = ()=>{
+        const rows = {
+            ...draft.rows
+        };
+        teachers.forEach((t)=>{
+            const cur = draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW;
+            if (cur.status === "Public Holiday") return;
+            const nextRow = {
+                ...BLANK_ATTENDANCE_ROW,
+                remarks: cur.remarks,
+                status: "Public Holiday"
+            };
+            if (sameAttendanceRow(nextRow, saved[t.id])) delete rows[t.id];
+            else rows[t.id] = nextRow;
+        });
+        persistDraft(date, {
+            rows,
+            pending: false
+        });
+        setConfirmAllHoliday(0);
+    };
+    const handleMarkAllHoliday = ()=>{
+        const wouldOverwrite = teachers.filter((t)=>{
+            const s = (draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW).status;
+            return s && s !== "Public Holiday";
+        }).length;
+        if (wouldOverwrite > 0) setConfirmAllHoliday(wouldOverwrite);
+        else applyMarkAllHoliday();
     };
     const discardChanges = ()=>{
         persistDraft(date, EMPTY_ATTENDANCE_DRAFT);
@@ -9689,7 +10051,8 @@ function TeacherAttendance(param) {
             Present: 0,
             Absent: 0,
             Late: 0,
-            "Half-day": 0
+            "Half-day": 0,
+            "Public Holiday": 0
         };
         data.forEach((r)=>{
             if (counts[r.status] !== undefined) counts[r.status]++;
@@ -9951,6 +10314,9 @@ function TeacherAttendance(param) {
                 <button type="button" style={{ ...btnSuccess, opacity: loadingTeachers || loadingRows || saving || !date || teachers.length === 0 ? 0.55 : 1 }} onClick={handleMarkAllPresent} disabled={loadingTeachers || loadingRows || saving || !date || teachers.length === 0}>
                     ✅ Mark All Present
                 </button>
+                <button type="button" style={{ ...btnGhost, opacity: loadingTeachers || loadingRows || saving || !date || teachers.length === 0 ? 0.55 : 1, borderColor: "#c4b5fd", color: "#5b21b6" }} onClick={handleMarkAllHoliday} disabled={loadingTeachers || loadingRows || saving || !date || teachers.length === 0}>
+                    🎌 Mark All Holiday
+                </button>
                 {unsavedCount > 0 && <button type="button" style={btnGhost} onClick={()=>setConfirmDiscard(true)} disabled={saving}>Discard Changes</button>}
                 <button type="button" style={{ ...btnPrimary, opacity: saveBlocked ? 0.55 : 1 }} onClick={handleSave} disabled={saveBlocked}>
                     {saving ? "Saving…" : unsavedCount > 0 ? `💾 Save Attendance (${unsavedCount})` : "💾 Save Attendance"}
@@ -9977,7 +10343,7 @@ function TeacherAttendance(param) {
                     <RCHeading>DAILY REGISTER</RCHeading>
                     <div style={{ borderRadius: 12, overflow: "hidden", background: RC_LIGHT, boxShadow: "0 1px 4px rgba(15,23,42,0.08)" }}>
                         <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820, fontSize: 12 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900, fontSize: 12 }}>
                                 <thead>
                                     <tr>
                                         <th style={{ ...atTh, width: 34, textAlign: "center" }}>#</th>
@@ -9986,6 +10352,7 @@ function TeacherAttendance(param) {
                                         <th style={atTh}>TIME IN</th>
                                         <th style={atTh}>TIME OUT</th>
                                         <th style={atTh}>REMARKS</th>
+                                        <th style={{ ...atTh, textAlign: "center" }}>TODAY %</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -10010,7 +10377,7 @@ function TeacherAttendance(param) {
                                                     </div>
                                                 </td>
                                                 <td style={{ ...atTd, ...cellBg }}>
-                                                    <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
+                                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                                                         {ATTENDANCE_STATUSES.map((s)=>{
                         const ss = ATTENDANCE_STATUS_STYLE[s];
                         const active = r.status === s;
@@ -10027,12 +10394,72 @@ function TeacherAttendance(param) {
                                                 <td style={{ ...atTd, ...cellBg }}>
                                                     <input type="text" aria-label={`Remarks for ${t.name}`} placeholder="Optional" style={{ ...inp, padding: "5px 8px", fontSize: 12, width: "100%", minWidth: 140 }} value={r.remarks} disabled={busy} onChange={(e)=>setRowField(t.id, "remarks", e.target.value)} />
                                                 </td>
+                                                <td style={{ ...atTd, ...cellBg, textAlign: "center" }}>
+                                                    {teacherStats[t.id] && teacherStats[t.id].daily !== null ? <span style={{ fontWeight: 800, color: attendancePercentColor(teacherStats[t.id].daily) }}>{teacherStats[t.id].daily}%</span> : <span style={{ color: "#94a3b8" }}>{r.status === "Public Holiday" ? "🎌" : "—"}</span>}
+                                                </td>
                                             </tr>;
             })}
                                 </tbody>
                             </table>
                         </div>
                     </div>
+                </div>}
+
+            {/* ── Attendance percentages (Today / Week / Month) ── */}
+            {totalTeachers > 0 && <div style={{ ...cardStyle, marginTop: 20 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                        <RCHeading tight>ATTENDANCE PERCENTAGES</RCHeading>
+                        <button type="button" style={btnWord} onClick={()=>{
+                    const rowsByTeacher = {};
+                    teachers.forEach((t)=>{
+                        rowsByTeacher[t.id] = draft.rows[t.id] || saved[t.id] || BLANK_ATTENDANCE_ROW;
+                    });
+                    exportAttendanceWord({
+                        school,
+                        date,
+                        teachers,
+                        rowsByTeacher,
+                        statsByTeacher: teacherStats
+                    });
+                }}>
+                            📄 Download Word
+                        </button>
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+                        Daily target: 9 hrs (08:00–17:00) · Weekly target: 45 hrs. Public Holidays are left out of every percentage.{rangeLoading ? " Loading…" : ""}{rangeError ? ` (${rangeError})` : ""}
+                    </div>
+                    <div style={{ overflowX: "auto", marginBottom: 18 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 480, fontSize: 12 }}>
+                            <thead>
+                                <tr>
+                                    <th style={atTh}>TEACHER</th>
+                                    <th style={{ ...atTh, textAlign: "center" }}>TODAY</th>
+                                    <th style={{ ...atTh, textAlign: "center" }}>THIS WEEK</th>
+                                    <th style={{ ...atTh, textAlign: "center" }}>THIS MONTH</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {teachers.map((t, i)=>{
+                    const s = teacherStats[t.id] || {};
+                    const cellBg = {
+                        background: i % 2 === 0 ? RC_LIGHT : RC_LIGHTER
+                    };
+                    const pctSpan = (v)=>v === null || v === undefined ? <span style={{ color: "#94a3b8" }}>—</span> : <span style={{ fontWeight: 800, color: attendancePercentColor(v) }}>{v}%</span>;
+                    return <tr key={t.id}>
+                                            <td style={{ ...atTd, ...cellBg, fontWeight: 700, color: "#1f2937" }}>{t.name}</td>
+                                            <td style={{ ...atTd, ...cellBg, textAlign: "center" }}>{pctSpan(s.daily)}</td>
+                                            <td style={{ ...atTd, ...cellBg, textAlign: "center" }}>{pctSpan(s.weekly)}</td>
+                                            <td style={{ ...atTd, ...cellBg, textAlign: "center" }}>{pctSpan(s.monthly)}</td>
+                                        </tr>;
+                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#374151", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>Monthly attendance % by teacher</div>
+                    <BarChart data={teachers.filter((t)=>teacherStats[t.id] && teacherStats[t.id].monthly !== null).map((t)=>({
+                    label: t.name.length > 10 ? `${t.name.slice(0, 9)}…` : t.name,
+                    value: teacherStats[t.id].monthly
+                }))} barColor={(d)=>attendancePercentColor(d.value)} emptyMsg="No attendance recorded yet this month" />
                 </div>}
 
             {/* ── Monthly summary ── */}
@@ -10059,6 +10486,7 @@ function TeacherAttendance(param) {
             </div>
 
             {confirmAllPresent > 0 && <ConfirmModal title="Mark everyone Present?" message={`${confirmAllPresent} teacher(s) currently marked Absent, Late or Half-day will be changed to Present. You can still edit any row before saving.`} confirmLabel="Mark All Present" danger={false} onCancel={()=>setConfirmAllPresent(0)} onConfirm={applyMarkAllPresent} />}
+            {confirmAllHoliday > 0 && <ConfirmModal title="Mark everyone as Public Holiday?" message={`${confirmAllHoliday} teacher(s) will be changed to Public Holiday for ${prettyAttendanceDate(date)}, and any clock-in/out times for them will be cleared. This day will then be left out of everyone's attendance percentages. You can still edit any row before saving.`} confirmLabel="Mark All Holiday" danger={false} onCancel={()=>setConfirmAllHoliday(0)} onConfirm={applyMarkAllHoliday} />}
             {confirmDiscard && <ConfirmModal title="Discard unsaved changes?" message={`${unsavedCount} unsaved change${unsavedCount === 1 ? "" : "s"} for ${prettyAttendanceDate(date)} will be removed and the register will go back to what was last saved.`} confirmLabel="Discard" onCancel={()=>setConfirmDiscard(false)} onConfirm={discardChanges} />}
         </div>;
 }
@@ -13063,7 +13491,7 @@ function Slips(param) {
                         </table>
                         <div style={{ marginTop: "auto", paddingTop: 8, fontSize: 11, lineHeight: 1.5, color: "#111827" }}>
                             <div><b>Class Teacher's Report:</b> {sl.comments.teacher ? <i style={{ fontWeight: 700, color: "#1e3a6e" }}>{sl.comments.teacher}</i> : "______________________________"}</div>
-                            <div><b>Headteacher's Comment:</b> {sl.comments.head ? <i style={{ fontWeight: 700, color: "#1e3a6e" }}>{sl.comments.head}</i> : "______________________________"}</div>
+                            <div><b>Headteacher's Comment:</b> {sl.comments.head ? <i style={{ fontWeight: 700, color: "#dc2626" }}>{sl.comments.head}</i> : "______________________________"}</div>
                         </div>
                     </div>)}
             </div>)}
@@ -18179,9 +18607,9 @@ function ResultSheets(param) {
             {nurseryClassStudents.length > 0 && nurserySortedRows.length === 0 && <div style={{ background: "#fffbeb", borderRadius: 12, padding: 24, textAlign: "center", color: "#92400e", border: "1px solid #fde68a", marginBottom: 16 }}>
                 No {cls} learners have any {term} {year} marks recorded yet.
             </div>}
-            <div ref={sheetCardRef} style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 24 }}>
+            <div ref={sheetCardRef} style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 24, fontFamily: RESULT_SHEET_FONT }}>
                 <div style={{ background: "#1e3a6e", color: "white", padding: "12px 16px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                    <img src={RAVEN_BADGE} alt="Raven Junior School badge" style={{ width: 44, height: 44, objectFit: "contain", flexShrink: 0, background: "white", borderRadius: 6 }} />
+                    <img src={RAVEN_BADGE} alt="Raven Junior School badge" style={{ width: RESULT_SHEET_LOGO_PX, height: RESULT_SHEET_LOGO_PX, objectFit: "contain", flexShrink: 0, background: "white", borderRadius: 6 }} />
                     <div>
                         <div style={{ fontWeight: 800, fontSize: 16 }}>{RAVEN_SCHOOL_NAME}</div>
                         <div style={{ fontSize: 12, opacity: 0.9, marginTop: 2 }}>"{RAVEN_SCHOOL_MOTTO}" | END OF {term.toUpperCase()} {year} - {cls} RESULT SHEET</div>
@@ -18193,32 +18621,26 @@ function ResultSheets(param) {
                             <tr style={{ background: "#1e40af", color: "white" }}>
                                 <th style={th} rowSpan={2}>S/N</th>
                                 <th style={{ ...th, textAlign: "left", minWidth: 160 }} rowSpan={2}>NAME OF PUPIL</th>
-                                {NURSERY_SUBJECTS.map((s)=><th key={s} style={th} colSpan={2}>{s}</th>)}
+                                {NURSERY_SUBJECTS.map((s)=><th key={s} style={th}>{s}</th>)}
                                 <th style={th} rowSpan={2}>TOTAL</th>
                                 <th style={th} rowSpan={2}>POS</th>
                             </tr>
                             <tr style={{ background: "#2563eb", color: "white", fontSize: 11 }}>
-                                {NURSERY_SUBJECTS.map((s)=><React.Fragment key={s}>
-                                    <th style={{ ...th, background: "#dcfce7", color: "#14532d" }}>MARK</th>
-                                    <th style={{ ...th, background: "#fed7aa", color: "#7c2d12" }}>BAND</th>
-                                </React.Fragment>)}
+                                {NURSERY_SUBJECTS.map((s)=><th key={s} style={{ ...th, background: "#dcfce7", color: "#14532d" }}>MARK</th>)}
                             </tr>
                         </thead>
                         <tbody>
                             {nurserySortedRows.map((r, i)=><tr key={r.s.id} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
                                 <td style={td}>{padSN(i + 1)}</td>
                                 <td style={{ ...td, fontWeight: 600, textAlign: "left" }}>{r.s.name}</td>
-                                {r.perSub.map((p)=><React.Fragment key={p.sub}>
-                                    <td style={{ ...td, background: "#f0fdf4" }}>{p.mark ?? "-"}</td>
-                                    <td style={{ ...td, background: "#fff7ed", color: p.band ? p.band.color : "inherit", fontWeight: p.band ? 700 : 400 }}>{p.band ? p.band.label : "-"}</td>
-                                </React.Fragment>)}
+                                {r.perSub.map((p)=><td key={p.sub} style={{ ...td, background: "#f0fdf4" }}>{p.mark ?? "-"}</td>)}
                                 <td style={{ ...td, fontWeight: 700, background: "#ede9fe" }}>{r.total || "-"}</td>
                                 <td style={td}>{r.pos !== "-" ? <PositionBadge pos={r.pos} size={13} /> : "-"}</td>
                             </tr>)}
                         </tbody>
                         <tfoot>
                             <tr style={{ background: "#dbeafe", fontWeight: 700, fontSize: 12 }}>
-                                <td colSpan={NURSERY_SUBJECTS.length * 2 + 4} style={{ ...td, textAlign: "left", padding: "8px 12px", color: "#1e3a6e" }}>
+                                <td colSpan={NURSERY_SUBJECTS.length + 4} style={{ ...td, textAlign: "left", padding: "8px 12px", color: "#1e3a6e" }}>
                                     📈 Highest: <b>{nurseryBest || "-"}</b> &nbsp;|&nbsp; Lowest: <b>{nurseryWorst || "-"}</b> &nbsp;|&nbsp; Class Avg: <b>{nurseryAvg || "-"}</b> &nbsp;|&nbsp; Best Pupil: <b>{nurserySortedRows[0]?.s.name || "-"}</b>
                                 </td>
                             </tr>
@@ -18226,7 +18648,7 @@ function ResultSheets(param) {
                     </table>
                 </div>
             </div>
-            <div ref={analysisCardRef} style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 24 }}>
+            <div ref={analysisCardRef} style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 24, fontFamily: RESULT_SHEET_FONT }}>
                 <div style={{ background: "#0f766e", color: "white", padding: "10px 16px", fontWeight: 700 }}>📊 Performance Analysis - {cls} {term} {year}</div>
                 <div style={{ padding: 16 }}>
                     <h4 style={{ margin: "0 0 8px", color: "#0f766e", fontSize: 13 }}>A. Subject Performance Analysis</h4>
@@ -18424,7 +18846,8 @@ function ResultSheets(param) {
                     borderRadius: 12,
                     border: "1px solid #e5e7eb",
                     overflow: "hidden",
-                    marginBottom: 24
+                    marginBottom: 24,
+                    fontFamily: RESULT_SHEET_FONT
                 },
                 children: [
                     /*#__PURE__*/ _jsxs("div", {
@@ -18698,7 +19121,8 @@ function ResultSheets(param) {
                     borderRadius: 12,
                     border: "1px solid #e5e7eb",
                     overflow: "hidden",
-                    marginBottom: 24
+                    marginBottom: 24,
+                    fontFamily: RESULT_SHEET_FONT
                 },
                 children: [
                     /*#__PURE__*/ _jsxs("div", {
