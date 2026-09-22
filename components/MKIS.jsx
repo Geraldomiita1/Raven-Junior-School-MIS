@@ -3431,7 +3431,6 @@ const PAGES = [
 ];
 // Pages only the admin account can see/use. Teachers never see these in the sidebar.
 const ADMIN_ONLY_PAGES = [
-    "ATTENDANCE TRACKER",
     "MANAGE REQUESTS",
     "SETTINGS",
     "AUDIT LOG",
@@ -5694,7 +5693,7 @@ export default function App() {
                                         initialStudentId: pupilProfileTargetId,
                                         onConsumeInitial: ()=>setPupilProfileTargetId(null)
                                     }),
-                                    page === "ATTENDANCE TRACKER" && role === "admin" && /*#__PURE__*/ _jsx(TeacherAttendance, {
+                                    page === "ATTENDANCE TRACKER" && /*#__PURE__*/ _jsx(TeacherAttendance, {
                                         role: role,
                                         currentUser: currentUser,
                                         school: school
@@ -9199,6 +9198,61 @@ function attendanceRecord(date, teacherId, r) {
         remarks: (r.remarks || "").trim() || null
     };
 }
+// ── Attendance permission requests (Request Permission / Manage Requests) ──
+// A separate real table, same as `teachers`/`teacher_attendance` above --
+// not the generic mkis_kv blob -- since this is a live, per-row admin
+// workflow (submit, then accept/reject), not shared document state. See
+// supabase-attendance-requests-setup.sql for the table itself.
+const ATTENDANCE_REQUEST_TYPES = [
+    "Absenteeism",
+    "Early Departure",
+    "Late Arrival"
+];
+async function loadAttendanceRequests() {
+    try {
+        const { data, error } = await supabase.from("attendance_requests").select("*").order("created_at", {
+            ascending: false
+        });
+        if (error) return {
+            data: [],
+            error: error.message || "Could not load requests."
+        };
+        return {
+            data: data || [],
+            error: ""
+        };
+    } catch (e) {
+        return {
+            data: [],
+            error: e && e.message || "Could not load requests."
+        };
+    }
+}
+async function submitAttendanceRequest(teacherName, requestType, reason, destination) {
+    try {
+        const { error } = await supabase.from("attendance_requests").insert({
+            teacher_name: teacherName,
+            request_type: requestType,
+            reason: (reason || "").trim(),
+            destination: requestType === "Early Departure" ? (destination || "").trim() || null : null,
+            status: "Pending"
+        });
+        return !error;
+    } catch {
+        return false;
+    }
+}
+async function resolveAttendanceRequest(id, status) {
+    try {
+        const { error } = await supabase.from("attendance_requests").update({
+            status,
+            resolved_at: new Date().toISOString()
+        }).eq("id", id);
+        return !error;
+    } catch {
+        return false;
+    }
+}
 // ── Hours-based attendance percentages ──
 // Official school day: clock in no later than 08:00, clock out at 17:00 --
 // 9 hours -- is 100% for one day. A 5-day week is therefore 45 hours = 100%.
@@ -9460,6 +9514,136 @@ function exportAttendanceWord(param) {
     downloadWordHtml(`Teacher Attendance — ${date}`, bodyHtml, `Teacher_Attendance_${safeFileName(date)}.doc`, {
         pageSize: "297mm 210mm"
     });
+}
+// ── Read-only teacher view of Attendance Tracker ──
+// Teachers can see who's in/out today and everyone's request statuses, but
+// cannot edit attendance rows or manage the teacher roster -- only admin
+// (the full TeacherAttendance component below) can do that. The one thing a
+// teacher CAN do here is Request Permission (Absenteeism / Early Departure /
+// Late Arrival), which lands in Manage Requests for the admin to accept or
+// reject; the outcome then shows in the "Request Status" list below for
+// every teacher to see, not just the one who asked.
+function TeacherAttendanceReadOnly(param) {
+    let { currentUser, school } = param;
+    const [teachers, setTeachers] = useState([]);
+    const [rows, setRows] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [loadErr, setLoadErr] = useState("");
+    const [date] = useState(todayIso());
+    const [requests, setRequests] = useState([]);
+    const [reqErr, setReqErr] = useState("");
+    const [showForm, setShowForm] = useState(false);
+    const [reqType, setReqType] = useState("Absenteeism");
+    const [reason, setReason] = useState("");
+    const [destination, setDestination] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [submitMsg, setSubmitMsg] = useState(null);
+    const loadAll = useCallback(async ()=>{
+        setLoading(true);
+        try {
+            const [tRes, aRes, rRes] = await Promise.all([
+                supabase.from("teachers").select("id, name").order("name", { ascending: true }),
+                supabase.from("teacher_attendance").select("*").eq("date", date),
+                loadAttendanceRequests()
+            ]);
+            if (!tRes.error) setTeachers(tRes.data || []);
+            if (!aRes.error) {
+                const byId = {};
+                (aRes.data || []).forEach((r)=>{
+                    byId[r.teacher_id] = r;
+                });
+                setRows(byId);
+            }
+            setRequests(rRes.data);
+            setReqErr(rRes.error);
+        } catch (e) {
+            setLoadErr(e && e.message || "Could not load attendance.");
+        }
+        setLoading(false);
+    }, [date]);
+    useEffect(()=>{
+        loadAll();
+    }, [loadAll]);
+    const submit = async ()=>{
+        if (!reason.trim()) {
+            setSubmitMsg({ type: "error", text: "Please enter a reason." });
+            return;
+        }
+        if (reqType === "Early Departure" && !destination.trim()) {
+            setSubmitMsg({ type: "error", text: "Please enter a destination." });
+            return;
+        }
+        setSubmitting(true);
+        const ok = await submitAttendanceRequest(currentUser, reqType, reason, destination);
+        setSubmitting(false);
+        if (ok) {
+            setSubmitMsg({ type: "success", text: "Request sent to the admin." });
+            setReason("");
+            setDestination("");
+            setShowForm(false);
+            loadAll();
+        } else {
+            setSubmitMsg({ type: "error", text: "Could not send the request. Try again." });
+        }
+    };
+    const statusColor = (s)=>s === "Accepted" ? "#166534" : s === "Rejected" ? "#991b1b" : "#92400e";
+    const statusBg = (s)=>s === "Accepted" ? "#f0fdf4" : s === "Rejected" ? "#fef2f2" : "#fffbeb";
+    return <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            <div style={{ background: "linear-gradient(135deg,#1e3a6e,#2563eb)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, color: "white" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>🕐 Attendance Tracker</div>
+                <div style={{ fontSize: 13, opacity: 0.9 }}>View-only for teachers. Need to be away or arrive late? Use Request Permission below.</div>
+            </div>
+            <div style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", padding: 16, marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>Today — {date}</div>
+                {loading ? <div style={{ color: "#9ca3af", fontSize: 13 }}>Loading…</div> : loadErr ? <div style={{ color: "#991b1b", fontSize: 13 }}>{loadErr}</div> : <table style={{ width: "100%", fontSize: 13 }}>
+                        <thead>
+                            <tr style={{ background: "#1e3a6e", color: "white" }}>
+                                <th style={th}>Teacher</th>
+                                <th style={th}>Status</th>
+                                <th style={th}>Time In</th>
+                                <th style={th}>Time Out</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {teachers.map((t)=>{
+                                const r = rows[t.id];
+                                return <tr key={t.id}>
+                                        <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>{t.name}</td>
+                                        <td style={td}>{(r === null || r === void 0 ? void 0 : r.status) || "—"}</td>
+                                        <td style={td}>{r !== null && r !== void 0 && r.time_in ? r.time_in.slice(11, 16) : "—"}</td>
+                                        <td style={td}>{r !== null && r !== void 0 && r.time_out ? r.time_out.slice(11, 16) : "—"}</td>
+                                    </tr>;
+                            })}
+                        </tbody>
+                    </table>}
+            </div>
+            <div style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", padding: 16, marginBottom: 16 }}>
+                <button style={btnPrimary} onClick={()=>{
+                    setShowForm(!showForm);
+                    setSubmitMsg(null);
+                }}>📋 Request Permission</button>
+                {showForm && <div style={{ marginTop: 14 }}>
+                        <Sel label="Type" value={reqType} onChange={setReqType} opts={ATTENDANCE_REQUEST_TYPES} />
+                        <div style={{ marginTop: 10 }}>
+                            <label style={lbl}>Reason</label>
+                            <textarea value={reason} onChange={(e)=>setReason(e.target.value)} style={{ ...inp, width: "100%", minHeight: 60 }} />
+                        </div>
+                        {reqType === "Early Departure" && <div style={{ marginTop: 10 }}>
+                                <label style={lbl}>Destination</label>
+                                <input type="text" value={destination} onChange={(e)=>setDestination(e.target.value)} style={{ ...inp, width: "100%" }} />
+                            </div>}
+                        <button style={{ ...btnSuccess, marginTop: 12 }} disabled={submitting} onClick={submit}>{submitting ? "Sending…" : "Submit Request"}</button>
+                    </div>}
+                {submitMsg && <div style={{ marginTop: 10, fontSize: 13, color: submitMsg.type === "error" ? "#991b1b" : "#166534" }}>{submitMsg.text}</div>}
+            </div>
+            <div style={{ background: "white", borderRadius: 12, border: "1px solid #e5e7eb", padding: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>Request Status</div>
+                {reqErr ? <div style={{ color: "#991b1b", fontSize: 13 }}>{reqErr}</div> : requests.length === 0 ? <div style={{ color: "#9ca3af", fontSize: 13 }}>No requests yet.</div> : requests.map((r)=><div key={r.id} style={{ padding: "8px 0", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}>
+                            <b>{r.teacher_name}'s Request</b> ({r.request_type}):{" "}
+                            <span style={{ background: statusBg(r.status), color: statusColor(r.status), fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>{r.status}</span>
+                        </div>)}
+            </div>
+        </div>;
 }
 function TeacherAttendance(param) {
     let { role, currentUser, school } = param;
@@ -10199,7 +10383,7 @@ function TeacherAttendance(param) {
         });
     };
     if (role !== "admin") {
-        return <div style={{ padding: 16, color: "#6b7280" }}>Only an admin account can access the Attendance Tracker.</div>;
+        return <TeacherAttendanceReadOnly currentUser={currentUser} school={school} />;
     }
     const unsavedCount = dirtyIds.length;
     const otherDrafts = draftIndex.filter((d)=>d.date !== date);
@@ -22542,239 +22726,180 @@ function NurserySubjectInitialsManager(param) {
 // The admin reviews the old vs. new value and approves or rejects it. First-
 // time entries (a blank cell being filled in) never come through here -- only
 // changes to marks that were already recorded.
+// ─── MANAGE REQUESTS (Attendance permission requests) ───────────────────────
+// Repurposed from the old mark-change-approval system (which nothing files
+// anymore, since every entry screen writes directly) to instead handle
+// Attendance Tracker's Request Permission submissions: Absenteeism, Early
+// Departure, and Late Arrival, each with a typed reason (and a destination
+// for Early Departure). Accept/Reject here is what updates the status every
+// teacher sees on their own Attendance Tracker page.
 function ManageRequests(param) {
-    let { changeRequests, approveChangeRequest, rejectChangeRequest } = param;
-    const pending = useMemo(()=>[
-            ...changeRequests
-        ].sort((a, b)=>new Date(b.requestedAt) - new Date(a.requestedAt)), [
-        changeRequests
-    ]);
-    const isUnlockReq = (req)=>req.kind === "unlock_term" || req.kind === "unlock_monthly";
-    const describeField = (req)=>{
-        const [term, year] = (req.tk || "").split("__");
-        if (req.kind === "unlock_term") return "".concat(term || "", " ").concat(year || "", " \xb7 Whole sheet");
-        if (req.kind === "unlock_monthly") return "".concat(term || "", " ").concat(year || "", " \xb7 ").concat(req.month, " \xb7 Whole sheet");
-        const fieldLabel = req.field === "ca" ? "CA" : req.field === "exam" ? "Exam" : req.field === "mk" ? "Mark" : req.field;
-        if (req.kind === "term") return "".concat(term || "", " ").concat(year || "", " \xb7 ").concat(req.sub, " \xb7 ").concat(fieldLabel);
-        return "".concat(term || "", " ").concat(year || "", " \xb7 ").concat(req.month, " \xb7 ").concat(req.sub, " \xb7 ").concat(fieldLabel);
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [loadErr, setLoadErr] = useState("");
+    const [busyId, setBusyId] = useState(null);
+    const load = async ()=>{
+        setLoading(true);
+        const { data, error } = await loadAttendanceRequests();
+        setRequests(data);
+        setLoadErr(error);
+        setLoading(false);
     };
+    useEffect(()=>{
+        load();
+    }, []);
+    const act = async (id, status)=>{
+        setBusyId(id);
+        await resolveAttendanceRequest(id, status);
+        await load();
+        setBusyId(null);
+    };
+    const pending = requests.filter((r)=>r.status === "Pending");
+    const resolved = requests.filter((r)=>r.status !== "Pending");
+    const statusColor = (s)=>s === "Accepted" ? "#166534" : s === "Rejected" ? "#991b1b" : "#92400e";
+    const statusBg = (s)=>s === "Accepted" ? "#f0fdf4" : s === "Rejected" ? "#fef2f2" : "#fffbeb";
+    const row = (r)=> /*#__PURE__*/ _jsxs("tr", {
+        children: [
+            /*#__PURE__*/ _jsx("td", {
+                style: { ...td, fontWeight: 600, textAlign: "left" },
+                children: r.teacher_name
+            }),
+            /*#__PURE__*/ _jsx("td", {
+                style: { ...td, fontWeight: 700, color: "#1e3a6e" },
+                children: r.request_type
+            }),
+            /*#__PURE__*/ _jsx("td", {
+                style: { ...td, textAlign: "left" },
+                children: r.reason
+            }),
+            /*#__PURE__*/ _jsx("td", {
+                style: td,
+                children: r.destination || "—"
+            }),
+            /*#__PURE__*/ _jsx("td", {
+                style: { ...td, fontSize: 11, color: "#6b7280" },
+                children: new Date(r.created_at).toLocaleString()
+            }),
+            /*#__PURE__*/ _jsx("td", {
+                style: td,
+                children: r.status === "Pending" ? /*#__PURE__*/ _jsxs("div", {
+                    style: { display: "flex", gap: 6, justifyContent: "center" },
+                    children: [
+                        /*#__PURE__*/ _jsx("button", {
+                            disabled: busyId === r.id,
+                            onClick: ()=>act(r.id, "Accepted"),
+                            style: { ...btnSuccess, padding: "6px 12px", fontSize: 12 },
+                            children: "✅ Accept"
+                        }),
+                        /*#__PURE__*/ _jsx("button", {
+                            disabled: busyId === r.id,
+                            onClick: ()=>act(r.id, "Rejected"),
+                            style: { ...btnDanger, padding: "6px 12px", fontSize: 12 },
+                            children: "❌ Reject"
+                        })
+                    ]
+                }) : /*#__PURE__*/ _jsx("span", {
+                    style: { background: statusBg(r.status), color: statusColor(r.status), fontWeight: 700, padding: "3px 10px", borderRadius: 6, fontSize: 12 },
+                    children: r.status
+                })
+            })
+        ]
+    }, r.id);
     return /*#__PURE__*/ _jsxs("div", {
-        style: {
-            maxWidth: 900,
-            margin: "0 auto"
-        },
+        style: { maxWidth: 950, margin: "0 auto" },
         children: [
             /*#__PURE__*/ _jsxs("div", {
-                style: {
-                    background: "linear-gradient(135deg,#1e3a6e,#2563eb)",
-                    borderRadius: 14,
-                    padding: "24px 28px",
-                    marginBottom: 20,
-                    color: "white"
-                },
+                style: { background: "linear-gradient(135deg,#1e3a6e,#2563eb)", borderRadius: 14, padding: "24px 28px", marginBottom: 20, color: "white" },
                 children: [
                     /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            fontSize: 22,
-                            fontWeight: 800,
-                            marginBottom: 6
-                        },
+                        style: { fontSize: 22, fontWeight: 800, marginBottom: 6 },
                         children: "🛂 Manage Requests"
                     }),
                     /*#__PURE__*/ _jsx("div", {
-                        style: {
-                            fontSize: 13,
-                            opacity: 0.9,
-                            lineHeight: 1.6
-                        },
-                        children: "When a teacher changes a mark that was already entered, it appears here for your approval instead of saving immediately. First-time entries (a blank mark being filled in) don't need approval and are saved right away. Requests to unlock a saved sheet also land here - approving one reopens that whole class/term (or month) for editing again."
+                        style: { fontSize: 13, opacity: 0.9, lineHeight: 1.6 },
+                        children: "Attendance permission requests from Attendance Tracker -- Absenteeism, Early Departure, and Late Arrival -- land here for you to accept or reject. Whatever you decide shows up on every teacher's Attendance Tracker page right away."
                     })
                 ]
             }),
-            pending.length === 0 ? /*#__PURE__*/ _jsx("div", {
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    padding: 32,
-                    border: "1px solid #e5e7eb",
-                    textAlign: "center",
-                    color: "#9ca3af",
-                    fontSize: 13
-                },
-                children: "✅ No pending requests. Changes to already-entered marks, and unlock requests, will show up here."
-            }) : /*#__PURE__*/ _jsx("div", {
-                style: {
-                    background: "white",
-                    borderRadius: 12,
-                    border: "1px solid #e5e7eb",
-                    overflow: "hidden"
-                },
-                children: /*#__PURE__*/ _jsxs("table", {
-                    style: {
-                        width: "100%",
-                        fontSize: 13
-                    },
-                    children: [
-                        /*#__PURE__*/ _jsx("thead", {
-                            children: /*#__PURE__*/ _jsxs("tr", {
-                                style: {
-                                    background: "#1e3a6e",
-                                    color: "white"
-                                },
-                                children: [
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "Student"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "Class"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "Where"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "Old Value"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "New Value"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "Requested By"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "When"
-                                    }),
-                                    /*#__PURE__*/ _jsx("th", {
-                                        style: th,
-                                        children: "Action"
+            loading ? /*#__PURE__*/ _jsx("div", {
+                style: { color: "#9ca3af", fontSize: 13, textAlign: "center", padding: 24 },
+                children: "Loading…"
+            }) : loadErr ? /*#__PURE__*/ _jsx("div", {
+                style: { color: "#991b1b", fontSize: 13, textAlign: "center", padding: 24 },
+                children: loadErr
+            }) : requests.length === 0 ? /*#__PURE__*/ _jsx("div", {
+                style: { background: "white", borderRadius: 12, padding: 32, border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af", fontSize: 13 },
+                children: "✅ No requests yet. Absenteeism, Early Departure, and Late Arrival requests from Attendance Tracker will show up here."
+            }) : /*#__PURE__*/ _jsxs(_Fragment, {
+                children: [
+                    /*#__PURE__*/ _jsx("div", {
+                        style: { fontWeight: 700, marginBottom: 8, marginTop: pending.length ? 0 : 16 },
+                        children: "Pending (".concat(pending.length, ")")
+                    }),
+                    pending.length === 0 ? /*#__PURE__*/ _jsx("div", {
+                        style: { color: "#9ca3af", fontSize: 13, marginBottom: 20 },
+                        children: "None right now."
+                    }) : /*#__PURE__*/ _jsx("div", {
+                        style: { background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 20 },
+                        children: /*#__PURE__*/ _jsxs("table", {
+                            style: { width: "100%", fontSize: 13 },
+                            children: [
+                                /*#__PURE__*/ _jsx("thead", {
+                                    children: /*#__PURE__*/ _jsxs("tr", {
+                                        style: { background: "#1e3a6e", color: "white" },
+                                        children: [
+                                            /*#__PURE__*/ _jsx("th", { style: th, children: "Teacher" }),
+                                            /*#__PURE__*/ _jsx("th", { style: th, children: "Type" }),
+                                            /*#__PURE__*/ _jsx("th", { style: th, children: "Reason" }),
+                                            /*#__PURE__*/ _jsx("th", { style: th, children: "Destination" }),
+                                            /*#__PURE__*/ _jsx("th", { style: th, children: "Requested" }),
+                                            /*#__PURE__*/ _jsx("th", { style: th, children: "Action" })
+                                        ]
                                     })
-                                ]
-                            })
-                        }),
-                        /*#__PURE__*/ _jsx("tbody", {
-                            children: pending.map((req)=>/*#__PURE__*/ _jsxs("tr", {
+                                }),
+                                /*#__PURE__*/ _jsx("tbody", {
+                                    children: pending.map(row)
+                                })
+                            ]
+                        })
+                    }),
+                    resolved.length > 0 && /*#__PURE__*/ _jsxs(_Fragment, {
+                        children: [
+                            /*#__PURE__*/ _jsx("div", {
+                                style: { fontWeight: 700, marginBottom: 8 },
+                                children: "Resolved"
+                            }),
+                            /*#__PURE__*/ _jsx("div", {
+                                style: { background: "white", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden" },
+                                children: /*#__PURE__*/ _jsxs("table", {
+                                    style: { width: "100%", fontSize: 13 },
                                     children: [
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: {
-                                                ...td,
-                                                fontWeight: 600,
-                                                textAlign: "left"
-                                            },
-                                            children: isUnlockReq(req) ? "🔓 (unlock request)" : req.studentName
-                                        }),
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: {
-                                                ...td,
-                                                fontWeight: 700,
-                                                color: "#1e3a6e"
-                                            },
-                                            children: req.cls || "—"
-                                        }),
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: td,
-                                            children: describeField(req)
-                                        }),
-                                        isUnlockReq(req) ? /*#__PURE__*/ _jsxs(_Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: "#fef2f2",
-                                                        color: "#991b1b",
-                                                        fontWeight: 700
-                                                    },
-                                                    children: "🔒 Locked"
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: "#f0fdf4",
-                                                        color: "#166534",
-                                                        fontWeight: 700
-                                                    },
-                                                    children: "🔓 Unlocked"
-                                                })
-                                            ]
-                                        }) : /*#__PURE__*/ _jsxs(_Fragment, {
-                                            children: [
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: "#fef2f2",
-                                                        color: "#991b1b",
-                                                        fontWeight: 700
-                                                    },
-                                                    children: req.oldVal === undefined || req.oldVal === null || req.oldVal === "" ? "—" : req.oldVal
-                                                }),
-                                                /*#__PURE__*/ _jsx("td", {
-                                                    style: {
-                                                        ...td,
-                                                        background: "#f0fdf4",
-                                                        color: "#166534",
-                                                        fontWeight: 700
-                                                    },
-                                                    children: req.newVal === undefined || req.newVal === null || req.newVal === "" ? "—" : req.newVal
-                                                })
-                                            ]
-                                        }),
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: td,
-                                            children: req.requestedBy
-                                        }),
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: {
-                                                ...td,
-                                                fontSize: 11,
-                                                color: "#6b7280"
-                                            },
-                                            children: new Date(req.requestedAt).toLocaleString()
-                                        }),
-                                        /*#__PURE__*/ _jsx("td", {
-                                            style: td,
-                                            children: /*#__PURE__*/ _jsxs("div", {
-                                                style: {
-                                                    display: "flex",
-                                                    gap: 6,
-                                                    justifyContent: "center"
-                                                },
+                                        /*#__PURE__*/ _jsx("thead", {
+                                            children: /*#__PURE__*/ _jsxs("tr", {
+                                                style: { background: "#1e3a6e", color: "white" },
                                                 children: [
-                                                    /*#__PURE__*/ _jsx("button", {
-                                                        onClick: ()=>approveChangeRequest(req.id),
-                                                        style: {
-                                                            ...btnSuccess,
-                                                            padding: "6px 12px",
-                                                            fontSize: 12
-                                                        },
-                                                        children: "✅ Approve"
-                                                    }),
-                                                    /*#__PURE__*/ _jsx("button", {
-                                                        onClick: ()=>rejectChangeRequest(req.id),
-                                                        style: {
-                                                            ...btnDanger,
-                                                            padding: "6px 12px",
-                                                            fontSize: 12
-                                                        },
-                                                        children: "❌ Reject"
-                                                    })
+                                                    /*#__PURE__*/ _jsx("th", { style: th, children: "Teacher" }),
+                                                    /*#__PURE__*/ _jsx("th", { style: th, children: "Type" }),
+                                                    /*#__PURE__*/ _jsx("th", { style: th, children: "Reason" }),
+                                                    /*#__PURE__*/ _jsx("th", { style: th, children: "Destination" }),
+                                                    /*#__PURE__*/ _jsx("th", { style: th, children: "Requested" }),
+                                                    /*#__PURE__*/ _jsx("th", { style: th, children: "Status" })
                                                 ]
                                             })
+                                        }),
+                                        /*#__PURE__*/ _jsx("tbody", {
+                                            children: resolved.map(row)
                                         })
                                     ]
-                                }, req.id))
-                        })
-                    ]
-                })
+                                })
+                            })
+                        ]
+                    })
+                ]
             })
         ]
     });
 }
-// ─── MANAGE TEACHER PASSWORDS (admin only) ───────────────────────────────────
 function AccountManager(param) {
     let { accounts, setAccounts, currentUser } = param;
     const [newUser, setNewUser] = useState("");
