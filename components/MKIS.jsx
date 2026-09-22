@@ -1090,6 +1090,13 @@ function ReportCardFrame(param) {
     }}>
             <div style={{ position: "absolute", top: inset, left: inset, right: inset, bottom: inset, background: "white" }} />
             <RCDecorations />
+            {/* Watermark: the school badge, faint and centered, sitting above the
+                corner decorations but behind the real content (zIndex 2 below).
+                Renders in the on-screen preview, browser Print, and the PDF
+                download (html2canvas rasterizes this DOM node as-is). */}
+            <div style={{ position: "absolute", top: inset, left: inset, right: inset, bottom: inset, zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", pointerEvents: "none" }}>
+                <img src={RAVEN_BADGE} alt="" aria-hidden="true" style={{ width: "56%", maxWidth: 300, objectFit: "contain", opacity: 0.07, transform: "rotate(-15deg)" }} />
+            </div>
             <div style={{ position: "relative", zIndex: 2, padding: "14px 36px 0", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{
         display: "flex",
@@ -1787,6 +1794,17 @@ function downloadWordHtml(title, bodyHtml, filename) {
     // Applied to every element type Word imports so table cells and
     // paragraphs don't fall back to the default body font.
     const fontOverrideCss = opts.fontFamily ? "  body, p, div, span, table, th, td { font-family: ".concat(opts.fontFamily, "; }\n") : "";
+    // Optional page watermark (opts.watermarkImage = a data: URI, typically
+    // the school logo). Built the same way Word's own Insert > Watermark >
+    // Picture feature builds one: a VML shape sitting in a page header, so it
+    // repeats faintly behind every page rather than being pasted once into
+    // the body. "behavior:url(#default#VML)" is what makes old Word (and
+    // WordPad/older builds) render v:/o:/w: elements at all; modern Word
+    // understands them natively either way. gain/blacklevel are the exact
+    // values Word itself writes for its built-in "washout" picture effect,
+    // so the watermark comes out pale without needing an image-editing step.
+    const watermarkStyleCss = opts.watermarkImage ? "  v\\:* { behavior:url(#default#VML); }\n  o\\:* { behavior:url(#default#VML); }\n  w\\:* { behavior:url(#default#VML); }\n" : "";
+    const watermarkBodyHtml = opts.watermarkImage ? '<div style="mso-element:header" id="mkisWatermarkHeader"><p style="margin:0;"><![if !supportMisalignedColumns]><span style="position:absolute;z-index:-1;margin-left:0;margin-top:0;width:500pt;height:500pt;"><v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"><v:stroke joinstyle="miter"/><v:formulas><v:f eqn="if lineDrawn pixelLineWidth 0"/><v:f eqn="sum @0 1 0"/><v:f eqn="sum 0 0 @1"/><v:f eqn="prod @2 1 2"/><v:f eqn="prod @3 21600 pixelWidth"/><v:f eqn="prod @3 21600 pixelHeight"/><v:f eqn="sum @0 0 1"/><v:f eqn="prod @6 1 2"/><v:f eqn="prod @7 21600 pixelWidth"/><v:f eqn="sum @8 21600 0"/><v:f eqn="prod @7 21600 pixelHeight"/><v:f eqn="sum @10 21600 0"/></v:formulas><v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/><o:lock v:ext="edit" aspectratio="t"/></v:shapetype><v:shape id="MkisWatermark" o:spid="_x0000_s2049" type="#_x0000_t75" style="position:absolute;left:0;top:0;width:340pt;height:340pt;z-index:-251654144;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowoverlap="f"><v:imagedata src="'.concat(opts.watermarkImage, '" o:title="watermark" gain="19661f" blacklevel="22938f"/></v:shape><![endif]></span></p></div>') : "";
     // Word doesn't reliably infer orientation from the @page width/height alone
     // (older/activation-limited Word builds in particular can still open the
     // file as portrait). Spelling it out explicitly via mso-page-orientation
@@ -1794,7 +1812,7 @@ function downloadWordHtml(title, bodyHtml, filename) {
     // page size we're asking for.
     const [wStr, hStr] = pageSize.split(" ");
     const orientation = parseFloat(wStr) >= parseFloat(hStr) ? "landscape" : "portrait";
-    let html = '<!DOCTYPE html>\n<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n<head>\n<meta charset="utf-8">\n<title>'.concat(escapeHtml(title), "</title>\n<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->\n<style>\n  @page { size: ").concat(pageSize, "; margin: ").concat(pageMargin, "; mso-page-orientation: ").concat(orientation, "; }\n  body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; color:#111; }\n  table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }\n  th, td { border: 1px solid #999; padding: 4px 6px; font-size: 9.5pt; text-align: center; }\n  th { background:#1e3a6e; color:#fff; font-weight:bold; }\n  .title { text-align:center; font-size:16pt; font-weight:bold; }\n  .motto { text-align:center; font-style:italic; font-size:10pt; }\n  .addr { text-align:center; font-size:10pt; margin-bottom:4px; }\n  .subtitle { text-align:center; font-weight:bold; font-size:12pt; margin:6px 0 10px; }\n  .section-title { font-weight:bold; font-size:11pt; margin:14px 0 6px; }\n  .name-cell { text-align:left; font-weight:600; }\n  tr:nth-child(even) td { background:#eff6ff; }\n  /* Keep each pupil's full report card together as one block in the\n     downloaded file -- never split a table/section across two pages. */\n  .report-card-block, .report-card-block table, .report-card-block tr {\n    page-break-inside: avoid;\n    mso-pagination: none;\n  }\n</style>\n</head>\n<body>\n").concat(bodyHtml, "\n</body>\n</html>");
+    let html = '<!DOCTYPE html>\n<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n<head>\n<meta charset="utf-8">\n<title>'.concat(escapeHtml(title), "</title>\n<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->\n<style>\n  @page { size: ").concat(pageSize, "; margin: ").concat(pageMargin, "; mso-page-orientation: ").concat(orientation, "; }\n  body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; color:#111; }\n  table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }\n  th, td { border: 1px solid #999; padding: 4px 6px; font-size: 9.5pt; text-align: center; }\n  th { background:#1e3a6e; color:#fff; font-weight:bold; }\n  .title { text-align:center; font-size:16pt; font-weight:bold; }\n  .motto { text-align:center; font-style:italic; font-size:10pt; }\n  .addr { text-align:center; font-size:10pt; margin-bottom:4px; }\n  .subtitle { text-align:center; font-weight:bold; font-size:12pt; margin:6px 0 10px; }\n  .section-title { font-weight:bold; font-size:11pt; margin:14px 0 6px; }\n  .name-cell { text-align:left; font-weight:600; }\n  tr:nth-child(even) td { background:#eff6ff; }\n  /* Keep each pupil's full report card together as one block in the\n     downloaded file -- never split a table/section across two pages. */\n  .report-card-block, .report-card-block table, .report-card-block tr {\n    page-break-inside: avoid;\n    mso-pagination: none;\n  }\n").concat(watermarkStyleCss, "</style>\n</head>\n<body>\n").concat(watermarkBodyHtml, "\n").concat(bodyHtml, "\n</body>\n</html>");
     if (fontOverrideCss) html = html.replace("</style>", "".concat(fontOverrideCss, "</style>"));
     // Word's HTML/RTF importer is unreliable with <img src="data:..."> --
     // the logo renders fine in a browser preview, but once the file is
@@ -2360,7 +2378,8 @@ function exportReportCardsWord(param) {
     });
     downloadWordHtml("".concat(cls, " ").concat(term, " ").concat(year, " Report Cards"), body, "".concat(safeFileName(cls), "_").concat(safeFileName(term), "_").concat(year, "_Report_Cards.doc"), {
         pageSize: "210mm 297mm",
-        margin: "12mm"
+        margin: "12mm",
+        watermarkImage: school.logo || undefined
     });
 }
 // ─── PDF EXPORT HELPERS (jsPDF + html2canvas) ──────────────────────────────────
