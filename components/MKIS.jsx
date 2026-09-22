@@ -5277,12 +5277,33 @@ export default function App() {
                                             borderLeft: page === p ? "3px solid #7f1d1d" : "3px solid transparent"
                                         },
                                         children: [
-                                            /*#__PURE__*/ _jsx("span", {
+                                            /*#__PURE__*/ _jsxs("span", {
                                                 style: {
+                                                    position: "relative",
                                                     fontSize: 16,
                                                     flexShrink: 0
                                                 },
-                                                children: icons[p]
+                                                children: [
+                                                    icons[p],
+                                                    !sideOpen && pendingCount > 0 && /*#__PURE__*/ _jsx("span", {
+                                                        style: {
+                                                            position: "absolute",
+                                                            top: -6,
+                                                            right: -8,
+                                                            background: "#dc2626",
+                                                            color: "white",
+                                                            borderRadius: 10,
+                                                            fontSize: 9,
+                                                            fontWeight: 800,
+                                                            lineHeight: 1,
+                                                            padding: "2px 4px",
+                                                            minWidth: 14,
+                                                            textAlign: "center",
+                                                            border: "1px solid white"
+                                                        },
+                                                        children: pendingCount
+                                                    })
+                                                ]
                                             }),
                                             sideOpen && /*#__PURE__*/ _jsxs("span", {
                                                 style: {
@@ -10695,8 +10716,9 @@ function TeacherAttendance(param) {
 }
 // ─── MARK ENTRY ──────────────────────────────────────────────────────────────
 function MarkEntry(param) {
-    let { students, termMarks, updateTermMark, bands: defaultBands, specialBands, divisions, school } = param;
+    let { students, termMarks, updateTermMark, transferTermPeriodMarks, bands: defaultBands, specialBands, divisions, school } = param;
     const [cls, setCls] = useState("P1");
+    const [showTransfer, setShowTransfer] = useState(false);
     const [term, setTerm] = useState("Term I");
     const [year, setYear] = useState(school.year || String(new Date().getFullYear()));
     // Mark Entry is End of Term only -- BOT and Mid Term both live under
@@ -10741,8 +10763,25 @@ function MarkEntry(param) {
             const hasAll = perSub.every((p)=>typeof p.mark === "number");
             const hasF9 = perSub.some((p)=>p.agg === 9);
             const totalMarks = perSub.reduce((a, p)=>a + (typeof p.mark === "number" ? p.mark : 0), 0);
-            const totalAgg = hasAll ? perSub.reduce((a, p)=>a + (p.agg || 0), 0) : undefined;
-            const div = totalAgg !== undefined ? divisionOf(totalAgg, subjects.length, divisions, hasF9) : "-";
+            // Lower Primary: LIT I and LIT II are entered and shown as two
+            // independent subjects here (each with its own mark/grade), but
+            // for the TOT AGG/DIV shown on this same row they count as ONE
+            // "Literacy" subject -- the average of the LIT I and LIT II
+            // aggregates, not two separate aggregates added in. Matches the
+            // Result Sheet and Report Card, which apply the same averaging.
+            let totalAgg;
+            if (hasAll) {
+                if (isLower) {
+                    const litI = perSub.find((p)=>p.sub === "LIT I");
+                    const litII = perSub.find((p)=>p.sub === "LIT II");
+                    const litAgg = litI && litII ? Math.round(((litI.agg || 0) + (litII.agg || 0)) / 2) : 0;
+                    const others = perSub.filter((p)=>p.sub !== "LIT I" && p.sub !== "LIT II").reduce((a, p)=>a + (p.agg || 0), 0);
+                    totalAgg = others + litAgg;
+                } else {
+                    totalAgg = perSub.reduce((a, p)=>a + (p.agg || 0), 0);
+                }
+            }
+            const div = totalAgg !== undefined ? divisionOf(totalAgg, isLower ? 4 : subjects.length, divisions, hasF9) : "-";
             return {
                 s,
                 perSub,
@@ -10757,7 +10796,8 @@ function MarkEntry(param) {
         period,
         subjects,
         bands,
-        divisions
+        divisions,
+        isLower
     ]);
     // No position column here -- Mark Entry stays a plain entry sheet;
     // ranking is shown on the Result Sheet instead.
@@ -10769,7 +10809,7 @@ function MarkEntry(param) {
         rows,
         search
     ]);
-    return <div>
+    return <div style={{ fontFamily: "'Bookman Old Style','URW Bookman','Bookman',Georgia,serif" }}>
             <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
                 <Sel label="Class" value={cls} onChange={setCls} opts={ALL_CLASSES} />
                 <Sel label="Term" value={term} onChange={setTerm} opts={TERMS} />
@@ -10781,9 +10821,10 @@ function MarkEntry(param) {
                     <label style={lbl}>Search Pupil</label>
                     <input type="text" placeholder="Type a name..." value={search} onChange={(e)=>setSearch(e.target.value)} style={{ ...inp, width: "100%" }} />
                 </div>
+                <button onClick={()=>setShowTransfer(true)} style={btnGhost} title={`Copy ${cls}'s saved results from one term into the same or a later term`}>🔀 Transfer Result</button>
             </div>
             <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse", fontFamily: "inherit" }}>
                     <thead>
                         <tr style={{ background: "#1e3a6e", color: "white" }}>
                             <th style={{ ...th, textAlign: "left" }}>Pupil</th>
@@ -10810,6 +10851,21 @@ function MarkEntry(param) {
                     </tbody>
                 </table>
             </div>
+            {showTransfer && <TransferResultModal
+                title={`Transfer Result — ${cls}`}
+                note={`Copies every ${cls} pupil's End of Term results (marks) from the "From" term into the "To" term. A term can be moved to a later term (Term I → Term II or Term III, Term II → Term III), or to the same term of a different year. Anything already at the destination is overwritten.`}
+                fields={[
+                    { key: "term", label: "Term", options: (v, from)=>from ? transferTermOptions(v, from) : TERMS },
+                    { key: "year", label: "Year", type: "text" }
+                ]}
+                initialFrom={{ term, year }}
+                initialTo={{ term: TERMS[Math.min(TERMS.indexOf(term) + 1, TERMS.length - 1)], year }}
+                onClose={()=>setShowTransfer(false)}
+                onConfirm={(from, to)=>{
+                    if (String(from.year).trim() && String(to.year).trim()) transferTermPeriodMarks(cls, `${from.term}__${String(from.year).trim()}`, period, `${to.term}__${String(to.year).trim()}`, period);
+                    setShowTransfer(false);
+                }}
+            />}
         </div>;
 }
 // ─── NURSERY MARK ENTRY ─────────────────────────────────────────────────────
@@ -11594,7 +11650,6 @@ function NurseryReportCard(param) {
                         <b>PUPIL'S NAME:</b> {c.s.name}&nbsp;&nbsp;&nbsp;<b>CLASS:</b> {cls}
                     </div>
                     <div style={RC_INFO_LINE}>
-                        <b>GRADE:</b> {c.end.grade}&nbsp;&nbsp;&nbsp;
                         <b>TOTAL IN CLASS:</b> {classSize}&nbsp;&nbsp;&nbsp;
                         <b>TERM:</b> {term}&nbsp;&nbsp;&nbsp;
                         <b>YEAR:</b> {year}
@@ -11641,7 +11696,7 @@ function NurseryReportCard(param) {
                                         printColorAdjust: "exact"
                                     }}></td>
                                     <td style={{ ...rcTd, textAlign: "left" }}>{p.band ? p.band.label : ""}</td>
-                                    <td style={rcTd}>{initials?.[cls]?.[p.sub] || ""}</td>
+                                    <td style={rcTd}><b>{initials?.[cls]?.[p.sub] || ""}</b></td>
                                 </tr>)}
                             <tr>
                                 <td style={{ ...rcTd, textAlign: "left", fontWeight: 700 }}>TOTAL</td>
@@ -11653,6 +11708,7 @@ function NurseryReportCard(param) {
                         </tbody>
                     </RCTable>
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
+                        <div><b>GRADE:</b> {c.end.grade}</div>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         {c.comments.teacher ? <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT_CLASS}>{c.comments.teacher}</span></div>
@@ -18685,6 +18741,22 @@ function ResultSheets(param) {
                     gradeLabel: gl
                 };
             });
+            // Lower Primary: LIT I and LIT II are entered and shown as two
+            // separate subjects (both marks still count toward TOT MK), but
+            // for grading purposes they count as ONE "Literacy" subject --
+            // the AGG shown after LIT I is removed, and the AGG shown after
+            // LIT II becomes the average of the LIT I and LIT II aggregates.
+            // That average is also what feeds TOT AGG/DIV (matches the
+            // Report Card's buildLowerMidPeriod, which does the same thing).
+            if (isLower) {
+                const litI = perSub.find((p)=>p.sub === "LIT I");
+                const litII = perSub.find((p)=>p.sub === "LIT II");
+                if (litI && litII) {
+                    const litAgg = typeof litI.agg === "number" && typeof litII.agg === "number" ? Math.round((litI.agg + litII.agg) / 2) : undefined;
+                    litI.agg = undefined;
+                    litII.agg = litAgg;
+                }
+            }
             const hasX = perSub.some((p)=>p.isX);
             const hasF9 = !isLower && perSub.some((p)=>p.agg === 9);
             const totMk = perSub.reduce((a, p)=>{
@@ -19849,6 +19921,7 @@ function ReportCards(param) {
                 mid,
                 end,
                 midLower,
+                endLower,
                 comments
             };
         }), [
@@ -19906,7 +19979,6 @@ function ReportCards(param) {
                         <b>PUPILS NAME:</b> {c.s.name}&nbsp;&nbsp;&nbsp;<b>CLASS:</b> {cls}
                     </div>
                     <div style={RC_INFO_LINE}>
-                        <b>AGG:</b> {c.end.totalAgg ?? "-"}&nbsp;&nbsp;&nbsp;
                         <b>DIV:</b> {c.end.div}&nbsp;&nbsp;&nbsp;
                         <b>TOTAL IN CLASS:</b> {classSize}&nbsp;&nbsp;&nbsp;
                         <b>TERM:</b> {term}&nbsp;&nbsp;&nbsp;
@@ -19921,8 +19993,7 @@ function ReportCards(param) {
                                         <th style={rcTh}>AGG</th>
                                         <th style={rcTh}>MATHS</th>
                                         <th style={rcTh}>AGG</th>
-                                        <th style={rcTh}>LIT I</th>
-                                        <th style={rcTh}>LIT II</th>
+                                        <th style={rcTh} colSpan={2}>LIT I &amp; II</th>
                                         <th style={rcTh}>AGG</th>
                                         <th style={rcTh}>RE</th>
                                         <th style={rcTh}>AGG</th>
@@ -19986,6 +20057,22 @@ function ReportCards(param) {
                         <tbody>
                             {isLower ? <>
                                     {LOWER_MIDTERM_ORDER.map((sub, i)=>{
+                                        if (sub === "LIT I") return null; // merged into the "LIT I & II" row below
+                                        if (sub === "LIT II") {
+                                            const litI = c.end.perSub.find((x)=>x.sub === "LIT I");
+                                            const litII = c.end.perSub.find((x)=>x.sub === "LIT II");
+                                            const litAvgMark = typeof litI?.mark === "number" && typeof litII?.mark === "number" ? Math.round((litI.mark + litII.mark) / 2) : undefined;
+                                            const litIInitial = initials?.[cls]?.["LIT I"] || "";
+                                            const litIIInitial = initials?.[cls]?.["LIT II"] || "";
+                                            return <tr key="LIT I & II">
+                                                    <td style={{ ...rcTd, textAlign: "left" }}>LIT I &amp; II</td>
+                                                    <td style={rcTd}>{lowerSubjectMax("LIT I")} &amp; {lowerSubjectMax("LIT II")}</td>
+                                                    <td style={rcTd}>{litI?.mark ?? "-"} &amp; {litII?.mark ?? "-"}</td>
+                                                    <td style={rcTd}>{c.endLower?.litAgg ?? "-"}</td>
+                                                    <td style={{ ...rcTd, textAlign: "left" }}>{remarkOfMark(litAvgMark)}</td>
+                                                    <td style={rcTd}><b>{litIInitial}</b>{litIInitial && litIIInitial ? " / " : ""}<b>{litIIInitial}</b></td>
+                                                </tr>;
+                                        }
                                         const p = c.end.perSub.find((x)=>x.sub === sub);
                                         return <tr key={sub}>
                                                 <td style={{ ...rcTd, textAlign: "left" }}>{sub}</td>
@@ -19993,7 +20080,7 @@ function ReportCards(param) {
                                                 <td style={rcTd}>{p?.mark === undefined ? "-" : p.mark}</td>
                                                 <td style={rcTd}>{p?.agg ?? "-"}</td>
                                                 <td style={{ ...rcTd, textAlign: "left" }}>{remarkOfMark(p?.mark)}</td>
-                                                <td style={rcTd}>{initials?.[cls]?.[sub] || ""}</td>
+                                                <td style={rcTd}><b>{initials?.[cls]?.[sub] || ""}</b></td>
                                             </tr>;
                                     })}
                                     <tr>
@@ -20012,7 +20099,7 @@ function ReportCards(param) {
                                                 <td style={rcTd}>{p?.mark === undefined ? "-" : p.mark}</td>
                                                 <td style={rcTd}>{p?.agg ?? "-"}</td>
                                                 <td style={{ ...rcTd, textAlign: "left" }}>{remarkOfMark(p?.mark)}</td>
-                                                <td style={rcTd}>{initials?.[cls]?.[sub] || ""}</td>
+                                                <td style={rcTd}><b>{initials?.[cls]?.[sub] || ""}</b></td>
                                             </tr>;
                                     })}
                                     <tr>
@@ -20026,8 +20113,8 @@ function ReportCards(param) {
                         </tbody>
                     </RCTable>
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
-                        <div><b>DIV:</b> {c.end.div}</div>
                         <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
+                        <div><b>DIV:</b> {c.end.div}</div>
                         {c.comments.teacher ? <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT_CLASS}>{c.comments.teacher}</span></div>
                             <div style={{ whiteSpace: "nowrap" }}>Sign: __________</div>
