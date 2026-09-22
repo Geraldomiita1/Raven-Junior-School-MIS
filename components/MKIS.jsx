@@ -19215,7 +19215,7 @@ function ResultSheets(param) {
                                                 }),
                                                 subjects.map((s)=>/*#__PURE__*/ _jsxs("th", {
                                                         style: th,
-                                                        colSpan: 2,
+                                                        colSpan: s === "LIT I" ? 1 : 2,
                                                         children: [
                                                             s,
                                                             isLower && lowerSubjectMax(s) !== 100 ? " /".concat(lowerSubjectMax(s)) : ""
@@ -19259,7 +19259,7 @@ function ResultSheets(param) {
                                                             },
                                                             children: "SCORE"
                                                         }),
-                                                        /*#__PURE__*/ _jsx("th", {
+                                                        s !== "LIT I" && /*#__PURE__*/ _jsx("th", {
                                                             style: {
                                                                 ...th,
                                                                 background: "#fed7aa",
@@ -19301,7 +19301,7 @@ function ResultSheets(param) {
                                                                 },
                                                                 children: p.isX ? "X" : (_p_mark = p.mark) !== null && _p_mark !== void 0 ? _p_mark : "-"
                                                             }),
-                                                            /*#__PURE__*/ _jsx("td", {
+                                                            p.sub !== "LIT I" && /*#__PURE__*/ _jsx("td", {
                                                                 style: {
                                                                     ...td,
                                                                     background: "#fff7ed"
@@ -19356,7 +19356,7 @@ function ResultSheets(param) {
                                             fontSize: 12
                                         },
                                         children: /*#__PURE__*/ _jsxs("td", {
-                                            colSpan: subjects.length * 2 + 6,
+                                            colSpan: subjects.length * 2 - (subjects.includes("LIT I") ? 1 : 0) + 6,
                                             style: {
                                                 ...td,
                                                 textAlign: "left",
@@ -19979,7 +19979,6 @@ function ReportCards(param) {
                         <b>PUPILS NAME:</b> {c.s.name}&nbsp;&nbsp;&nbsp;<b>CLASS:</b> {cls}
                     </div>
                     <div style={RC_INFO_LINE}>
-                        <b>DIV:</b> {c.end.div}&nbsp;&nbsp;&nbsp;
                         <b>TOTAL IN CLASS:</b> {classSize}&nbsp;&nbsp;&nbsp;
                         <b>TERM:</b> {term}&nbsp;&nbsp;&nbsp;
                         <b>YEAR:</b> {year}
@@ -20066,11 +20065,11 @@ function ReportCards(param) {
                                             const litIIInitial = initials?.[cls]?.["LIT II"] || "";
                                             return <tr key="LIT I & II">
                                                     <td style={{ ...rcTd, textAlign: "left" }}>LIT I &amp; II</td>
-                                                    <td style={rcTd}>{lowerSubjectMax("LIT I")} &amp; {lowerSubjectMax("LIT II")}</td>
-                                                    <td style={rcTd}>{litI?.mark ?? "-"} &amp; {litII?.mark ?? "-"}</td>
+                                                    <td style={rcTd}>{lowerSubjectMax("LIT I")}</td>
+                                                    <td style={rcTd}>{litAvgMark ?? "-"}</td>
                                                     <td style={rcTd}>{c.endLower?.litAgg ?? "-"}</td>
                                                     <td style={{ ...rcTd, textAlign: "left" }}>{remarkOfMark(litAvgMark)}</td>
-                                                    <td style={rcTd}><b>{litIInitial}</b>{litIInitial && litIIInitial ? " / " : ""}<b>{litIIInitial}</b></td>
+                                                    <td style={rcTd}><b>{litIInitial || litIIInitial}</b></td>
                                                 </tr>;
                                         }
                                         const p = c.end.perSub.find((x)=>x.sub === sub);
@@ -20113,8 +20112,8 @@ function ReportCards(param) {
                         </tbody>
                     </RCTable>
                     <div style={{ marginTop: 12, fontSize: 11, lineHeight: 1.9, color: "#374151" }}>
-                        <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         <div><b>DIV:</b> {c.end.div}</div>
+                        <div>CONDUCT: __________________&nbsp;&nbsp;HEALTH: __________________&nbsp;&nbsp;ATTENDANCE: __________________</div>
                         {c.comments.teacher ? <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>CLASS TEACHER'S REPORT: <span style={RC_COMMENT_CLASS}>{c.comments.teacher}</span></div>
                             <div style={{ whiteSpace: "nowrap" }}>Sign: __________</div>
